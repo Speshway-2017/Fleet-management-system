@@ -23,10 +23,13 @@ import {
   markAllNotificationsReadInRepo,
   deleteNotificationInRepo,
   VALID_SETTLED_TRIP_STATUSES,
+  VALID_TRIP_CONDITION,
+  fetchInvoicesMap,
   calculateTripRevenue,
   getSettledRevenueForOrganization,
   getSettledRevenueForManager
 } from '../repositories/admin.repository.js';
+import { calculateTripFinance } from '../utils/earningsCalculator.js';
 import { changeUserPassword } from '../services/auth.service.js';
 import { hashPassword } from '../utils/hashPassword.js';
 import { sendSuccess, sendError } from '../utils/response.js';
@@ -116,15 +119,21 @@ export const getOrganizationDetails = async (req, res, next) => {
 
     // All trips belonging to this organization and its managers
     const orgTrips = await Trip.find({
-      $or: [
-        { organization: org._id },
-        { assignedManager: { $in: orgManagerIds } }
+      $and: [
+        {
+          $or: [
+            { organization: org._id },
+            { assignedManager: { $in: orgManagerIds } }
+          ]
+        },
+        VALID_TRIP_CONDITION
       ]
     }).lean();
 
+    const invoiceMap = await fetchInvoicesMap(orgTrips);
+
     const isSettledStatus = (st) => VALID_SETTLED_TRIP_STATUSES.includes(st) || /^(completed|delivered|complete trip)$/i.test(st);
-    const settledTrips = orgTrips.filter(t => isSettledStatus(t.status) || t.tripEnded);
-    const activeTrips = orgTrips.filter(t => !['Rejected', 'Cancelled', 'Pending Driver Acceptance'].includes(t.status) && !isSettledStatus(t.status) && !t.tripEnded);
+    const activeTrips = orgTrips.filter(t => !isSettledStatus(t.status) && !t.tripEnded);
 
     // Vehicles associated with this organization and its managers
     const orgVehicles = await Vehicle.find({
@@ -138,19 +147,22 @@ export const getOrganizationDetails = async (req, res, next) => {
     const isSingleManager = orgManagers.length === 1;
 
     const managersWithStats = orgManagers.map(manager => {
-      const managerSettledTrips = isSingleManager
-        ? settledTrips
-        : settledTrips.filter(t => String(t.assignedManager) === String(manager._id) || (!t.assignedManager && String(t.organization) === String(org._id)));
+      const managerTrips = isSingleManager
+        ? orgTrips
+        : orgTrips.filter(t => String(t.assignedManager) === String(manager._id) || (!t.assignedManager && String(t.organization) === String(org._id)));
 
-      const managerActiveTrips = isSingleManager
-        ? activeTrips
-        : activeTrips.filter(t => String(t.assignedManager) === String(manager._id) || (!t.assignedManager && String(t.organization) === String(org._id)));
+      const managerActiveTrips = managerTrips.filter(t => !isSettledStatus(t.status) && !t.tripEnded);
 
       const managerVehicles = isSingleManager
         ? orgVehicles
         : orgVehicles.filter(v => String(v.assignedManager) === String(manager._id) || String(v.createdBy) === String(manager._id) || (!v.assignedManager && !v.createdBy && String(v.organization) === String(org._id)));
 
-      const totalRevenue = managerSettledTrips.reduce((sum, t) => sum + calculateTripRevenue(t.actualDistance || t.estimatedDistance, t.cargoWeight, t), 0);
+      const totalRevenue = managerTrips.reduce((sum, t) => {
+        const inv = invoiceMap.get(t._id?.toString()) || (t.tripInvoice?.invoiceNumber ? invoiceMap.get(t.tripInvoice.invoiceNumber) : null);
+        const fin = calculateTripFinance(t, inv);
+        return sum + fin.revenue;
+      }, 0);
+
       const activeTripsCount = managerActiveTrips.length;
       const vehiclesManaged = managerVehicles.length;
 
@@ -177,7 +189,11 @@ export const getOrganizationDetails = async (req, res, next) => {
     });
 
     const totalActiveTrips = activeTrips.length;
-    const orgTotalRevenue = settledTrips.reduce((sum, t) => sum + calculateTripRevenue(t.actualDistance || t.estimatedDistance, t.cargoWeight, t), 0);
+    const orgTotalRevenue = orgTrips.reduce((sum, t) => {
+      const inv = invoiceMap.get(t._id?.toString()) || (t.tripInvoice?.invoiceNumber ? invoiceMap.get(t.tripInvoice.invoiceNumber) : null);
+      const fin = calculateTripFinance(t, inv);
+      return sum + fin.revenue;
+    }, 0);
     const totalVehiclesCount = orgVehicles.length;
 
     const currentStatus = org.status || 'Pending';

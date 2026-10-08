@@ -20,12 +20,13 @@ export default function ManagerDashboard() {
   const [drivers, setDrivers] = useState([]);
   const [trips, setTrips] = useState([]);
   const [dbStats, setDbStats] = useState(null);
+  const [earningsData, setEarningsData] = useState(null);
   const [fuelRecords, setFuelRecords] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
   const [activities, setActivities] = useState([]);
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [timeframe, setTimeframe] = useState("This Week");
+  const [timeframe, setTimeframe] = useState("All Time");
   const [callingDriver, setCallingDriver] = useState(null);
 
   const dashboardRef = useRef(null);
@@ -120,7 +121,7 @@ export default function ManagerDashboard() {
     const fetchAllData = async (isInitial = false) => {
       try {
         if (isInitial) setLoading(true);
-        const [dashRes, vehRes, drvRes, tripRes, fuelRes, maintRes, actRes, complaintsRes] = await Promise.all([
+        const [dashRes, vehRes, drvRes, tripRes, fuelRes, maintRes, actRes, complaintsRes, earningsRes] = await Promise.all([
           managerApi.getDashboard().catch(() => null),
           managerApi.getVehicles().catch(() => null),
           managerApi.getDrivers().catch(() => null),
@@ -128,7 +129,8 @@ export default function ManagerDashboard() {
           managerApi.getFuelRecords().catch(() => null),
           managerApi.getMaintenance().catch(() => null),
           managerApi.getActivities().catch(() => null),
-          managerApi.getVehicleComplaints().catch(() => null)
+          managerApi.getVehicleComplaints().catch(() => null),
+          managerApi.getEarnings().catch(() => null)
         ]);
 
         const rawVeh = vehRes?.data?.data || vehRes?.data || [];
@@ -142,6 +144,13 @@ export default function ManagerDashboard() {
 
         const rawDash = dashRes?.data?.data || dashRes?.data || {};
         setDbStats(rawDash);
+
+        const rawEarnings = earningsRes?.data?.data || (rawDash?.stats ? {
+          stats: rawDash.stats,
+          tripEarnings: rawDash.tripEarnings,
+          chartData: rawDash.chartData
+        } : null);
+        setEarningsData(rawEarnings);
 
         setFuelRecords(fuelRes?.data?.data || fuelRes?.data || []);
         setMaintenance(maintRes?.data?.data || maintRes?.data || []);
@@ -180,8 +189,6 @@ export default function ManagerDashboard() {
     };
   }, []);
 
-
-
   const formatRevenueDisplay = (amount) => {
     return formatCurrency(amount);
   };
@@ -190,6 +197,15 @@ export default function ManagerDashboard() {
   const { lineChartData, totalRevenue, totalCod, activeRidersCount } = useMemo(() => {
     const now = new Date();
     
+    // Map trip earnings from backend single source of truth
+    const tripEarningsMap = new Map();
+    if (earningsData?.tripEarnings && Array.isArray(earningsData.tripEarnings)) {
+      earningsData.tripEarnings.forEach(te => {
+        if (te.tripId) tripEarningsMap.set(String(te.tripId), te);
+        if (te.tripNumber) tripEarningsMap.set(String(te.tripNumber).replace('#', ''), te);
+      });
+    }
+
     // Filter trips by selected timeframe / month
     const filtered = trips.filter(t => {
       const dateVal = t.createdAt || t.departureTime || t.dispatchDate || t.updatedAt;
@@ -309,25 +325,34 @@ export default function ManagerDashboard() {
       });
     }
 
-    // Real Database Calculations for Revenue & COD in the filtered period
+    // Revenue & COD Calculation using single source of truth
     let rev = 0;
     let cod = 0;
     const periodTripPool = filtered.length > 0 ? filtered : trips;
 
     periodTripPool.forEach(t => {
-      const amt = Number(t.codAmount || t.fare || t.totalAmount || t.amount || (t.cargoWeight ? t.cargoWeight * 15 : 500));
-      const pMethod = (t.paymentMethod || t.paymentType || "Prepaid").toUpperCase();
-      const isCompleted = ["COMPLETED", "DELIVERED", "Completed", "Delivered"].includes(t.status);
+      const tripIdStr = String(t._id || t.id || '');
+      const cleanNum = String(t.tripNumber || '').replace('#', '');
+      const matchedEarning = tripEarningsMap.get(tripIdStr) || tripEarningsMap.get(cleanNum);
+
+      const tripRevenue = (matchedEarning && typeof matchedEarning.revenue === 'number')
+        ? matchedEarning.revenue
+        : Number(t.revenue || t.totalAmount || t.billingAmount || t.tripInvoice?.totalAmount || 0);
+
+      const pMethod = String(t.paymentMethod || t.paymentType || "Prepaid").toUpperCase();
+
+      rev += tripRevenue;
 
       if (pMethod.includes("COD") || pMethod.includes("CASH")) {
-        if (isCompleted) {
-          rev += amt;
-          cod += amt;
-        }
-      } else {
-        rev += amt;
+        const codAmt = Number(t.codAmount) > 0 ? Number(t.codAmount) : tripRevenue;
+        cod += codAmt;
       }
     });
+
+    // When viewing All Time (or period covering all trips), synchronize directly with backend canonical total
+    if (earningsData?.stats?.totalRevenue !== undefined && (timeframe === "All Time" || filtered.length === trips.length)) {
+      rev = Number(earningsData.stats.totalRevenue);
+    }
 
     // Active riders operating in period / overall available
     const assignedDriverIds = new Set();
@@ -348,7 +373,7 @@ export default function ManagerDashboard() {
       totalCod: cod,
       activeRidersCount: ridersCount,
     };
-  }, [trips, timeframe, drivers]);
+  }, [trips, timeframe, drivers, earningsData]);
 
   // Active Maintenance Alerts calculation (reflects current backend state & complaints)
   const activeComplaintsCount = useMemo(() => {

@@ -72,7 +72,7 @@ const driverSchema = new mongoose.Schema(
     twoFactorMethod: { type: String, default: 'SMS' },
     twoFactorPhone: { type: String, default: '' },
     recoveryCodes: { type: [String], default: [] },
-    language: { type: String, default: 'English (US)' },
+    language: { type: String, default: 'English' },
     isDarkMode: { type: Boolean, default: false },
     notificationPreferences: {
       routeChanges: { type: Boolean, default: true },

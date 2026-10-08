@@ -3,6 +3,8 @@ import { useNavigate, NavLink } from "react-router-dom";
 import driverApi from "../api/driverApi";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { applyApplicationLanguage, LANGUAGE_OPTIONS, getLanguageName } from "@/utils/languageUtils";
 import { toast } from "react-hot-toast";
 import {
   Settings,
@@ -29,6 +31,7 @@ export default function DriverSettingsPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { theme, toggleTheme, setTheme, isDark } = useTheme();
+  const { currentLanguage, setLanguage: setGlobalLanguage } = useLanguage();
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -52,7 +55,7 @@ export default function DriverSettingsPage() {
   const [profileImage, setProfileImage] = useState("");
 
   // Notification Preferences & App Settings
-  const [language, setLanguage] = useState("English (US)");
+  const [language, setLanguage] = useState(currentLanguage || "English");
   const [notificationPreferences, setNotificationPreferences] = useState({
     pushNotifications: true,
     smsNotifications: true,
@@ -270,7 +273,12 @@ export default function DriverSettingsPage() {
         setEmail(d.email || user?.email || "");
         setLicenseNumber(d.licenseNumber || user?.licenseNumber || "");
         if (d.profileImage) setProfileImage(d.profileImage);
-        if (d.language) setLanguage(d.language);
+        if (d.language) {
+          const validLang = getLanguageName(d.language);
+          setLanguage(validLang || "English");
+        } else {
+          setLanguage("English");
+        }
         if (d.notificationPreferences) {
           setNotificationPreferences(prev => ({
             ...prev,
@@ -281,6 +289,16 @@ export default function DriverSettingsPage() {
     } catch (err) {
       console.error("Error fetching profile details in settings:", err);
     }
+  };
+
+  const handleLanguageChange = (newLang) => {
+    const validLang = getLanguageName(newLang || "English");
+    setLanguage(validLang);
+    applyApplicationLanguage(validLang, false);
+    if (setGlobalLanguage) {
+      setGlobalLanguage(validLang, false);
+    }
+    toast.success(`Language set to ${validLang}`);
   };
 
   const handleTogglePref = (key) => {
@@ -294,9 +312,14 @@ export default function DriverSettingsPage() {
     e?.preventDefault?.();
     setSavingPreferences(true);
     try {
+      const validLang = getLanguageName(language);
+      applyApplicationLanguage(validLang, false);
+      if (setGlobalLanguage) {
+        setGlobalLanguage(validLang, false);
+      }
       const res = await driverApi.updateProfile({
         notificationPreferences,
-        language,
+        language: validLang,
         isDarkMode: isDark
       });
       if (res?.success) {
@@ -711,14 +734,14 @@ export default function DriverSettingsPage() {
             </label>
             <select
               value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="mt-1 block w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs font-medium focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] outline-none"
+              onChange={(e) => handleLanguageChange(e.target.value)}
+              className="mt-1 block w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs font-medium focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] outline-none cursor-pointer"
             >
-              <option value="English (US)">English (US)</option>
-              <option value="Hindi (हिंदी)">Hindi (हिंदी)</option>
-              <option value="Spanish (Español)">Spanish (Español)</option>
-              <option value="Tamil (தமிழ்)">Tamil (தமிழ்)</option>
-              <option value="Telugu (తెలుగు)">Telugu (తెలుగు)</option>
+              {LANGUAGE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
           </div>
 

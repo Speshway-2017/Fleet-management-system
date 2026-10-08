@@ -79,24 +79,23 @@ export const getDriverStats = async (req, res, next) => {
 export const listDrivers = async (req, res, next) => {
   try {
     const filter = {
-      $or: [
-        { assignedManager: req.user._id },
-        { assignedManager: { $in: [null, undefined] } },
-        ...(req.user?.organization ? [{ organization: req.user.organization }] : [])
-      ],
+      assignedManager: req.user._id,
       isDeleted: { $ne: true }
     };
 
     // 1. Search by Name, Employee ID, Phone, Email, or DL number
     if (req.query.search) {
       const searchRegex = new RegExp(req.query.search, 'i');
-      filter.$or = [
-        { fullName: searchRegex },
-        { employeeId: searchRegex },
-        { phoneNumber: searchRegex },
-        { email: searchRegex },
-        { licenseNumber: searchRegex }
-      ];
+      filter.$and = filter.$and || [];
+      filter.$and.push({
+        $or: [
+          { fullName: searchRegex },
+          { employeeId: searchRegex },
+          { phoneNumber: searchRegex },
+          { email: searchRegex },
+          { licenseNumber: searchRegex }
+        ]
+      });
     }
 
     // 2. Filter by Driver Status
@@ -187,11 +186,7 @@ export const listDrivers = async (req, res, next) => {
 
     // Compute overall statistics using countDocuments()
     const baseStatsFilter = {
-      $or: [
-        { assignedManager: req.user._id },
-        { assignedManager: { $in: [null, undefined] } },
-        ...(req.user?.organization ? [{ organization: req.user.organization }] : [])
-      ],
+      assignedManager: req.user._id,
       isDeleted: { $ne: true }
     };
     const totalDriversInDB = await Driver.countDocuments(baseStatsFilter);
@@ -255,17 +250,11 @@ export const getAvailableDrivers = async (req, res, next) => {
     const allocatedDriverIds = activeTrips.map(t => t.driver).filter(Boolean);
 
     const allAvailable = await Driver.find({
+      assignedManager: req.user._id,
       _id: { $nin: allocatedDriverIds },
       isDeleted: { $ne: true },
       accountStatus: { $nin: ['Deleted', 'Inactive', 'Suspended'] },
       $and: [
-        {
-          $or: [
-            { assignedManager: req.user._id },
-            { assignedManager: { $exists: false } },
-            { assignedManager: null }
-          ]
-        },
         {
           $or: [
             { driverStatus: { $in: ['AVAILABLE', 'Available', 'ACTIVE', 'Active'] } },

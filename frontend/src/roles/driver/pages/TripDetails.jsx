@@ -1480,104 +1480,113 @@ export default function DriverTripDetailsPage() {
 
       {/* Invoice Bill View Modal */}
       {invoiceModalOpen && invoiceData && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto font-nunito">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150">
-            <div className="flex justify-between items-start pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-amber-100 text-[#A14000] rounded-xl">
-                  <FileText className="w-6 h-6" />
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 overflow-y-auto font-nunito">
+          <div className="bg-white rounded-xl max-w-md w-full p-4.5 shadow-2xl space-y-3.5 animate-in fade-in zoom-in duration-150 max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex justify-between items-start pb-2.5 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-amber-100 text-[#A14000] rounded-lg shrink-0">
+                  <FileText className="w-4.5 h-4.5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-extrabold font-poppins text-slate-900">Trip Freight Invoice</h3>
-                  <span className="text-xs text-slate-500 font-mono">Invoice #: {invoiceData.invoiceNumber || 'INV-2026-001'}</span>
+                  <h3 className="text-sm font-extrabold font-poppins text-slate-900 leading-tight">Trip Freight Invoice</h3>
+                  <span className="text-[10px] text-slate-500 font-mono">Invoice #: {invoiceData.invoiceNumber || 'INV-2026-001'}</span>
                 </div>
               </div>
               <button
                 onClick={() => setInvoiceModalOpen(false)}
-                className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
+            {/* Trip Summary Grid */}
+            <div className="grid grid-cols-2 gap-2 text-[11px] bg-slate-50 p-2.5 rounded-lg border border-slate-200">
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 font-poppins">Trip Ref</span>
-                <p className="font-extrabold text-slate-900 mt-0.5">{tripNumber}</p>
+                <span className="text-[9px] uppercase font-bold text-slate-400 font-poppins block">Trip Ref</span>
+                <p className="font-extrabold text-slate-900 mt-0.5 truncate">{tripNumber}</p>
               </div>
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 font-poppins">Invoice Date</span>
-                <p className="font-bold text-slate-800 mt-0.5">{new Date(invoiceData.invoiceDate || Date.now()).toLocaleDateString()}</p>
+                <span className="text-[9px] uppercase font-bold text-slate-400 font-poppins block">Invoice Date</span>
+                <p className="font-semibold text-slate-800 mt-0.5">{new Date(invoiceData.invoiceDate || Date.now()).toLocaleDateString('en-IN')}</p>
               </div>
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 font-poppins">Assigned Vehicle</span>
-                <p className="font-bold text-slate-800 mt-0.5">{vehiclePlate}</p>
+                <span className="text-[9px] uppercase font-bold text-slate-400 font-poppins block">Vehicle</span>
+                <p className="font-semibold text-slate-800 mt-0.5 truncate">{vehiclePlate}</p>
               </div>
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 font-poppins">Driver</span>
-                <p className="font-bold text-slate-800 mt-0.5">{trip.driverName || 'Assigned Driver'}</p>
+                <span className="text-[9px] uppercase font-bold text-slate-400 font-poppins block">Driver</span>
+                <p className="font-semibold text-slate-800 mt-0.5 truncate">{trip.driverName || 'Assigned Driver'}</p>
               </div>
             </div>
 
             {/* Itemized Bill Table */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-bold font-poppins uppercase tracking-wider text-slate-700">Billing Charges Breakdown</h4>
-              <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
-                <div className="flex justify-between bg-slate-100 p-3 font-bold text-slate-700 font-poppins">
+            <div className="space-y-1.5">
+              <h4 className="text-[10px] font-bold font-poppins uppercase tracking-wider text-slate-600">Billing Charges Breakdown</h4>
+              <div className="border border-slate-200 rounded-lg overflow-hidden text-[11px]">
+                <div className="flex justify-between bg-slate-100 px-2.5 py-1.5 font-bold text-slate-700 font-poppins text-[10px]">
                   <span>Description</span>
                   <span>Amount (₹)</span>
                 </div>
                 <div className="divide-y divide-slate-100">
-                  <div className="flex justify-between p-3 text-slate-600">
-                    <span>Base Freight Transport Charge</span>
+                  <div className="flex justify-between px-2.5 py-1.5 text-slate-600">
+                    <span>Base Freight Transport</span>
                     <span className="font-semibold text-slate-900">₹ {(invoiceData.charges?.freightCharges || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                   </div>
+                  {Boolean(invoiceData.charges?.serviceFee) && (
+                    <div className="flex justify-between px-2.5 py-1.5 text-slate-600">
+                      <span>Service Fee ({trip.serviceType?.split(' ')[0] || 'Standard'})</span>
+                      <span className="font-semibold text-slate-900">₹ {(invoiceData.charges?.serviceFee || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
                   {Boolean(invoiceData.charges?.loadingCharges) && (
-                    <div className="flex justify-between p-3 text-slate-600">
+                    <div className="flex justify-between px-2.5 py-1.5 text-slate-600">
                       <span>Loading & Handling Charges</span>
                       <span className="font-semibold text-slate-900">₹ {(invoiceData.charges?.loadingCharges || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                   )}
                   {Boolean(invoiceData.charges?.unloadingCharges) && (
-                    <div className="flex justify-between p-3 text-slate-600">
+                    <div className="flex justify-between px-2.5 py-1.5 text-slate-600">
                       <span>Unloading Charges</span>
                       <span className="font-semibold text-slate-900">₹ {(invoiceData.charges?.unloadingCharges || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                   )}
                   {Boolean(invoiceData.charges?.fuelCharges) && (
-                    <div className="flex justify-between p-3 text-slate-600">
+                    <div className="flex justify-between px-2.5 py-1.5 text-slate-600">
                       <span>Fuel Charges</span>
                       <span className="font-semibold text-slate-900">₹ {(invoiceData.charges?.fuelCharges || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                   )}
                   {Boolean(invoiceData.charges?.tollCharges) && (
-                    <div className="flex justify-between p-3 text-slate-600">
+                    <div className="flex justify-between px-2.5 py-1.5 text-slate-600">
                       <span>National Highway Toll & Expressway Fee</span>
                       <span className="font-semibold text-slate-900">₹ {(invoiceData.charges?.tollCharges || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                   )}
-                  <div className="flex justify-between p-3 text-slate-600">
+                  <div className="flex justify-between px-2.5 py-1.5 text-slate-600">
                     <span>GST / Taxes (18%)</span>
                     <span className="font-semibold text-slate-900">₹ {(invoiceData.charges?.gstTax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                   </div>
-                  <div className="flex justify-between p-3 bg-amber-50 font-extrabold text-[#A14000] font-poppins text-sm">
-                    <span>Total Amount Paid</span>
+                  <div className="flex justify-between px-2.5 py-2 bg-amber-50 font-bold text-[#A14000] font-poppins text-xs">
+                    <span>Total Amount</span>
                     <span>₹ {(invoiceData.charges?.totalAmount || invoiceData.charges?.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+            {/* Actions Footer */}
+            <div className="flex justify-end gap-2 pt-2.5 border-t border-slate-100">
               <button
                 onClick={() => window.print()}
-                className="py-2 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold font-poppins rounded-xl text-xs flex items-center gap-2 transition"
+                className="py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold font-poppins rounded-lg text-[11px] flex items-center gap-1.5 transition cursor-pointer"
               >
-                <Printer className="w-4 h-4" /> Print Invoice
+                <Printer className="w-3.5 h-3.5" /> Print
               </button>
               <button
                 onClick={() => setInvoiceModalOpen(false)}
-                className="py-2 px-5 bg-[#A14000] hover:bg-[#853400] text-white font-bold font-poppins rounded-xl text-xs transition"
+                className="py-1.5 px-4 bg-[#A14000] hover:bg-[#853400] text-white font-bold font-poppins rounded-lg text-[11px] transition cursor-pointer"
               >
                 Close
               </button>

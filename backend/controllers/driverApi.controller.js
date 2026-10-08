@@ -21,6 +21,7 @@ import { createAndEmitNotification } from '../utils/notification.js';
 import { getClosestCity, calculateDistance } from '../utils/distanceCalculator.js';
 import { syncDriverLocationFromLatestTrip, updateDriverAndVehicleOnCompletion } from '../utils/driverLocationHelper.js';
 import { parseDateTimeIST } from '../utils/dateHelper.js';
+import { calculateTripFinance } from '../utils/earningsCalculator.js';
 
 // Helper to resolve trip by ObjectId or Trip Number
 export async function resolveTripHelper(idOrNumber) {
@@ -227,7 +228,7 @@ export const getDriverProfile = async (req, res, next) => {
       twoFactorMethod: driver.twoFactorMethod || 'SMS',
       twoFactorPhone: driver.twoFactorPhone || '',
       recoveryCodes: driver.recoveryCodes || [],
-      language: driver.language || 'English (US)',
+      language: driver.language || 'English',
       isDarkMode: driver.isDarkMode || false,
       driverStatus: driver.driverStatus || 'OFFLINE',
       isDuty: (driver.isDuty !== undefined && driver.isDuty !== null)
@@ -3584,26 +3585,40 @@ export const getDriverInvoiceByTripId = async (req, res, next) => {
         { tripId: '#' + trip.tripNumber?.replace('#', '') }
       ]
     });
-    let fuelAmount = 0;
-    for (const f of fuelEntries) {
-      fuelAmount += (Number(f.amount) || 0);
-    }
-    if (fuelAmount === 0 && trip.totalFuelAmount) {
-      fuelAmount = Number(trip.totalFuelAmount) || 0;
-    }
 
     const tollsList = await TollTransaction.find({ trip: trip._id });
-    let tollAmount = 0;
-    for (const t of tollsList) {
-      tollAmount += (Number(t.amountPaid) || 0);
+
+    // Financial billing charges resolution via calculateTripFinance (Single Source of Truth)
+    const finance = calculateTripFinance(trip, invoice, fuelEntries, tollsList);
+
+    // Synchronize invoice charges in database if invoice exists
+    if (invoice) {
+      invoice.charges = {
+        freightCharges: finance.baseFreight,
+        serviceFee: finance.serviceFee,
+        loadingCharges: finance.loadingCharges,
+        unloadingCharges: finance.unloadingCharges,
+        fuelCharges: finance.actualFuelAmount,
+        tollCharges: finance.actualTollAmount,
+        subtotal: finance.subtotal,
+        gstTax: finance.gstTax,
+        totalAmount: finance.totalAmount
+      };
+      invoice.subtotal = finance.subtotal;
+      invoice.taxAmount = finance.gstTax;
+      invoice.totalAmount = finance.totalAmount;
+      await invoice.save().catch(() => {});
     }
 
-    const freightCharges = Math.round((actualDistance * 230 / 100) * 100) || 5000;
-    const loadingCharges = 2500;
-    const unloadingCharges = 2500;
-    const subtotal = freightCharges + loadingCharges + unloadingCharges + tollAmount + fuelAmount;
-    const gstTax = Math.round(subtotal * 0.18);
-    const totalAmount = subtotal + gstTax;
+    const freightCharges = finance.baseFreight;
+    const serviceFee = finance.serviceFee;
+    const loadingCharges = finance.loadingCharges;
+    const unloadingCharges = finance.unloadingCharges;
+    const fuelAmount = finance.actualFuelAmount;
+    const tollAmount = finance.actualTollAmount;
+    const subtotal = finance.subtotal;
+    const gstTax = finance.gstTax;
+    const totalAmount = finance.totalAmount;
 
     let managerInfo = null;
     if (trip.assignedManager) {
@@ -3710,6 +3725,7 @@ export const getDriverInvoiceByTripId = async (req, res, next) => {
       },
       charges: {
         freightCharges,
+        serviceFee,
         loadingCharges,
         unloadingCharges,
         fuelCharges: fuelAmount,
