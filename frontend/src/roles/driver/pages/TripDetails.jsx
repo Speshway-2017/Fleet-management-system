@@ -27,7 +27,6 @@ const resolveDocumentUrl = (url) => {
 import { useDriverSocket } from "../hooks/useDriverSocket";
 import { toast } from "react-hot-toast";
 import {
-  ArrowLeft,
   FileCheck,
   Scale,
   RefreshCw,
@@ -467,6 +466,14 @@ export default function DriverTripDetailsPage() {
 
   const handleToggleCustomerLocation = async () => {
     if (!tripId) return;
+    if (!isTripStarted) {
+      toast.error("🔒 Location arrival toggle is read-only until the trip is started. Please start the trip first.");
+      return;
+    }
+    if (isCompleted) {
+      toast.error("Trip is already completed and read-only.");
+      return;
+    }
     const previousState = trip.customerLocationReached;
     const newReachedState = !previousState;
 
@@ -747,35 +754,37 @@ export default function DriverTripDetailsPage() {
   const isPending = normStatus === "ASSIGNED" || normStatus === "PENDING" || normStatus === "PENDING DRIVER ACCEPTANCE";
   const isCompleted = normStatus === "COMPLETED" || normStatus === "DELIVERED" || normStatus === "REJECTED" || normStatus === "CANCELLED";
 
+  const unstartedStatuses = [
+    "ASSIGNED",
+    "PENDING",
+    "PENDING DRIVER ACCEPTANCE",
+    "SCHEDULED",
+    "ACCEPTED",
+    "READY TO DISPATCH",
+    "UPCOMING"
+  ];
+  const isTripStarted = !unstartedStatuses.includes(normStatus) && (Boolean(trip.actualStartTime) || currentStageIndex >= 0 || !isPending);
+
   return (
-    <div className="space-y-8 font-nunito pb-12">
+    <div className="space-y-6 font-nunito pb-12">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleBack}
-            className="p-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition shadow-sm cursor-pointer"
-            title="Back"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-extrabold font-poppins text-slate-900">{tripNumber}</h1>
-              <span className={`px-3 py-1 text-xs font-bold rounded-full border font-poppins ${
-                isCompleted 
-                  ? "bg-slate-100 text-slate-700 border-slate-200" 
-                  : isPending 
-                  ? "bg-amber-50 text-amber-700 border-amber-200" 
-                  : "bg-emerald-50 text-emerald-700 border-emerald-200"
-              }`}>
-                {rawStatus} {isCompleted ? "(Read Only)" : ""}
-              </span>
-            </div>
-            <p className="text-slate-500 text-xs mt-1">
-              Scheduled Departure: {departureTime ? new Date(departureTime).toLocaleString() : "Today"}
-            </p>
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-extrabold font-poppins text-slate-900">{tripNumber}</h1>
+            <span className={`px-3 py-1 text-xs font-bold rounded-full border font-poppins ${
+              isCompleted 
+                ? "bg-slate-100 text-slate-700 border-slate-200" 
+                : isPending 
+                ? "bg-amber-50 text-amber-700 border-amber-200" 
+                : "bg-emerald-50 text-emerald-700 border-emerald-200"
+            }`}>
+              {rawStatus} {isCompleted ? "(Read Only)" : ""}
+            </span>
           </div>
+          <p className="text-slate-500 text-xs mt-1">
+            Scheduled Departure: {departureTime ? new Date(departureTime).toLocaleString() : "Today"}
+          </p>
         </div>
 
         {/* Action Header for Pending Trips */}
@@ -840,20 +849,52 @@ export default function DriverTripDetailsPage() {
       </div>
 
       {/* Customer Location Reached Toggle Card */}
-      <div className="bg-gradient-to-r from-amber-50/90 to-amber-100/40 border border-amber-200 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className={`border rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-200 ${
+        !isTripStarted
+          ? "bg-slate-50/90 border-slate-200"
+          : isCompleted
+          ? "bg-slate-50 border-slate-200"
+          : customerReached
+          ? "bg-gradient-to-r from-emerald-50/90 to-emerald-100/40 border-emerald-200"
+          : "bg-gradient-to-r from-amber-50/90 to-amber-100/40 border-amber-200"
+      }`}>
         <div className="flex items-center gap-3">
-          <div className={`p-3 rounded-2xl ${isCompleted ? "bg-slate-400 text-white shadow-sm" : customerReached ? "bg-emerald-500 text-white shadow-sm" : "bg-amber-100 text-[#A14000]"}`}>
+          <div className={`p-3 rounded-2xl ${
+            !isTripStarted
+              ? "bg-slate-200 text-slate-500 shadow-sm"
+              : isCompleted
+              ? "bg-slate-400 text-white shadow-sm"
+              : customerReached
+              ? "bg-emerald-500 text-white shadow-sm"
+              : "bg-amber-100 text-[#A14000]"
+          }`}>
             <MapPin className="w-6 h-6" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h4 className="text-sm font-bold font-poppins text-slate-900">Arrived at Customer Location</h4>
-              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold font-poppins ${isCompleted ? "bg-slate-200 text-slate-700 border border-slate-300" : customerReached ? "bg-emerald-100 text-emerald-800 border border-emerald-300" : "bg-amber-200 text-amber-900 border border-amber-300"}`}>
-                {isCompleted ? "TRIP COMPLETED" : customerReached ? "CUSTOMER REACHED" : "EN ROUTE TO CUSTOMER"}
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold font-poppins ${
+                !isTripStarted
+                  ? "bg-slate-200 text-slate-600 border border-slate-300"
+                  : isCompleted
+                  ? "bg-slate-200 text-slate-700 border border-slate-300"
+                  : customerReached
+                  ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                  : "bg-amber-200 text-amber-900 border border-amber-300"
+              }`}>
+                {!isTripStarted
+                  ? "READ ONLY (START TRIP FIRST)"
+                  : isCompleted
+                  ? "TRIP COMPLETED"
+                  : customerReached
+                  ? "CUSTOMER REACHED"
+                  : "EN ROUTE TO CUSTOMER"}
               </span>
             </div>
             <p className="text-xs text-slate-600 mt-0.5">
-              {isCompleted
+              {!isTripStarted
+                ? "🔒 Location arrival toggle is read-only until the trip is started. Please click 'Start Trip' to begin your journey."
+                : isCompleted
                 ? "✓ Trip is completed and finalized. Location arrival status is read-only."
                 : customerReached
                 ? "✓ Driver arrived at destination. Proof of Delivery (POD) & Weighbridge uploads are unlocked!"
@@ -864,17 +905,19 @@ export default function DriverTripDetailsPage() {
 
         <div className="flex items-center gap-3">
           <span className="text-xs font-bold font-poppins text-slate-700">
-            {isCompleted ? "Completed" : customerReached ? "Reached" : "Not Reached"}
+            {!isTripStarted ? "Not Started (Read Only)" : isCompleted ? "Completed" : customerReached ? "Reached" : "Not Reached"}
           </span>
-          <label className="relative inline-flex items-center cursor-pointer shrink-0">
+          <label className={`relative inline-flex items-center shrink-0 ${!isTripStarted || isCompleted ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}>
             <input
               type="checkbox"
               checked={customerReached}
               onChange={handleToggleCustomerLocation}
-              disabled={togglingLocation || isCompleted}
+              disabled={!isTripStarted || togglingLocation || isCompleted}
               className="sr-only peer"
             />
-            <div className={`w-14 h-7 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all ${isCompleted ? "peer-checked:bg-slate-400 cursor-not-allowed" : "peer-checked:bg-emerald-600"}`}></div>
+            <div className={`w-14 h-7 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all ${
+              !isTripStarted || isCompleted ? "peer-checked:bg-slate-400 cursor-not-allowed" : "peer-checked:bg-emerald-600"
+            }`}></div>
           </label>
         </div>
       </div>

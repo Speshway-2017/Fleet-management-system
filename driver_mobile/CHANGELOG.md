@@ -2,6 +2,103 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [2.00.00] - 2026-10-08
+
+### Manager Reports Center UI Clean-up
+- **Manager Reports Page (`frontend/src/roles/manager/pages/ReportsPage.jsx`)**:
+  - Removed the KPI summary cards section (`activeData.summary`) from the Live Reports Cockpit to streamline the reporting view and prioritize interactive filter controls, visualization charts, and audit data tables.
+
+## [1.99.00] - 2026-10-08
+
+### Admin Dashboard Revenue Aggregation & Formatting Permanent Fix
+- **MongoDB Data Sanitization**:
+  - Traced and cleaned historical trip records with corrupted floating-point cargo weights (e.g. `2.4e+113`), resetting them to verified weighbridge net weights (`15,000 kg`).
+- **Backend Revenue Calculation Hardening (`backend/repositories/admin.repository.js`, `backend/utils/earningsCalculator.js`, `backend/controllers/manager.controller.js`)**:
+  - Added strict bounds and sanitization on `cargoWeight` (`0 - 100,000 kg`), `distance` (`0 - 50,000 km`), and direct amounts (`<= ₹5,00,00,000`) in `calculateTripRevenue`, `calculateTripFinance`, `createTrip`, and `updateTrip`.
+  - Guaranteed exact integer Rupee totals calculated only once without duplicate aggregation or exponential multiplication.
+- **Frontend Currency Formatter Safety (`frontend/src/utils/currencyFormatter.js`)**:
+  - Prevented exponential notation formatting, ensuring large numbers format cleanly in compact Indian Rupee crore / lakh notation without scientific `e+...` exponents.
+  - Enhanced `parseNumericValue` to parse already-converted strings safely without repeated multiplying.
+
+## [1.98.00] - 2026-10-08
+
+### Driver Trip Details Breadcrumb Navigation & Header Modernization
+- **Breadcrumb Navigation & Layout Consolidation (`frontend/src/roles/driver/pages/TripDetails.jsx` & `DriverLayout.jsx`)**:
+  - Removed legacy standalone back button from driver trip details header.
+  - Eliminated duplicate inline breadcrumbs, consolidating breadcrumb navigation under the single centralized layout breadcrumb (`DriverLayout.jsx`).
+  - Added driver module route paths to centralized `Breadcrumb.jsx` configuration (`/driver/trips`, `/driver/vehicle`, `/driver/fuel`, `/driver/maintenance`, `/driver/documents`, etc.) with intelligent root detection for driver role.
+  - Removed unused `ArrowLeft` and `handleBack` dependencies from driver trip details screen.
+
+## [1.97.00] - 2026-10-08
+
+### Driver Dashboard Active & Scheduled Trips KPI Card Permanent Fix
+- **Backend Metric Aggregation (`backend/controllers/driverApi.controller.js`)**:
+  - Enhanced `getDriverDashboard` to query driver documents comprehensively across driver ID, email, and phone number references.
+  - Expanded `upcomingStatuses` (`Scheduled`, `Upcoming`, `Assigned`, `Accepted`, `Pending Driver Acceptance`, `Ready to Dispatch`, `Draft`, `Pending`) and `activeStatuses` across both uppercase, titlecase, and snake_case variants.
+  - Added dedicated `activeAndScheduledTrips` and `totalActiveTrips` metrics to dashboard API response payload combining active and upcoming/scheduled queues.
+- **Driver Web Dashboard KPI Computation (`frontend/src/roles/driver/pages/Dashboard.jsx`)**:
+  - Fixed KPI card logic that was previously evaluating `stats.activeTrips ?? stats.upcomingTrips` (which collapsed to `0` when active trips was 0 regardless of scheduled count).
+  - Explicitly summed active and upcoming trip counters (`activeAndScheduledCount`), gracefully defaulting to `currentTrip` fallback.
+- **Real-Time WebSocket Sync (`frontend/src/roles/driver/hooks/useDriverSocket.js`)**:
+  - Registered real-time socket event listeners for `trip:created`, `trip:accepted`, `trip:updated`, and `dashboard:refresh` to instantly trigger dashboard metric refresh on trip scheduling/assignment without requiring manual page reload.
+
+## [1.96.00] - 2026-10-08
+
+### Driver Trip Details Read-Only Arrived Location Toggle Before Trip Start
+- **Read-Only Location Toggle Card UI (`frontend/src/roles/driver/pages/TripDetails.jsx`)**:
+  - Implemented `isTripStarted` validation checking active trip state (normStatus !== `ASSIGNED`, `PENDING`, `PENDING DRIVER ACCEPTANCE`, `SCHEDULED`, `ACCEPTED`, `READY TO DISPATCH`, `UPCOMING` along with `actualStartTime` or active stage index).
+  - Configured the "Arrived at Customer Location" toggle switch to be read-only / disabled (`disabled={!isTripStarted || togglingLocation || isCompleted}`) before the trip is started.
+  - Added visual cues including a `"READ ONLY (START TRIP FIRST)"` status badge, locked subtitle note (`"🔒 Location arrival toggle is read-only until the trip is started. Please click 'Start Trip' to begin your journey."`), and `"Not Started (Read Only)"` status text with `cursor-not-allowed` styling.
+  - Added guard inside `handleToggleCustomerLocation` with toast error notification if toggling is attempted prior to trip start.
+- **Backend Guard for Pre-Trip Arrival Toggle (`backend/controllers/driverApi.controller.js`)**:
+  - Added validation in `toggleCustomerLocation` controller rejecting requests with `400 Bad Request` if the trip has not yet been started (`!trip.actualStartTime` and pre-dispatch statuses).
+
+## [1.95.00] - 2026-10-08
+
+### Manager Earnings Page Monthly Financial Trends Y-Axis Formatting
+- **Y-Axis Thousands (`₹...k`) Notation (`frontend/src/roles/manager/pages/EarningsPage.jsx`)**:
+  - Formatted Y-axis tick values on the Monthly Financial Trends area chart to display in clean thousands notation (e.g. `₹0k`, `₹500k`, `₹1200k`, `₹3600k`) via custom `tickFormatter`.
+  - Expanded Y-axis container width to `width={65}` to guarantee zero clipping of large rupee values.
+  - Enhanced chart tooltip formatter to display full localized Indian Rupee currency values (`formatFullCurrency`).
+
+## [1.94.00] - 2026-10-08
+
+### Driver Pre-Trip Fuel Logging Permanent Resolution
+- **Backend Fuel Entry Controller (`backend/controllers/driverApi.controller.js`)**:
+  - Removed restrictive `active trips > 0` runtime block that threw `"Fuel logging is disabled. You currently have 0 active trips."` when drivers logged fuel before starting a trip.
+  - Automatically resolves vehicles from the driver profile, assigned trips, scheduled/upcoming trips (`Pending Driver Acceptance`, `Scheduled`, `Assigned`, `Accepted`, `Ready to Dispatch`), or recent driver trips.
+  - Links `tripId` dynamically to upcoming or in-progress trips if present, while allowing pre-trip depot refuels and assigned vehicle refuels seamlessly.
+- **Driver Web Portal (`frontend/src/roles/driver/pages/Fuel.jsx`)**:
+  - Unlocked the Fuel modal and submission button for all non-cancelled/non-rejected trips (`isTripAvailable`), allowing immediate pre-trip fuel logging.
+- **Driver Mobile App (`driver_mobile/lib/screens/fuel_overview_screen.dart` & `add_fuel_entry_screen.dart`)**:
+  - Updated `_hasActiveTrip` status filters to include pre-trip states (`scheduled`, `pending driver acceptance`, `ready to dispatch`, `start trip`).
+  - Enabled the `Add Fuel Entry` quick action whenever a vehicle is assigned or an upcoming/active trip exists.
+
+## [1.93.00] - 2026-10-08
+
+### Manager Analytics Page Layout & Value Alignment Fix
+- **Operational Costs Card Alignment (`frontend/src/roles/manager/pages/AnalyticsPage.jsx`)**:
+  - Fixed flexbox alignment in the Operational Costs card header by replacing mismatched `text-right` + `flex` child with `flex flex-col sm:flex-row sm:items-center justify-between` and `sm:items-end sm:justify-end` for growth badges.
+  - Formatted `totalCosts` using centralized `formatCurrency` with native tooltip `title={data.totalCostsFull}` to guarantee zero layout breaking or text overflow.
+- **Fuel Expenditures & Maintenance Metrics Alignment**:
+  - Implemented responsive label and tabular numeric value alignment (`flex flex-wrap sm:flex-nowrap items-baseline sm:items-center justify-between gap-2 mb-2`).
+  - Integrated `formatCurrency` and `formatFullCurrency` across `fuelCost` and `maintCost` to cleanly display currency values with their respective percentage badges `({fuelPct}%)`.
+  - Upgraded progress bars with cohesive brand gradients (`from-[#A14000] to-[#EA580C]`) and smooth animation transitions.
+
+## [1.92.00] - 2026-10-07
+
+### Admin Dashboard Total Revenue & Revenue Chart Formatting Fix
+- **Currency Formatter Exponential & Overflow Protection (`frontend/src/utils/currencyFormatter.js`)**:
+  - Removed artificial `val > 1e15 ? 1e15 : val` hard limit from `parseNumericValue` while ensuring extreme/exponential values (e.g. `1e114` or large numbers) format into clean compact notation (`₹... Cr` or `₹...e+... Cr`) instead of dumping 100+ digit unformatted raw strings that overflow chart containers and tooltips.
+  - `formatFullCurrency` gracefully defaults to compact crore notation for numbers exceeding `1e16` / scientific notations to guarantee zero visual clipping or title overflows.
+  - Exact rupee totals are parsed directly without premature loss of precision or double conversion, and formatted correctly into compact Indian Crore format (`₹20,00,00,000 Cr`).
+- **Admin Dashboard KPI & Revenue Chart Formatting (`frontend/src/roles/admin/pages/Dashboard.jsx`)**:
+  - Cleaned up `totalCalculatedRevenue` logic to directly evaluate and bind to backend aggregated `statistics.revenue` from `/api/admin/dashboard` (`getRevenueAggregate`).
+  - Adjusted Recharts margin and Y-axis width (`width={55}`, `tickFormatter={formatCurrency}`) for responsive, unclipped Y-axis labels and tooltips.
+  - Guaranteed exact match between the KPI card, tooltip, revenue trend chart, and underlying MongoDB eligible trip records.
+- **Trip Status Documents Rejected Re-upload Compatibility**:
+  - Preserved valid trip filters and status lifecycle across driver re-uploads and manager document rejections.
+
 ## [1.91.00] - 2026-08-16
 
 ### Global Skeleton Loading for Dashboard Cards and Data-Driven UI

@@ -42,20 +42,35 @@ export default function Breadcrumb() {
     "/manager/profile/edit": { label: "Edit Profile", parent: "/manager/profile" },
     "/manager/profile/reset-password": { label: "Reset Password", parent: "/manager/profile" },
     "/manager/profile/2fa": { label: "Two-Factor Authentication", parent: "/manager/profile" },
+
+    // Driver routes
+    "/driver/trips": { label: "Trips" },
+    "/driver/trips/": { label: "Trip Details", parent: "/driver/trips" },
+    "/driver/vehicle": { label: "Assigned Vehicle" },
+    "/driver/fuel": { label: "Fuel Management" },
+    "/driver/maintenance": { label: "Maintenance & Issues" },
+    "/driver/documents": { label: "Documents" },
+    "/driver/notifications": { label: "Notifications" },
+    "/driver/support": { label: "Support" },
+    "/driver/profile": { label: "Profile" },
+    "/driver/settings": { label: "Settings" },
   };
 
   const generateBreadcrumbs = () => {
     const pathname = location.pathname;
     const breadcrumbs = [];
 
+    const isDriver = pathname.startsWith("/driver");
+    const rootPath = isDriver ? "/driver" : "/manager";
+
     // Always add Dashboard as first breadcrumb
     breadcrumbs.push({
       label: "Dashboard",
-      path: "/manager",
-      isActive: pathname === "/manager",
+      path: rootPath,
+      isActive: pathname === rootPath,
     });
 
-    if (pathname === "/manager") {
+    if (pathname === rootPath) {
       return breadcrumbs;
     }
 

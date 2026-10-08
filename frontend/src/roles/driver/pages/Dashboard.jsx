@@ -136,6 +136,14 @@ export default function DriverDashboard() {
   const driverName = driverProfile?.fullName || driverProfile?.name || user?.fullName || user?.name || dashboardData?.driver?.fullName || dashboardData?.driver?.name || (user?.email ? user.email.split('@')[0] : "Driver");
   const stats = dashboardData?.stats || dashboardData || {};
 
+  const activeCount = Number(stats.activeTrips ?? 0);
+  const upcomingCount = Number(stats.upcomingTrips ?? 0);
+  const totalActiveAndScheduled = stats.activeAndScheduledTrips !== undefined
+    ? Number(stats.activeAndScheduledTrips)
+    : (stats.totalActiveTrips !== undefined
+        ? Number(stats.totalActiveTrips)
+        : (activeCount + upcomingCount > 0 ? (activeCount + upcomingCount) : (currentTrip ? 1 : 0)));
+
   return (
     <div className="space-y-8 font-nunito pb-12">
       {/* Top Banner Greeting & Quick Summary */}
@@ -187,12 +195,12 @@ export default function DriverDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <KPICard
           title="Active & Scheduled Trips"
-          value={loading ? null : (stats.activeTrips ?? stats.upcomingTrips ?? (currentTrip ? 1 : 0))}
+          value={loading ? null : totalActiveAndScheduled}
           loading={loading}
           subtitle="Assigned to your queue"
           icon="material-symbols:route-outline"
           variant="amber"
-          filledBarsRatio={0.7}
+          filledBarsRatio={totalActiveAndScheduled > 0 ? 0.75 : 0.2}
         />
         <KPICard
           title="Completed Trips"

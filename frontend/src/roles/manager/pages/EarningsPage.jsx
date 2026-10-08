@@ -357,10 +357,17 @@ export default function EarningsPage() {
                     <YAxis 
                       tick={{ fill: '#64748B', fontSize: 11, fontFamily: 'Poppins' }}
                       stroke="#E2E8F0"
-                      tickFormatter={(val) => formatCurrency(val)}
+                      width={65}
+                      tickFormatter={(val) => {
+                        const num = Number(val) || 0;
+                        if (num === 0) return "₹0k";
+                        const isNegative = num < 0;
+                        const absK = Math.round(Math.abs(num) / 1000);
+                        return `${isNegative ? "-₹" : "₹"}${absK}k`;
+                      }}
                     />
                     <Tooltip 
-                      formatter={(value) => [formatCurrency(value), ""]}
+                      formatter={(value, name) => [formatFullCurrency(value), name || ""]}
                       contentStyle={{ fontFamily: 'Poppins', fontSize: 12, borderRadius: '8px', border: '1px solid #E2E8F0' }}
                     />
                     <Legend wrapperStyle={{ fontFamily: 'Poppins', fontSize: 11, paddingTop: 10 }} />

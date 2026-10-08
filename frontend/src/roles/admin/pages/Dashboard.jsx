@@ -127,9 +127,9 @@ function Dashboard() {
 
   const chartRevenueSum = safeChartData.reduce((acc, curr) => acc + (Number(curr.revenue) || 0), 0);
   const totalCalculatedRevenue =
-    statistics?.revenue !== undefined && statistics?.revenue !== null && parseNumericValue(statistics.revenue) > 0
+    statistics?.revenue !== undefined && statistics?.revenue !== null
       ? parseNumericValue(statistics.revenue)
-      : (chartRevenueSum > 0 ? chartRevenueSum : parseNumericValue(statistics?.revenue || 0));
+      : (chartRevenueSum > 0 ? chartRevenueSum : 0);
 
   const todayCalculatedRevenue = parseNumericValue(statistics?.todayRevenue);
 
@@ -273,7 +273,7 @@ function Dashboard() {
               </div>
               <div className="h-56 min-w-0 w-full overflow-hidden">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={safeChartData} margin={{ top: 10, right: 15, left: -10, bottom: 0 }}>
+                  <LineChart data={safeChartData} margin={{ top: 10, right: 15, left: -5, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} dy={10} />
                     <YAxis
@@ -281,7 +281,7 @@ function Dashboard() {
                       tickLine={false}
                       tick={{ fontSize: 11, fill: '#94a3b8' }}
                       tickFormatter={(val) => formatCurrency(val)}
-                      width={50}
+                      width={55}
                     />
                     <Tooltip
                       formatter={(value) => [formatCurrency(value), "Revenue"]}

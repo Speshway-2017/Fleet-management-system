@@ -758,30 +758,85 @@ export const getDriverDashboard = async (req, res, next) => {
   try {
     const driverId = req.user._id;
 
+    // Find driver document to ensure all possible identifier mappings are checked
+    let driverDoc = await Driver.findById(driverId);
+    if (!driverDoc) {
+      driverDoc = await Driver.findOne({
+        $or: [
+          { _id: driverId },
+          { email: req.user.email },
+          { phoneNumber: req.user.phoneNumber || req.user.phone }
+        ]
+      });
+    }
+
+    const driverFilter = driverDoc
+      ? {
+          $or: [
+            { driver: driverDoc._id },
+            { driver: driverId },
+            ...(driverDoc.phoneNumber ? [{ driverPhone: driverDoc.phoneNumber }] : []),
+            ...(driverDoc.email ? [{ driverEmail: driverDoc.email }] : [])
+          ]
+        }
+      : { driver: driverId };
+
+    const activeStatuses = [
+      'In Progress', 'IN_PROGRESS', 'IN PROGRESS',
+      'On Transit', 'ON_TRANSIT', 'ON TRANSIT',
+      'Start Trip', 'START_TRIP', 'START TRIP',
+      'Reach Pickup', 'REACH_PICKUP',
+      'Pickup Completed', 'PICKUP_COMPLETED',
+      'Enroute', 'ENROUTE',
+      'En Route', 'EN_ROUTE', 'EN ROUTE',
+      'At Loading', 'AT_LOADING',
+      'Loading', 'LOADING',
+      'In Transit', 'IN_TRANSIT', 'IN TRANSIT',
+      'Dispatched', 'DISPATCHED',
+      'Delivered', 'DELIVERED',
+      'Waiting for Manager Approval', 'WAITING_FOR_MANAGER_APPROVAL'
+    ];
+
+    const upcomingStatuses = [
+      'Scheduled', 'SCHEDULED',
+      'Upcoming', 'UPCOMING',
+      'Assigned', 'ASSIGNED',
+      'Accepted', 'ACCEPTED',
+      'Pending Driver Acceptance', 'PENDING_DRIVER_ACCEPTANCE', 'PENDING DRIVER ACCEPTANCE',
+      'Ready to Dispatch', 'READY_TO_DISPATCH', 'READY TO DISPATCH',
+      'Draft', 'DRAFT',
+      'Pending', 'PENDING'
+    ];
+
+    const completedStatuses = ['Completed', 'COMPLETED'];
+
     const activeTripsCount = await Trip.countDocuments({
-      driver: driverId,
-      status: { $in: ['In Progress', 'On Transit', 'Accept Trip', 'Start Trip', 'Reach Pickup', 'Pickup Completed', 'Enroute'] }
+      ...driverFilter,
+      status: { $in: activeStatuses }
     });
 
     const upcomingTripsCount = await Trip.countDocuments({
-      driver: driverId,
-      status: { $in: ['Scheduled', 'Upcoming', 'Assigned', 'Accepted'] }
+      ...driverFilter,
+      status: { $in: upcomingStatuses }
     });
 
     const completedTripsCount = await Trip.countDocuments({
-      driver: driverId,
-      status: 'Completed'
+      ...driverFilter,
+      status: { $in: completedStatuses }
     });
 
+    const totalActiveAndScheduled = activeTripsCount + upcomingTripsCount;
+
     const todaySchedule = await Trip.find({
-      driver: driverId,
-      status: { $nin: ['Cancelled'] }
-    }).sort({ departureTime: 1 }).limit(5);
+      ...driverFilter,
+      status: { $nin: ['Cancelled', 'CANCELLED'] }
+    }).sort({ departureTime: 1, createdAt: -1 }).limit(5);
 
     const notifications = await Notification.find({
       $or: [
         { recipient: driverId },
         { user: driverId },
+        ...(driverDoc ? [{ recipient: driverDoc._id }, { user: driverDoc._id }] : []),
         { recipientRole: 'DRIVER', recipient: { $exists: false } },
         { recipientRole: 'DRIVER', recipient: null }
       ]
@@ -790,6 +845,8 @@ export const getDriverDashboard = async (req, res, next) => {
     return sendSuccess(res, 200, {
       activeTrips: activeTripsCount,
       upcomingTrips: upcomingTripsCount,
+      activeAndScheduledTrips: totalActiveAndScheduled,
+      totalActiveTrips: totalActiveAndScheduled,
       completedTrips: completedTripsCount,
       todaySchedule,
       notifications
@@ -1456,6 +1513,10 @@ export const toggleCustomerLocation = async (req, res, next) => {
 
     if (['Completed', 'Cancelled', 'Rejected'].includes(trip.status)) {
       return sendError(res, 400, 'Trip is completed and is read-only');
+    }
+
+    if (['Pending Driver Acceptance', 'Scheduled', 'Assigned', 'Accepted', 'Ready to Dispatch'].includes(trip.status) && !trip.actualStartTime) {
+      return sendError(res, 400, 'Trip has not started yet. Please start the trip before marking arrival at customer location.');
     }
 
     trip.customerLocationReached = reached;
@@ -2461,25 +2522,64 @@ export const createDriverFuelEntry = async (req, res, next) => {
       return sendError(res, 404, 'Driver profile not found');
     }
 
-    // 1. Verify driver currently has an assigned vehicle
+    // 1. Resolve driver's assigned or associated vehicle
     let vehicle = await Vehicle.findOne({ assignedDriver: driverId });
     if (!vehicle && driver.assignedVehicle && driver.assignedVehicle !== 'Unassigned' && driver.assignedVehicle !== '' && driver.assignedVehicle !== 'No Vehicle Assigned') {
       vehicle = await Vehicle.findOne({ vehicleNumber: driver.assignedVehicle });
     }
 
-    if (!vehicle) {
-      return sendError(res, 400, 'Fuel logging is disabled. No vehicle is currently assigned to you.');
-    }
+    // 2. Check if driver has an active, scheduled, or assigned trip (including pre-trip states)
+    const tripLookupStatuses = [
+      'Pending Driver Acceptance',
+      'Scheduled',
+      'Assigned',
+      'Accepted',
+      'Ready to Dispatch',
+      'Start Trip',
+      'In Progress',
+      'En Route',
+      'At Loading',
+      'Loading',
+      'In Transit',
+      'On Transit',
+      'Dispatched',
+      'Delivered',
+      'On Trip'
+    ];
 
-    // 2. Verify driver currently has an active trip in progress (active trips > 0)
-    const activeTrip = await Trip.findOne({
-      driver: driverId,
-      status: { $in: ['Assigned', 'Accepted', 'In Progress', 'Start Trip', 'En Route', 'At Loading', 'Loading', 'In Transit', 'On Transit', 'Dispatched', 'Delivered'] }
-    }).populate('vehicle');
+    let activeTrip = null;
+    if (tripId) {
+      activeTrip = await Trip.findOne({
+        _id: tripId,
+        driver: driverId
+      }).populate('vehicle');
+    }
 
     if (!activeTrip) {
-      return sendError(res, 400, 'Fuel logging is disabled. You currently have 0 active trips.');
+      activeTrip = await Trip.findOne({
+        driver: driverId,
+        status: { $in: tripLookupStatuses }
+      }).populate('vehicle').sort({ createdAt: -1 });
     }
+
+    // If vehicle not directly assigned to driver profile, fallback to the vehicle on their trip
+    if (!vehicle && activeTrip && activeTrip.vehicle) {
+      vehicle = typeof activeTrip.vehicle === 'object' ? activeTrip.vehicle : await Vehicle.findById(activeTrip.vehicle);
+    }
+
+    // Fallback: check any trip associated with the driver
+    if (!vehicle) {
+      const anyDriverTrip = await Trip.findOne({ driver: driverId, vehicle: { $exists: true, $ne: null } }).populate('vehicle').sort({ createdAt: -1 });
+      if (anyDriverTrip && anyDriverTrip.vehicle) {
+        vehicle = typeof anyDriverTrip.vehicle === 'object' ? anyDriverTrip.vehicle : await Vehicle.findById(anyDriverTrip.vehicle);
+      }
+    }
+
+    if (!vehicle) {
+      return sendError(res, 400, 'Fuel logging requires an assigned vehicle or trip. No vehicle is currently assigned to you.');
+    }
+
+    const resolvedTripId = tripId || (activeTrip ? activeTrip._id.toString() : '');
 
     let receiptImageUrl = '';
     const rawImage = req.body.receiptImage || req.body.billUrl || req.body.file;
@@ -2510,11 +2610,11 @@ export const createDriverFuelEntry = async (req, res, next) => {
 
     const fuel = new Fuel({
       vehicle: vehicle ? vehicle._id : null,
-      vehicleId: vehicle ? vehicle.vehicleNumber : (driver.assignedVehicle || 'Unassigned'),
+      vehicleId: vehicle ? (vehicle.vehicleNumber || vehicle.plateNumber || 'Unassigned') : (driver.assignedVehicle || 'Unassigned'),
       vehicleName: vehicle ? (vehicle.vehicleName || `${vehicle.brand || ''} ${vehicle.model || ''}`.trim() || 'Vehicle') : 'Vehicle',
       driver: driver.fullName || req.user.name || 'Driver',
       driverId: driver.employeeId || driver._id.toString(),
-      tripId: tripId || '',
+      tripId: resolvedTripId,
       odometer: odometerVal,
       fuelStation: resolvedStationName,
       location: purchaseCity,

@@ -189,19 +189,16 @@ export default function DriverFuelPage() {
         vehObj.vehicleNumber !== "Unassigned" &&
         vehObj.vehicleNumber !== "No Vehicle Assigned")
   );
-  const isTripAccepted = Boolean(
+  const isTripAvailable = Boolean(
     activeTrip &&
-      (activeTrip.status === "ACCEPTED" ||
-        activeTrip.status === "IN_PROGRESS" ||
-        activeTrip.status === "ON_TRIP" ||
-        activeTrip.acceptStatus === "ACCEPTED")
+      !["cancelled", "rejected"].includes((activeTrip.status || "").toLowerCase())
   );
-  const isFuelLogEnabled = isPermanentVehicleAssigned || isTripAccepted;
+  const isFuelLogEnabled = isPermanentVehicleAssigned || isTripAvailable;
 
   const handleCreateFuelEntry = async (e) => {
     e.preventDefault();
     if (!isFuelLogEnabled) {
-      toast.error("🔒 Fuel logging is locked until you accept your assigned trip or a permanent vehicle is assigned to you!");
+      toast.error("🔒 Fuel logging requires an assigned vehicle or an assigned trip!");
       return;
     }
 

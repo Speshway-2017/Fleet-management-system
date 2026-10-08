@@ -116,7 +116,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
           final tData = tripRes['data'];
           if (tData is Map && tData.isNotEmpty && tData['tripNumber'] != null) {
             final st = (tData['status'] ?? '').toString().toLowerCase();
-            final activeStatuses = ['assigned', 'scheduled', 'in progress', 'accepted', 'on transit', 'enroute', 'reach pickup', 'pickup completed'];
+            final activeStatuses = ['assigned', 'scheduled', 'in progress', 'accepted', 'on transit', 'enroute', 'reach pickup', 'pickup completed', 'pending driver acceptance', 'ready to dispatch', 'start trip'];
             if (activeStatuses.contains(st)) {
               setState(() {
                 _hasActiveTrip = true;

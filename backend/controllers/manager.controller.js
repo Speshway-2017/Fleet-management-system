@@ -1388,7 +1388,10 @@ export const createTrip = async (req, res, next) => {
       isActive: true,
       description,
       cargoType,
-      cargoWeight: Number(cargoWeight) || 0,
+      cargoWeight: (() => {
+        const rawW = Number(cargoWeight);
+        return (Number.isFinite(rawW) && rawW >= 0 && rawW <= 100000) ? rawW : 0;
+      })(),
       tripNotes,
       estimatedDistance: (() => {
         const computedDist = calculateDistance(startLocation, endLocation);
@@ -1619,6 +1622,11 @@ export const updateTrip = async (req, res, next) => {
     }
     if (req.body.toAddress !== undefined) {
       req.body.toAddress = normalizeAddress(req.body.toAddress);
+    }
+
+    if (req.body.cargoWeight !== undefined) {
+      const rawW = Number(req.body.cargoWeight);
+      req.body.cargoWeight = (Number.isFinite(rawW) && rawW >= 0 && rawW <= 100000) ? rawW : (existingTrip.cargoWeight || 0);
     }
 
     const updatedTrip = await updateTripInRepo(tripId, req.body);
