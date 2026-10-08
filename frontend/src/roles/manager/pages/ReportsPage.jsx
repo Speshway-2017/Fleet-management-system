@@ -887,21 +887,6 @@ export default function ReportsPage() {
             )}
           </div>
 
-          {/* REPORT STATISTICS SUMMARY CARDS */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {activeData.summary.map((card, idx) => (
-              <div key={idx} className="bg-white rounded-2xl p-5 border border-[#E7EAF0] shadow-sm flex items-center justify-between">
-                <div>
-                  <p className="text-[#64748B] uppercase tracking-wider text-[10px] font-bold">{card.label}</p>
-                  <p className="text-2xl font-black text-gray-800 mt-2 font-poppins">{card.value}</p>
-                </div>
-                <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${card.color}`}>
-                  <Icon icon={card.icon} className="w-5 h-5" />
-                </div>
-              </div>
-            ))}
-          </div>
-
           {/* VISUALIZATIONS */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 print:break-inside-avoid">
             {/* Visual 1: Left Bar / Trend Chart */}

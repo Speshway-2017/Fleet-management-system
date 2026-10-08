@@ -60,7 +60,7 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
           final tData = tripRes['data'];
           if (tData is Map && tData.isNotEmpty && tData['tripNumber'] != null) {
             final st = (tData['status'] ?? '').toString().toLowerCase();
-            final activeStatuses = ['assigned', 'scheduled', 'in progress', 'accepted', 'on transit', 'enroute', 'reach pickup', 'pickup completed'];
+            final activeStatuses = ['assigned', 'scheduled', 'in progress', 'accepted', 'on transit', 'enroute', 'reach pickup', 'pickup completed', 'pending driver acceptance', 'ready to dispatch', 'start trip'];
             if (activeStatuses.contains(st)) {
               hasActive = true;
             }
@@ -186,7 +186,7 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Status Banner
-                      if (!_isAssigned) ...[
+                      if (!_isAssigned && !_hasActiveTrip) ...[
                         Container(
                           width: double.infinity,
                           margin: const EdgeInsets.only(bottom: 16.0),
@@ -207,44 +207,11 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  'No vehicle is currently assigned. You can view your previous records, but new fuel entries will be available once a vehicle is assigned.',
+                                  'No vehicle or trip is currently assigned. Fuel logging will become available once a vehicle or trip is assigned to you.',
                                   style: GoogleFonts.nunito(
                                     fontSize: 12.5,
                                     fontWeight: FontWeight.w600,
                                     color: const Color(0xFF1E40AF),
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ] else if (!_hasActiveTrip) ...[
-                        Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 16.0),
-                          padding: const EdgeInsets.all(14.0),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFFBEB), // Light amber box
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFFCD34D)),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Icon(
-                                Icons.warning_amber_rounded,
-                                color: Color(0xFFD97706),
-                                size: 20,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  'No active trip found. You can view your previous records, but adding new fuel entries is available only during an active trip.',
-                                  style: GoogleFonts.nunito(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF92400E),
                                     height: 1.4,
                                   ),
                                 ),
@@ -408,22 +375,12 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
                               context,
                               icon: Icons.add_circle_outline_rounded,
                               label: 'Add Fuel\nEntry',
-                              isDisabled: !(_isAssigned && _hasActiveTrip),
+                              isDisabled: !(_isAssigned || _hasActiveTrip),
                               onTap: () async {
-                                if (!_isAssigned) {
+                                if (!_isAssigned && !_hasActiveTrip) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                      content: Text('No vehicle is currently assigned. New fuel entries will be available once a vehicle is assigned.'),
-                                      backgroundColor: Colors.orange,
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                  return;
-                                }
-                                if (!_hasActiveTrip) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Adding fuel entries is only permitted during an active trip.'),
+                                      content: Text('Fuel logging requires an assigned vehicle or trip. Please contact your manager.'),
                                       backgroundColor: Colors.orange,
                                       behavior: SnackBarBehavior.floating,
                                     ),

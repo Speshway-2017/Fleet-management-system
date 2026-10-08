@@ -59,6 +59,9 @@ export function useDriverSocket({
     };
 
     socket.on("trip:assigned", handleTripAssigned);
+    socket.on("trip:created", handleTripAssigned);
+    socket.on("trip:accepted", handleTripStatus);
+    socket.on("trip:updated", handleTripStatus);
     socket.on("trip:status-updated", handleTripStatus);
     socket.on("trip:completed", handleTripStatus);
     socket.on("ticket:status-updated", handleTicketStatus);
@@ -66,10 +69,14 @@ export function useDriverSocket({
     socket.on("trip:15min-reminder", handle15MinReminder);
     socket.on("pod:rejected", handleTripStatus);
     socket.on("weighbridge:rejected", handleTripStatus);
+    socket.on("dashboard:refresh", handleTripStatus);
 
     return () => {
       socket.off("connect", handleConnect);
       socket.off("trip:assigned", handleTripAssigned);
+      socket.off("trip:created", handleTripAssigned);
+      socket.off("trip:accepted", handleTripStatus);
+      socket.off("trip:updated", handleTripStatus);
       socket.off("trip:status-updated", handleTripStatus);
       socket.off("trip:completed", handleTripStatus);
       socket.off("ticket:status-updated", handleTicketStatus);
@@ -77,6 +84,7 @@ export function useDriverSocket({
       socket.off("trip:15min-reminder", handle15MinReminder);
       socket.off("pod:rejected", handleTripStatus);
       socket.off("weighbridge:rejected", handleTripStatus);
+      socket.off("dashboard:refresh", handleTripStatus);
     };
   }, [driverId]);
 }

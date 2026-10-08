@@ -77,24 +77,39 @@ export const SETTLED_TRIP_CONDITION = {
 
 export const calculateTripRevenue = (dist, weight, trip = {}) => {
   let d = Number(dist) || 0;
-  let w = Number(weight) || 0;
-
-  if (d <= 0 && trip?.startLocation && trip?.endLocation) {
-    try {
-      d = calculateDistance(trip.startLocation, trip.endLocation) || 0;
-    } catch {
+  if (!Number.isFinite(d) || d < 0 || d > 50000) {
+    if (trip?.startLocation && trip?.endLocation) {
+      try {
+        d = calculateDistance(trip.startLocation, trip.endLocation) || 0;
+      } catch {
+        d = 0;
+      }
+    } else {
       d = 0;
     }
   }
 
-  const directAmount = Number(trip?.revenue || trip?.fare || trip?.totalAmount || trip?.amount || trip?.codAmount || 0);
+  let w = Number(weight) || 0;
+  if (!Number.isFinite(w) || w < 0 || w > 100000) {
+    const wbNet = Number(trip?.weighbridgeSlip?.netWeight || trip?.weighbridgeSlip?.grossWeight);
+    if (Number.isFinite(wbNet) && wbNet > 0 && wbNet <= 100000) {
+      w = wbNet;
+    } else {
+      w = 0;
+    }
+  }
+
+  const rawDirectAmount = Number(trip?.revenue || trip?.fare || trip?.totalAmount || trip?.amount || trip?.codAmount || 0);
+  const directAmount = (Number.isFinite(rawDirectAmount) && rawDirectAmount > 0 && rawDirectAmount <= 50000000)
+    ? Math.round(rawDirectAmount)
+    : 0;
 
   if (d <= 0 && w <= 0) {
-    return directAmount > 0 ? Math.round(directAmount) : 0;
+    return directAmount;
   }
 
   const calculated = Math.round(d * 52 + w * 4.5);
-  return calculated > 0 ? calculated : (directAmount > 0 ? Math.round(directAmount) : 0);
+  return (Number.isFinite(calculated) && calculated > 0) ? calculated : directAmount;
 };
 
 export const getSettledRevenueForOrganization = async (orgId) => {

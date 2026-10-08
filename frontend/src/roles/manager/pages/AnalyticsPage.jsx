@@ -6,6 +6,7 @@ import KPICard from "@/components/common/KPICard";
 import { managerApi } from "../api/managerApi";
 import DashboardSkeletonLoader from "@/components/common/DashboardSkeletonLoader";
 import { isEligibleApprovedFuel } from "@/utils/fuelCalculations";
+import { formatCurrency, formatFullCurrency } from "@/utils/currencyFormatter";
 
 const normalizePlate = (str) => String(str || '').replace(/[\s\-_]/g, '').toUpperCase();
 
@@ -92,7 +93,8 @@ export default function AnalyticsPage() {
     const efficiencyVal = Math.min(99, Math.max(85, 92 + (utilization * 0.08)));
     
     const totalCostsNum = fuelCostSum + maintCostSum;
-    const totalCosts = `₹${totalCostsNum.toLocaleString("en-IN")}`;
+    const totalCosts = formatCurrency(totalCostsNum);
+    const totalCostsFull = formatFullCurrency(totalCostsNum);
 
     const fuelPct = totalCostsNum > 0 ? Math.round((fuelCostSum / totalCostsNum) * 100) : 0;
     const maintPct = totalCostsNum > 0 ? Math.round((maintCostSum / totalCostsNum) * 100) : 0;
@@ -133,14 +135,17 @@ export default function AnalyticsPage() {
       fuelChange: "+1.8% fleet total",
       totalKm: `${totalKmSum.toLocaleString("en-IN")} km`,
       kmChange: "+5.1% total mileage",
-      maintCost: `₹${maintCostSum.toLocaleString("en-IN")}`,
+      maintCost: formatCurrency(maintCostSum),
+      maintCostFull: formatFullCurrency(maintCostSum),
       maintChange: "-3.2% total expenses",
       utilization,
       activeTrucks,
       idleDepot,
       totalCosts,
+      totalCostsFull,
       costChange: fuelCostSum > 0 ? "+4.2% fleet growth" : "+3.5% fleet growth",
-      fuelCost: `₹${fuelCostSum.toLocaleString("en-IN")}`,
+      fuelCost: formatCurrency(fuelCostSum),
+      fuelCostFull: formatFullCurrency(fuelCostSum),
       fuelPct,
       maintPct,
       topSpender,
@@ -289,52 +294,85 @@ export default function AnalyticsPage() {
 
       {/* Bottom Cards */}
       <div className="grid grid-cols-1 gap-6">
-        {/* Operational Costs */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-lg">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-semibold text-gray-800">Operational Costs</h3>
-            <div className="text-right">
-              <p className="text-2xl font-extrabold text-gray-800">{data.totalCosts}</p>
-              <p className="text-xs text-green-600 font-medium flex items-center gap-1">
-                <Icon icon="mdi:trending-up" /> {data.costChange}
+        {/* Operational Costs Card */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-7 shadow-lg">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-100">
+            <div>
+              <h3 className="text-lg sm:text-xl font-bold font-poppins text-[#0D1B2A]">Operational Costs</h3>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">Aggregated fuel expenditures & maintenance breakdown</p>
+            </div>
+            <div className="flex flex-col sm:items-end text-left sm:text-right">
+              <p
+                className="text-2xl sm:text-3xl font-black font-poppins text-[#0D1B2A] tracking-tight truncate"
+                title={data.totalCostsFull}
+              >
+                {data.totalCosts}
+              </p>
+              <p className="text-xs text-emerald-600 font-semibold flex items-center sm:justify-end gap-1 mt-0.5">
+                <Icon icon="mdi:trending-up" className="w-3.5 h-3.5" />
+                <span>{data.costChange}</span>
               </p>
             </div>
           </div>
+
           <div className="space-y-6">
+            {/* Fuel Expenditures Row */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-700 font-medium">Fuel Expenditures</span>
-                <span className="text-gray-600 text-sm">{data.fuelCost} ({data.fuelPct}%)</span>
+              <div className="flex flex-wrap sm:flex-nowrap items-baseline sm:items-center justify-between gap-2 mb-2">
+                <span className="text-sm font-semibold text-slate-700">Fuel Expenditures</span>
+                <div className="text-right shrink-0">
+                  <span className="text-sm font-bold text-slate-900 font-poppins" title={data.fuelCostFull}>
+                    {data.fuelCost}
+                  </span>
+                  <span className="text-xs font-semibold text-slate-500 ml-1.5">
+                    ({data.fuelPct}%)
+                  </span>
+                </div>
               </div>
-              <div className="h-3 bg-blue-100 rounded-full overflow-hidden">
-                <div className="h-full bg-black rounded-full" style={{width: `${data.fuelPct}%`}} />
+              <div className="h-3 bg-slate-100 rounded-full overflow-hidden p-0.5">
+                <div
+                  className="h-full bg-gradient-to-r from-[#A14000] to-[#EA580C] rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, Math.max(0, data.fuelPct))}%` }}
+                />
               </div>
             </div>
+
+            {/* Maintenance & Repairs Row */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-700 font-medium">Maintenance & Repairs</span>
-                <span className="text-gray-600 text-sm">{data.maintCost} ({data.maintPct}%)</span>
+              <div className="flex flex-wrap sm:flex-nowrap items-baseline sm:items-center justify-between gap-2 mb-2">
+                <span className="text-sm font-semibold text-slate-700">Maintenance & Repairs</span>
+                <div className="text-right shrink-0">
+                  <span className="text-sm font-bold text-slate-900 font-poppins" title={data.maintCostFull}>
+                    {data.maintCost}
+                  </span>
+                  <span className="text-xs font-semibold text-slate-500 ml-1.5">
+                    ({data.maintPct}%)
+                  </span>
+                </div>
               </div>
-              <div className="h-3 bg-blue-100 rounded-full overflow-hidden">
-                <div className="h-full bg-amber-700 rounded-full" style={{width: `${data.maintPct}%`}} />
+              <div className="h-3 bg-slate-100 rounded-full overflow-hidden p-0.5">
+                <div
+                  className="h-full bg-gradient-to-r from-slate-700 to-slate-900 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, Math.max(0, data.maintPct))}%` }}
+                />
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 mt-8">
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <p className="text-xs text-gray-600 uppercase">Top Spender</p>
-              <p className="text-lg font-bold text-gray-800">{data.topSpender}</p>
+
+          {/* Quick Stat Highlights */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8 pt-6 border-t border-slate-100">
+            <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Top Spender</p>
+              <p className="text-lg font-bold font-poppins text-slate-800 mt-1 truncate">{data.topSpender}</p>
             </div>
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <p className="text-xs text-gray-600 uppercase">Anomalies</p>
-              <p className="text-lg font-bold text-gray-800">{data.anomalies}</p>
+            <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Anomalies</p>
+              <p className="text-lg font-bold font-poppins text-slate-800 mt-1 truncate">{data.anomalies}</p>
             </div>
           </div>
         </div>
       </div>
-
-
-
     </div>
   );
 }
+

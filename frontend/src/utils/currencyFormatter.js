@@ -1,22 +1,35 @@
 /**
- * Safely parses any value (number, string with currency/commas, array of values, null, undefined)
- * into a valid primitive JavaScript number.
+ * Safely parses any value (number, string with currency/commas/units, array of values, null, undefined)
+ * into a valid primitive JavaScript number in exact base units (Rupees).
  */
 export const parseNumericValue = (val) => {
   if (val === null || val === undefined || val === "") return 0;
 
   if (typeof val === "number") {
     if (isNaN(val) || !isFinite(val)) return 0;
-    // Cap at a reasonable max limit to avoid floating point overflow (e.g. 1,000 Crores)
-    return val > 1e15 ? 1e15 : val;
+    return val;
   }
 
   if (typeof val === "string") {
-    // Strip non-numeric characters except decimal point and minus sign
+    // If the string contains Cr or Crore, e.g. "1.5 Cr", convert to exact rupees
+    const isCrore = /cr(?:ore)?s?/i.test(val);
+    const isLakh = /l(?:akh)?s?/i.test(val);
+    const isThousand = /\b\d+(\.\d+)?k\b/i.test(val);
+
     const cleaned = val.replace(/[^0-9.-]/g, "");
     const parsed = parseFloat(cleaned);
     if (isNaN(parsed) || !isFinite(parsed)) return 0;
-    return parsed > 1e15 ? 1e15 : parsed;
+
+    if (isCrore && parsed < 1e7) {
+      return parsed * 1e7;
+    }
+    if (isLakh && parsed < 1e5) {
+      return parsed * 1e5;
+    }
+    if (isThousand && parsed < 1e3) {
+      return parsed * 1e3;
+    }
+    return parsed;
   }
 
   if (Array.isArray(val)) {
@@ -34,14 +47,16 @@ export const parseNumericValue = (val) => {
 
 /**
  * Formats a given value into compact Indian Currency notation (INR).
+ * Converts to Crores, Lakhs, or locale-formatted thousands only once for display.
+ * Never outputs exponential scientific notation (e.g. 1.08e+107 Cr).
  * Examples:
  * - 0 -> "₹0"
  * - 5,000 -> "₹5,000"
- * - 10,00,000 -> "₹10L"
- * - 1,00,00,000 -> "₹1Cr"
- * - 10,00,00,000 -> "₹10Cr"
- * - 100,00,00,000 -> "₹100Cr"
- * - 1500,00,00,000 -> "₹1.5K Cr"
+ * - 93,16,443 -> "₹93.16 L"
+ * - 1,00,00,000 -> "₹1 Cr"
+ * - 10,00,00,000 -> "₹10 Cr"
+ * - 100,00,00,000 -> "₹100 Cr"
+ * - 200,00,00,00,000 -> "₹20,000 Cr"
  */
 export const formatCompactCurrency = (val) => {
   const num = parseNumericValue(val);
@@ -54,9 +69,12 @@ export const formatCompactCurrency = (val) => {
   // Crores: >= 1 Crore (1e7 = 1,00,00,000)
   if (absNum >= 1e7) {
     const crores = absNum / 1e7;
-    const formatted = crores >= 1000
-      ? Math.round(crores).toLocaleString("en-IN")
-      : (crores % 1 === 0 ? crores.toFixed(0) : parseFloat(crores.toFixed(2)).toString());
+    let formatted;
+    if (crores >= 1000) {
+      formatted = Math.round(crores).toLocaleString("en-IN");
+    } else {
+      formatted = crores % 1 === 0 ? crores.toFixed(0) : parseFloat(crores.toFixed(2)).toString();
+    }
     return `${prefix}${formatted} Cr`;
   }
 
@@ -78,15 +96,23 @@ export const formatFullCurrency = (val) => {
   const num = parseNumericValue(val);
   if (!num || num === 0) return "₹0";
 
-  try {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0,
-    }).format(num);
-  } catch (_) {
-    return `₹${Math.round(num).toLocaleString("en-IN")}`;
+  const isNegative = num < 0;
+  const absNum = Math.abs(num);
+  const prefix = isNegative ? "-₹" : "₹";
+
+  if (absNum <= Number.MAX_SAFE_INTEGER) {
+    try {
+      return new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR",
+        maximumFractionDigits: 0,
+      }).format(num);
+    } catch (_) {
+      return `${prefix}${Math.round(absNum).toLocaleString("en-IN")}`;
+    }
   }
+
+  return formatCompactCurrency(val);
 };
 
 /**
