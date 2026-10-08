@@ -1,11 +1,14 @@
 import User from '../models/User.js';
 import Vehicle from '../models/Vehicle.js';
 import Trip from '../models/Trip.js';
+import Invoice from '../models/Invoice.js';
 import Notification from '../models/Notification.js';
 import Analytics from '../models/Analytics.js';
 import Organization from '../models/Organization.js';
 import PlatformIssue from '../models/PlatformIssue.js';
 import Settings from '../models/Settings.js';
+import { calculateDistance } from '../utils/distanceCalculator.js';
+import { calculateTripFinance } from '../utils/earningsCalculator.js';
 
 export const getAllManagers = async () => {
   return User.find({ role: 'FLEET_MANAGER' }).populate('organization', 'name').select('-password');
@@ -49,8 +52,6 @@ export const getPendingRequestsCount = async () => {
   return Organization.countDocuments({ status: 'Pending' });
 };
 
-import { calculateDistance } from '../utils/distanceCalculator.js';
-
 export const VALID_SETTLED_TRIP_STATUSES = [
   'Completed',
   'COMPLETED',
@@ -75,41 +76,29 @@ export const SETTLED_TRIP_CONDITION = {
   ]
 };
 
-export const calculateTripRevenue = (dist, weight, trip = {}) => {
-  let d = Number(dist) || 0;
-  if (!Number.isFinite(d) || d < 0 || d > 50000) {
-    if (trip?.startLocation && trip?.endLocation) {
-      try {
-        d = calculateDistance(trip.startLocation, trip.endLocation) || 0;
-      } catch {
-        d = 0;
-      }
-    } else {
-      d = 0;
-    }
-  }
+export const fetchInvoicesMap = async (trips = []) => {
+  if (!trips || trips.length === 0) return new Map();
+  const tripIds = trips.map(t => t._id).filter(Boolean);
+  const invoiceNumbers = trips.map(t => t.tripInvoice?.invoiceNumber).filter(Boolean);
 
-  let w = Number(weight) || 0;
-  if (!Number.isFinite(w) || w < 0 || w > 100000) {
-    const wbNet = Number(trip?.weighbridgeSlip?.netWeight || trip?.weighbridgeSlip?.grossWeight);
-    if (Number.isFinite(wbNet) && wbNet > 0 && wbNet <= 100000) {
-      w = wbNet;
-    } else {
-      w = 0;
-    }
-  }
+  const invoices = await Invoice.find({
+    $or: [
+      { trip: { $in: tripIds } },
+      { invoiceNumber: { $in: invoiceNumbers } }
+    ]
+  }).lean();
 
-  const rawDirectAmount = Number(trip?.revenue || trip?.fare || trip?.totalAmount || trip?.amount || trip?.codAmount || 0);
-  const directAmount = (Number.isFinite(rawDirectAmount) && rawDirectAmount > 0 && rawDirectAmount <= 50000000)
-    ? Math.round(rawDirectAmount)
-    : 0;
+  const invoiceMap = new Map();
+  invoices.forEach(inv => {
+    if (inv.trip) invoiceMap.set(inv.trip.toString(), inv);
+    if (inv.invoiceNumber) invoiceMap.set(inv.invoiceNumber, inv);
+  });
+  return invoiceMap;
+};
 
-  if (d <= 0 && w <= 0) {
-    return directAmount;
-  }
-
-  const calculated = Math.round(d * 52 + w * 4.5);
-  return (Number.isFinite(calculated) && calculated > 0) ? calculated : directAmount;
+export const calculateTripRevenue = (dist, weight, trip = {}, invoice = null) => {
+  const fin = calculateTripFinance(trip, invoice);
+  return fin.revenue;
 };
 
 export const getSettledRevenueForOrganization = async (orgId) => {
@@ -131,10 +120,12 @@ export const getSettledRevenueForOrganization = async (orgId) => {
 
     if (!trips || trips.length === 0) return 0;
 
+    const invoiceMap = await fetchInvoicesMap(trips);
+
     return trips.reduce((sum, t) => {
-      const dist = Number(t.actualDistance) || Number(t.estimatedDistance) || 0;
-      const weight = Number(t.cargoWeight) || 0;
-      return sum + calculateTripRevenue(dist, weight, t);
+      const inv = invoiceMap.get(t._id?.toString()) || (t.tripInvoice?.invoiceNumber ? invoiceMap.get(t.tripInvoice.invoiceNumber) : null);
+      const fin = calculateTripFinance(t, inv);
+      return sum + fin.revenue;
     }, 0);
   } catch (error) {
     console.error('Error in getSettledRevenueForOrganization:', error);
@@ -183,10 +174,12 @@ export const getSettledRevenueForManager = async (managerId, orgId = null) => {
 
     if (!trips || trips.length === 0) return 0;
 
+    const invoiceMap = await fetchInvoicesMap(trips);
+
     return trips.reduce((sum, t) => {
-      const dist = Number(t.actualDistance) || Number(t.estimatedDistance) || 0;
-      const weight = Number(t.cargoWeight) || 0;
-      return sum + calculateTripRevenue(dist, weight, t);
+      const inv = invoiceMap.get(t._id?.toString()) || (t.tripInvoice?.invoiceNumber ? invoiceMap.get(t.tripInvoice.invoiceNumber) : null);
+      const fin = calculateTripFinance(t, inv);
+      return sum + fin.revenue;
     }, 0);
   } catch (error) {
     console.error('Error in getSettledRevenueForManager:', error);
@@ -199,13 +192,13 @@ export const getRevenueAggregate = async () => {
     const trips = await Trip.find(VALID_TRIP_CONDITION).lean();
     if (!trips || trips.length === 0) return 0;
 
-    let total = 0;
-    for (const t of trips) {
-      const dist = Number(t.actualDistance) || Number(t.estimatedDistance) || 0;
-      const weight = Number(t.cargoWeight) || 0;
-      total += calculateTripRevenue(dist, weight, t);
-    }
-    return total;
+    const invoiceMap = await fetchInvoicesMap(trips);
+
+    return trips.reduce((sum, t) => {
+      const inv = invoiceMap.get(t._id?.toString()) || (t.tripInvoice?.invoiceNumber ? invoiceMap.get(t.tripInvoice.invoiceNumber) : null);
+      const fin = calculateTripFinance(t, inv);
+      return sum + fin.revenue;
+    }, 0);
   } catch (error) {
     console.error('Error in getRevenueAggregate:', error);
     return 0;
@@ -235,13 +228,13 @@ export const getTodayRevenueAggregate = async () => {
 
     if (!trips || trips.length === 0) return 0;
 
-    let total = 0;
-    for (const t of trips) {
-      const dist = Number(t.actualDistance) || Number(t.estimatedDistance) || 0;
-      const weight = Number(t.cargoWeight) || 0;
-      total += calculateTripRevenue(dist, weight, t);
-    }
-    return total;
+    const invoiceMap = await fetchInvoicesMap(trips);
+
+    return trips.reduce((sum, t) => {
+      const inv = invoiceMap.get(t._id?.toString()) || (t.tripInvoice?.invoiceNumber ? invoiceMap.get(t.tripInvoice.invoiceNumber) : null);
+      const fin = calculateTripFinance(t, inv);
+      return sum + fin.revenue;
+    }, 0);
   } catch (error) {
     console.error('Error in getTodayRevenueAggregate:', error);
     return 0;
@@ -271,14 +264,14 @@ export const getRevenueChartData = async () => {
     }
 
     if (trips && trips.length > 0) {
+      const invoiceMap = await fetchInvoicesMap(trips);
       trips.forEach(t => {
         const tripDate = t.actualEndTime || t.endedAt || t.completedAt || t.updatedAt || t.createdAt;
         if (tripDate) {
           const m = new Date(tripDate).getMonth() + 1;
-          const dist = Number(t.actualDistance) || Number(t.estimatedDistance) || 0;
-          const weight = Number(t.cargoWeight) || 0;
-          const rev = calculateTripRevenue(dist, weight, t);
-          monthlyMap[m] = (monthlyMap[m] || 0) + rev;
+          const inv = invoiceMap.get(t._id?.toString()) || (t.tripInvoice?.invoiceNumber ? invoiceMap.get(t.tripInvoice.invoiceNumber) : null);
+          const fin = calculateTripFinance(t, inv);
+          monthlyMap[m] = (monthlyMap[m] || 0) + fin.revenue;
         }
       });
     }

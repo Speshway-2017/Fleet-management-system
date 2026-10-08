@@ -4,6 +4,8 @@ export const LANGUAGE_OPTIONS = [
   { value: "French", label: "French (Français)", code: "fr" },
   { value: "German", label: "German (Deutsch)", code: "de" },
   { value: "Hindi", label: "Hindi (हिन्दी)", code: "hi" },
+  { value: "Tamil", label: "Tamil (தமிழ்)", code: "ta" },
+  { value: "Telugu", label: "Telugu (తెలుగు)", code: "te" },
   { value: "Arabic", label: "Arabic (العربية)", code: "ar" },
   { value: "Chinese", label: "Chinese (Mandarin)", code: "zh-CN" },
   { value: "Japanese", label: "Japanese (日本語)", code: "ja" },
@@ -12,6 +14,7 @@ export const LANGUAGE_OPTIONS = [
 
 export const LANGUAGE_MAP = {
   "English": "en",
+  "English (US)": "en",
   "Spanish": "es",
   "Spanish (Español)": "es",
   "French": "fr",
@@ -20,6 +23,11 @@ export const LANGUAGE_MAP = {
   "German (Deutsch)": "de",
   "Hindi": "hi",
   "Hindi (हिन्दी)": "hi",
+  "Hindi (हिंदी)": "hi",
+  "Tamil": "ta",
+  "Tamil (தமிழ்)": "ta",
+  "Telugu": "te",
+  "Telugu (తెలుగు)": "te",
   "Arabic": "ar",
   "Arabic (العربية)": "ar",
   "Chinese": "zh-CN",
@@ -33,6 +41,8 @@ export const LANGUAGE_MAP = {
   "fr": "fr",
   "de": "de",
   "hi": "hi",
+  "ta": "ta",
+  "te": "te",
   "ar": "ar",
   "zh-CN": "zh-CN",
   "ja": "ja",
@@ -45,10 +55,17 @@ export const getLanguageCode = (langName) => {
 };
 
 export const getLanguageName = (langCodeOrName) => {
+  if (!langCodeOrName) return "English";
   const found = LANGUAGE_OPTIONS.find(
-    (l) => l.value === langCodeOrName || l.label === langCodeOrName || l.code === langCodeOrName
+    (l) => l.value === langCodeOrName || l.label === langCodeOrName || l.code === langCodeOrName || (l.value.toLowerCase() === String(langCodeOrName).toLowerCase())
   );
-  return found ? found.value : "English";
+  if (found) return found.value;
+  if (LANGUAGE_MAP[langCodeOrName]) {
+    const code = LANGUAGE_MAP[langCodeOrName];
+    const matchByCode = LANGUAGE_OPTIONS.find((l) => l.code === code);
+    if (matchByCode) return matchByCode.value;
+  }
+  return "English";
 };
 
 export const setGoogleTranslateCookie = (langCode) => {

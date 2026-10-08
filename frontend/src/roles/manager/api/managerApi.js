@@ -6,6 +6,10 @@ export const managerApi = {
     return await axiosClient.get("/manager/dashboard");
   },
 
+  getEarnings: async () => {
+    return await axiosClient.get("/manager/earnings");
+  },
+
   // Vehicles
   getVehicles: async () => {
     return await axiosClient.get("/manager/vehicles");

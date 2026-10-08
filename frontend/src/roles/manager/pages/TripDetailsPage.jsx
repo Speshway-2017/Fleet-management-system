@@ -813,8 +813,46 @@ export default function TripDetailsPage() {
   const tripCargoWeight = trip.cargoWeight && trip.cargoWeight.toString().trim() ? Number(trip.cargoWeight) : null;
   const weightVal = tripCargoWeight !== null ? tripCargoWeight : 0;
 
-  const tripRevenue = Math.round(distanceVal * 52 + weightVal * 4.5);
-  const tripExpenses = Math.round(distanceVal * 19.5 + (weightVal > 1000 ? 1200 : 600) + 1000);
+  const storedTripAmount = Number(invoice?.totalAmount || invoice?.charges?.totalAmount || trip.totalAmount || trip.billingAmount || trip.revenue || 0);
+  const serviceFeeVal = (trip.serviceFee !== undefined && Number(trip.serviceFee) > 0)
+    ? Number(trip.serviceFee)
+    : (invoice?.charges?.serviceFee !== undefined && Number(invoice.charges.serviceFee) > 0)
+      ? Number(invoice.charges.serviceFee)
+      : (trip.serviceType?.includes("Express") ? 1500 : trip.serviceType?.includes("Same Day") ? 3000 : 500);
+
+  const baseFreightVal = (trip.freightCharges && Number(trip.freightCharges) > 0)
+    ? Number(trip.freightCharges)
+    : (invoice?.charges?.freightCharges && Number(invoice.charges.freightCharges) > 0)
+      ? Number(invoice.charges.freightCharges)
+      : Math.round(distanceVal * 52 + weightVal * 4.5);
+
+  const loadingChargesVal = trip.loadingCharges !== undefined
+    ? Number(trip.loadingCharges)
+    : (invoice?.charges?.loadingCharges !== undefined ? Number(invoice.charges.loadingCharges) : 2500);
+
+  const unloadingChargesVal = trip.unloadingCharges !== undefined
+    ? Number(trip.unloadingCharges)
+    : (invoice?.charges?.unloadingCharges !== undefined ? Number(invoice.charges.unloadingCharges) : 2500);
+
+  const subtotalVal = (trip.subtotal && Number(trip.subtotal) > 0)
+    ? Number(trip.subtotal)
+    : (invoice?.charges?.subtotal && Number(invoice.charges.subtotal) > 0)
+      ? Number(invoice.charges.subtotal)
+      : (baseFreightVal + serviceFeeVal + loadingChargesVal + unloadingChargesVal);
+
+  const gstTaxVal = (trip.gstTax && Number(trip.gstTax) > 0)
+    ? Number(trip.gstTax)
+    : (invoice?.charges?.gstTax && Number(invoice.charges.gstTax) > 0)
+      ? Number(invoice.charges.gstTax)
+      : (invoice?.taxAmount && Number(invoice.taxAmount) > 0)
+        ? Number(invoice.taxAmount)
+        : Math.round(subtotalVal * 0.18);
+
+  const calculatedTotal = subtotalVal + gstTaxVal;
+  const tripRevenue = storedTripAmount > 0 ? storedTripAmount : calculatedTotal;
+  const actualFuelTotal = fuelRecords.reduce((sum, record) => sum + (Number(record.amount) || 0), 0);
+  const actualTollsTotal = (Array.isArray(tolls) ? tolls : []).reduce((sum, t) => sum + (Number(t?.amountPaid || t?.amount || 0) || 0), 0);
+  const tripExpenses = loadingChargesVal + unloadingChargesVal + actualFuelTotal + actualTollsTotal + Math.round(distanceVal * 5.3);
   const tripNet = tripRevenue - tripExpenses;
   const tripMargin = tripRevenue > 0 ? Math.round((tripNet / tripRevenue) * 100) : 0;
   const distanceTravelled = trip.status === "Scheduled" ? 0 : isCompleted ? totalDistance : Math.round(totalDistance * 0.56);

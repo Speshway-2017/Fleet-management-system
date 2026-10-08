@@ -14,6 +14,7 @@ export const dashboardApi = {
           driversAvailable: 0,
           fuelExpense: "₹0",
           totalEarnings: "₹0",
+          totalRevenue: "₹0",
         };
       }),
 

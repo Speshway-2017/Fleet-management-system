@@ -51,7 +51,7 @@ import {
 import { createAndEmitNotification } from '../utils/notification.js';
 import { processVehicleDocuments } from '../utils/documentHelper.js';
 import Trip from '../models/Trip.js';
-import { calculateTripFinance } from '../utils/earningsCalculator.js';
+import { calculateTripFinance, calculateFleetEarnings } from '../utils/earningsCalculator.js';
 import Driver from '../models/Driver.js';
 import User from '../models/User.js';
 import Vehicle from '../models/Vehicle.js';
@@ -151,23 +151,30 @@ export const getDashboard = async (req, res, next) => {
     const { totalSpend: fuelSum } = calculateTotalFuelSpend(fuelDocs);
     const fuelExpense = formatFuelSpend(fuelSum);
 
-    // 6. Total Earnings: sum up revenues from all trips to match earnings page
-    const trips = await Trip.find({ assignedManager: managerId });
-    const earningsSum = trips.reduce((acc, trip) => {
-      const { revenue } = calculateTripFinance(trip);
-      return acc + revenue;
-    }, 0);
+    // 6. Total Earnings & Total Revenue: single source of truth using calculateFleetEarnings
+    const trips = await Trip.find({ assignedManager: managerId }).populate('vehicle').populate('driver').sort({ createdAt: -1 });
+    const tripIds = trips.map(t => t._id);
+    const tripNumbers = trips.map(t => t.tripNumber).filter(Boolean);
+    const cleanTripNumbers = tripNumbers.map(tn => tn.replace('#', ''));
 
-    let totalEarnings = "";
-    if (earningsSum >= 10000000) {
-      const shortNum = (earningsSum / 10000000).toFixed(1);
-      totalEarnings = `₹${shortNum} Cr`;
-    } else if (earningsSum >= 100000) {
-      const shortNum = (earningsSum / 100000).toFixed(1);
-      totalEarnings = `₹${shortNum} L`;
-    } else {
-      totalEarnings = `₹${earningsSum.toLocaleString('en-IN')}`;
-    }
+    const [invoices, fuels, tolls] = await Promise.all([
+      Invoice.find({
+        $or: [
+          { trip: { $in: tripIds } },
+          { invoiceNumber: { $in: trips.map(t => t.tripInvoice?.invoiceNumber).filter(Boolean) } }
+        ]
+      }),
+      Fuel.find({
+        $or: [
+          { tripId: { $in: tripIds.map(id => id.toString()) } },
+          { tripId: { $in: tripNumbers } },
+          { tripId: { $in: cleanTripNumbers } }
+        ]
+      }),
+      TollTransaction.find({ trip: { $in: tripIds } })
+    ]);
+
+    const fleetEarnings = calculateFleetEarnings(trips, invoices, fuels, tolls);
 
     // 7. Check for subscription expiry warning (<= 10 days) and create in-app notification
     if (req.user.subscriptionStatus === 'ACTIVE' && req.user.subscriptionExpiry) {
@@ -211,7 +218,13 @@ export const getDashboard = async (req, res, next) => {
       maintenanceAlerts: maintenanceAlertsCount,
       driversAvailable,
       fuelExpense,
-      totalEarnings
+      totalEarnings: fleetEarnings.formattedRevenue,
+      totalRevenue: fleetEarnings.formattedRevenue,
+      totalRevenueNumeric: fleetEarnings.totalRevenue,
+      revenue: fleetEarnings.totalRevenue,
+      stats: fleetEarnings.stats,
+      chartData: fleetEarnings.chartData,
+      tripEarnings: fleetEarnings.tripEarnings
     }, 'Dashboard stats loaded');
   } catch (error) {
     next(error);
@@ -915,50 +928,63 @@ export const deleteDriver = async (req, res, next) => {
 export const listTrips = async (req, res, next) => {
   try {
     const managerId = req.user._id;
-    const orgId = req.user.organization;
 
-    const andConditions = [];
+    const filter = { assignedManager: managerId };
     if (req.query.vehicle) {
-      andConditions.push({ vehicle: req.query.vehicle });
+      filter.vehicle = req.query.vehicle;
     }
     if (req.query.driver) {
-      andConditions.push({ driver: req.query.driver });
+      filter.driver = req.query.driver;
+    }
+    if (req.query.status) {
+      filter.status = req.query.status;
     }
 
-    // Try finding manager-specific trips first
-    const managerSpecificFilter = andConditions.length > 0
-      ? { $and: [{ assignedManager: managerId }, ...andConditions] }
-      : { assignedManager: managerId };
+    const trips = await getTrips(filter);
+    const tripIds = trips.map(t => t._id);
+    const tripNumbers = trips.map(t => t.tripNumber).filter(Boolean);
+    const cleanTripNumbers = tripNumbers.map(tn => tn.replace('#', ''));
 
-    let trips = await getTrips(managerSpecificFilter);
+    const [invoices, fuels, tolls] = await Promise.all([
+      Invoice.find({
+        $or: [
+          { trip: { $in: tripIds } },
+          { invoiceNumber: { $in: trips.map(t => t.tripInvoice?.invoiceNumber).filter(Boolean) } }
+        ]
+      }),
+      Fuel.find({
+        $or: [
+          { tripId: { $in: tripIds.map(id => id.toString()) } },
+          { tripId: { $in: tripNumbers } },
+          { tripId: { $in: cleanTripNumbers } }
+        ]
+      }),
+      TollTransaction.find({ trip: { $in: tripIds } })
+    ]);
 
-    // If manager has no direct trips (or only 1 legacy unassigned), fallback to organization/all fleet trips
-    if (!trips || trips.length <= 1) {
-      const broaderConditions = [];
-      if (orgId) {
-        broaderConditions.push({ organization: orgId });
+    const invoiceByTripId = new Map();
+    invoices.forEach(inv => {
+      if (inv.trip) invoiceByTripId.set(inv.trip.toString(), inv);
+      if (inv.invoiceNumber) invoiceByTripId.set(inv.invoiceNumber, inv);
+    });
+
+    const fuelsByTripId = new Map();
+    fuels.forEach(f => {
+      const key = f.tripId?.toString().replace('#', '');
+      if (key) {
+        if (!fuelsByTripId.has(key)) fuelsByTripId.set(key, []);
+        fuelsByTripId.get(key).push(f);
       }
-      broaderConditions.push({ assignedManager: null });
-      broaderConditions.push({ assignedManager: { $exists: false } });
+    });
 
-      const broaderFilter = andConditions.length > 0
-        ? { $and: [{ $or: broaderConditions }, ...andConditions] }
-        : { $or: broaderConditions };
-
-      const broaderTrips = await getTrips(broaderFilter);
-
-      if (broaderTrips && broaderTrips.length > trips.length) {
-        trips = broaderTrips;
+    const tollsByTripId = new Map();
+    tolls.forEach(t => {
+      if (t.trip) {
+        const key = t.trip.toString();
+        if (!tollsByTripId.has(key)) tollsByTripId.set(key, []);
+        tollsByTripId.get(key).push(t);
       }
-
-      // If still fewer trips and no strict vehicle/driver filter, load all fleet trips
-      if ((!trips || trips.length <= 1) && andConditions.length === 0) {
-        const allTrips = await getTrips({});
-        if (allTrips && allTrips.length > 0) {
-          trips = allTrips;
-        }
-      }
-    }
+    });
 
     // Map over trips and preserve exact stored distance from MongoDB
     const processedTrips = trips.map(t => {
@@ -1006,6 +1032,25 @@ export const listTrips = async (req, res, next) => {
         }
       }
 
+      // Synchronize trip-level finance using single source of truth
+      const inv = invoiceByTripId.get(tripObj._id.toString()) || (tripObj.tripInvoice?.invoiceNumber ? invoiceByTripId.get(tripObj.tripInvoice.invoiceNumber) : null);
+      const cleanNum = tripObj.tripNumber?.replace('#', '');
+      const tripFuels = fuelsByTripId.get(tripObj._id.toString()) || fuelsByTripId.get(cleanNum) || [];
+      const tripTolls = tollsByTripId.get(tripObj._id.toString()) || [];
+
+      const fin = calculateTripFinance(tripObj, inv, tripFuels, tripTolls);
+      tripObj.revenue = fin.revenue;
+      tripObj.expenses = fin.expenses;
+      tripObj.netEarnings = fin.netEarnings;
+      tripObj.totalAmount = fin.totalAmount;
+      tripObj.billingAmount = fin.totalAmount;
+      tripObj.freightCharges = fin.baseFreight;
+      tripObj.serviceFee = fin.serviceFee;
+      tripObj.loadingCharges = fin.loadingCharges;
+      tripObj.unloadingCharges = fin.unloadingCharges;
+      tripObj.subtotal = fin.subtotal;
+      tripObj.gstTax = fin.gstTax;
+
       return tripObj;
     });
 
@@ -1018,12 +1063,15 @@ export const listTrips = async (req, res, next) => {
 const isAuthorizedForTrip = (reqUser, trip) => {
   if (!trip || !reqUser) return false;
   const role = reqUser.role;
-  if (role === 'SUPER_ADMIN' || role === 'admin' || role === 'FLEET_MANAGER' || role === 'manager') {
+  if (role === 'SUPER_ADMIN' || role === 'admin') {
     return true;
   }
-  if (!trip.assignedManager) return true;
-  if (String(trip.assignedManager) === String(reqUser._id)) return true;
-  if (reqUser.organization && trip.organization && String(trip.organization) === String(reqUser.organization)) return true;
+  if (role === 'FLEET_MANAGER' || role === 'manager') {
+    return String(trip.assignedManager?._id || trip.assignedManager) === String(reqUser._id);
+  }
+  if (role === 'DRIVER' || role === 'driver') {
+    return String(trip.driver?._id || trip.driver) === String(reqUser._id);
+  }
   return false;
 };
 
@@ -1366,6 +1414,35 @@ export const createTrip = async (req, res, next) => {
     console.log(`Saving Delivery Address...`);
     console.log(`✓ Delivery Address Saved`);
 
+    // Calculate synchronized financial billing & charges
+    const safeCargoWeight = (() => {
+      const rawW = Number(cargoWeight);
+      return (Number.isFinite(rawW) && rawW >= 0 && rawW <= 100000) ? rawW : 0;
+    })();
+
+    const safeDistance = (() => {
+      const computedDist = calculateDistance(startLocation, endLocation);
+      const inputDist = Number(estimatedDistance);
+      return (inputDist > 0 && Math.abs(inputDist - computedDist) < 1500) ? inputDist : computedDist;
+    })();
+
+    const serviceTypeVal = serviceType || 'Standard (3-5 days)';
+    const serviceFeeVal = req.body.serviceFee !== undefined
+      ? Number(req.body.serviceFee)
+      : (serviceTypeVal.includes("Express") ? 1500 : serviceTypeVal.includes("Same Day") ? 3000 : 500);
+
+    const freightChargesVal = (req.body.freightCharges && Number(req.body.freightCharges) > 0)
+      ? Number(req.body.freightCharges)
+      : Math.round(safeDistance * 52 + safeCargoWeight * 4.5);
+
+    const loadingChargesVal = req.body.loadingCharges !== undefined ? Number(req.body.loadingCharges) : 2500;
+    const unloadingChargesVal = req.body.unloadingCharges !== undefined ? Number(req.body.unloadingCharges) : 2500;
+    const subtotalVal = freightChargesVal + serviceFeeVal + loadingChargesVal + unloadingChargesVal;
+    const gstTaxVal = Math.round(subtotalVal * 0.18);
+    const totalAmountVal = (req.body.totalAmount && Number(req.body.totalAmount) > 0)
+      ? Number(req.body.totalAmount)
+      : (subtotalVal + gstTaxVal);
+
     // C. Create the trip with status "Pending Driver Acceptance"
     const initialStatus = 'Pending Driver Acceptance';
     const trip = await createTripInRepo({
@@ -1388,17 +1465,23 @@ export const createTrip = async (req, res, next) => {
       isActive: true,
       description,
       cargoType,
-      cargoWeight: (() => {
-        const rawW = Number(cargoWeight);
-        return (Number.isFinite(rawW) && rawW >= 0 && rawW <= 100000) ? rawW : 0;
-      })(),
+      cargoWeight: safeCargoWeight,
       tripNotes,
-      estimatedDistance: (() => {
-        const computedDist = calculateDistance(startLocation, endLocation);
-        const inputDist = Number(estimatedDistance);
-        return (inputDist > 0 && Math.abs(inputDist - computedDist) < 1500) ? inputDist : computedDist;
-      })(),
-      assignedManager: req.user._id
+      estimatedDistance: safeDistance,
+      assignedManager: req.user._id,
+      serviceType: serviceTypeVal,
+      paymentMethod: paymentMethod || 'Prepaid',
+      codAmount: paymentMethod === 'COD' ? Number(codAmount || 0) : 0,
+      paymentStatus: paymentStatus || 'Pending',
+      freightCharges: freightChargesVal,
+      serviceFee: serviceFeeVal,
+      loadingCharges: loadingChargesVal,
+      unloadingCharges: unloadingChargesVal,
+      subtotal: subtotalVal,
+      gstTax: gstTaxVal,
+      totalAmount: totalAmountVal,
+      billingAmount: totalAmountVal,
+      revenue: totalAmountVal
     });
 
     console.log(`Trip Created Successfully with status 'Pending Driver Acceptance'`);
@@ -1416,7 +1499,22 @@ export const createTrip = async (req, res, next) => {
         trip: trip._id,
         driver: trip.driver,
         vehicle: trip.vehicle,
-        createdBy: req.user._id
+        createdBy: req.user._id,
+        charges: {
+          freightCharges: freightChargesVal,
+          serviceFee: serviceFeeVal,
+          loadingCharges: loadingChargesVal,
+          unloadingCharges: unloadingChargesVal,
+          fuelCharges: 0,
+          tollCharges: 0,
+          subtotal: subtotalVal,
+          gstTax: gstTaxVal,
+          totalAmount: totalAmountVal
+        },
+        subtotal: subtotalVal,
+        taxAmount: gstTaxVal,
+        totalAmount: totalAmountVal,
+        status: 'Pending'
       });
       await newInvoice.save();
 
@@ -1968,17 +2066,14 @@ export const listFuelRecords = async (req, res, next) => {
     }
     conditions.push({ recordedBy: req.user._id });
 
-    let filter = conditions.length > 0 ? { $or: conditions } : {};
+    let filter = { $or: conditions };
     if (req.query.vehicle) {
       filter = { $and: [filter, { vehicle: req.query.vehicle }] };
     }
     if (req.query.tripId) {
       filter = { $and: [filter, { tripId: req.query.tripId }] };
     }
-    let records = await getFuelRecords(filter);
-    if (!records || records.length === 0) {
-      records = await getFuelRecords({});
-    }
+    const records = await getFuelRecords(filter);
 
     // Deduplicate records by unique _id to ensure exact 1:1 count and prevent duplicate aggregation
     const seenIds = new Set();
@@ -2181,9 +2276,17 @@ export const deleteFuelRecord = async (req, res, next) => {
 // Maintenance Controllers
 export const listMaintenance = async (req, res, next) => {
   try {
-    const filter = { recordedBy: req.user._id };
+    const managerVehicles = await Vehicle.find({ assignedManager: req.user._id }, '_id');
+    const vehicleIds = managerVehicles.map(v => v._id);
+
+    const conditions = [{ recordedBy: req.user._id }];
+    if (vehicleIds.length > 0) {
+      conditions.push({ vehicle: { $in: vehicleIds } });
+    }
+
+    let filter = { $or: conditions };
     if (req.query.vehicle) {
-      filter.vehicle = req.query.vehicle;
+      filter = { $and: [filter, { vehicle: req.query.vehicle }] };
     }
     const maintenance = await getMaintenances(filter);
     return sendSuccess(res, 200, maintenance, 'Maintenance list fetched');
@@ -2199,7 +2302,10 @@ export const getMaintenanceDetails = async (req, res, next) => {
       return sendError(res, 404, 'Maintenance not found');
     }
     // Ownership check
-    if (String(maintenance.recordedBy) !== String(req.user._id)) {
+    const managerVehicles = await Vehicle.find({ assignedManager: req.user._id }, '_id');
+    const vehicleIds = managerVehicles.map(v => String(v._id));
+    const isOwned = String(maintenance.recordedBy) === String(req.user._id) || (maintenance.vehicle && vehicleIds.includes(String(maintenance.vehicle._id || maintenance.vehicle)));
+    if (!isOwned) {
       return sendError(res, 403, 'Access denied: this maintenance record belongs to another manager');
     }
     return sendSuccess(res, 200, maintenance, 'Maintenance details fetched');
@@ -2252,7 +2358,10 @@ export const updateMaintenance = async (req, res, next) => {
     // Ownership check before update
     const existingMaint = await getMaintenanceById(req.params.id);
     if (!existingMaint) return sendError(res, 404, 'Maintenance not found');
-    if (String(existingMaint.recordedBy) !== String(req.user._id)) {
+    const managerVehicles = await Vehicle.find({ assignedManager: req.user._id }, '_id');
+    const vehicleIds = managerVehicles.map(v => String(v._id));
+    const isOwned = String(existingMaint.recordedBy) === String(req.user._id) || (existingMaint.vehicle && vehicleIds.includes(String(existingMaint.vehicle._id || existingMaint.vehicle)));
+    if (!isOwned) {
       return sendError(res, 403, 'Access denied: this maintenance record belongs to another manager');
     }
 
@@ -2281,7 +2390,10 @@ export const deleteMaintenance = async (req, res, next) => {
     // Ownership check before delete
     const existingMaint = await getMaintenanceById(req.params.id);
     if (!existingMaint) return sendError(res, 404, 'Maintenance not found');
-    if (String(existingMaint.recordedBy) !== String(req.user._id)) {
+    const managerVehicles = await Vehicle.find({ assignedManager: req.user._id }, '_id');
+    const vehicleIds = managerVehicles.map(v => String(v._id));
+    const isOwned = String(existingMaint.recordedBy) === String(req.user._id) || (existingMaint.vehicle && vehicleIds.includes(String(existingMaint.vehicle._id || existingMaint.vehicle)));
+    if (!isOwned) {
       return sendError(res, 403, 'Access denied: this maintenance record belongs to another manager');
     }
 
@@ -2298,7 +2410,22 @@ export const deleteMaintenance = async (req, res, next) => {
 // Documents Controllers
 export const listDocuments = async (req, res, next) => {
   try {
-    const documents = await getDocuments({ uploadedBy: req.user._id });
+    const managerVehicles = await Vehicle.find({ assignedManager: req.user._id }, '_id vehicleNumber');
+    const vehicleIds = managerVehicles.map(v => v._id);
+    const vehicleNumbers = managerVehicles.map(v => v.vehicleNumber).filter(Boolean);
+
+    const managerDrivers = await Driver.find({ assignedManager: req.user._id }, '_id');
+    const driverIds = managerDrivers.map(d => d._id);
+
+    const conditions = [{ uploadedBy: req.user._id }];
+    if (vehicleIds.length > 0) {
+      conditions.push({ vehicle: { $in: vehicleIds.concat(vehicleNumbers) } });
+    }
+    if (driverIds.length > 0) {
+      conditions.push({ driver: { $in: driverIds } });
+    }
+
+    const documents = await getDocuments({ $or: conditions });
 
     // Calculate dynamic status for each document on fetch
     const enriched = documents.map(d => {
@@ -3058,9 +3185,7 @@ export const listActivities = async (req, res, next) => {
       .lean();
 
     // Populate recent real trip dispatches/updates for manager
-    const recentTrips = await Trip.find({
-      $or: [{ assignedManager: managerId }, { createdBy: managerId }]
-    })
+    const recentTrips = await Trip.find({ assignedManager: managerId })
       .sort({ updatedAt: -1, createdAt: -1 })
       .limit(10)
       .populate('driver', 'fullName name phone')
@@ -3105,7 +3230,89 @@ export const listActivities = async (req, res, next) => {
 export const getInvoiceByTripId = async (req, res, next) => {
   try {
     const tripId = req.params.tripId;
-    let invoice = await Invoice.findOne({ trip: tripId })
+    let trip = await Trip.findById(tripId).populate('driver').populate('vehicle');
+    if (!trip) {
+      return sendError(res, 404, 'Trip not found');
+    }
+
+    let invoice = await Invoice.findOne({
+      $or: [
+        { trip: trip._id },
+        ...(trip.tripInvoice?.invoiceId ? [{ _id: trip.tripInvoice.invoiceId }] : []),
+        ...(trip.tripInvoice?.invoiceNumber ? [{ invoiceNumber: trip.tripInvoice.invoiceNumber }] : [])
+      ]
+    });
+
+    const [fuelEntries, tollsList] = await Promise.all([
+      Fuel.find({
+        $or: [
+          { tripId: trip._id.toString() },
+          { tripId: trip.tripNumber },
+          { tripId: trip.tripNumber?.replace('#', '') }
+        ]
+      }),
+      TollTransaction.find({ trip: trip._id })
+    ]);
+
+    const finance = calculateTripFinance(trip, invoice, fuelEntries, tollsList);
+
+    if (!invoice) {
+      const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const count = await Invoice.countDocuments({ invoiceNumber: { $regex: new RegExp('^INV-' + datePart) } });
+      const seq = String(count + 1).padStart(4, '0');
+      const invoiceNumber = trip.tripInvoice?.invoiceNumber || `INV-${datePart}-${seq}`;
+
+      invoice = new Invoice({
+        invoiceNumber,
+        invoiceDate: new Date(),
+        trip: trip._id,
+        driver: trip.driver?._id || trip.driver,
+        vehicle: trip.vehicle?._id || trip.vehicle,
+        createdBy: req.user._id,
+        charges: {
+          freightCharges: finance.baseFreight,
+          serviceFee: finance.serviceFee,
+          loadingCharges: finance.loadingCharges,
+          unloadingCharges: finance.unloadingCharges,
+          fuelCharges: finance.actualFuelAmount,
+          tollCharges: finance.actualTollAmount,
+          subtotal: finance.subtotal,
+          gstTax: finance.gstTax,
+          totalAmount: finance.totalAmount
+        },
+        subtotal: finance.subtotal,
+        taxAmount: finance.gstTax,
+        totalAmount: finance.totalAmount,
+        status: trip.status === 'Completed' ? 'Paid' : 'Pending'
+      });
+      await invoice.save();
+
+      trip.tripInvoice = {
+        invoiceId: invoice._id,
+        invoiceNumber: invoice.invoiceNumber,
+        url: invoice.pdfUrl || '',
+        generatedAt: invoice.createdAt || invoice.invoiceDate
+      };
+      await trip.save();
+    } else {
+      invoice.charges = {
+        freightCharges: finance.baseFreight,
+        serviceFee: finance.serviceFee,
+        loadingCharges: finance.loadingCharges,
+        unloadingCharges: finance.unloadingCharges,
+        fuelCharges: finance.actualFuelAmount,
+        tollCharges: finance.actualTollAmount,
+        subtotal: finance.subtotal,
+        gstTax: finance.gstTax,
+        totalAmount: finance.totalAmount
+      };
+      invoice.subtotal = finance.subtotal;
+      invoice.taxAmount = finance.gstTax;
+      invoice.totalAmount = finance.totalAmount;
+      await invoice.save().catch(() => {});
+    }
+
+    const populatedInvoice = await Invoice.findById(invoice._id)
       .populate({
         path: 'trip',
         populate: [
@@ -3117,50 +3324,7 @@ export const getInvoiceByTripId = async (req, res, next) => {
       .populate('vehicle')
       .populate('createdBy', 'fullName email username');
 
-    // Safe dynamic auto-generation fallback if invoice is missing for any reason
-    if (!invoice) {
-      const trip = await Trip.findById(tripId);
-      if (!trip) {
-        return sendError(res, 404, 'Trip not found');
-      }
-
-      const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const count = await Invoice.countDocuments({ invoiceNumber: { $regex: new RegExp('^INV-' + datePart) } });
-      const seq = String(count + 1).padStart(4, '0');
-      const invoiceNumber = `INV-${datePart}-${seq}`;
-
-      const newInvoice = new Invoice({
-        invoiceNumber,
-        invoiceDate: new Date(),
-        trip: trip._id,
-        driver: trip.driver,
-        vehicle: trip.vehicle,
-        createdBy: req.user._id
-      });
-      await newInvoice.save();
-
-      trip.tripInvoice = {
-        invoiceId: newInvoice._id,
-        invoiceNumber: newInvoice.invoiceNumber,
-        url: newInvoice.pdfUrl || '',
-        generatedAt: newInvoice.createdAt || newInvoice.invoiceDate
-      };
-      await trip.save();
-
-      invoice = await Invoice.findById(newInvoice._id)
-        .populate({
-          path: 'trip',
-          populate: [
-            { path: 'driver' },
-            { path: 'vehicle' }
-          ]
-        })
-        .populate('driver')
-        .populate('vehicle')
-        .populate('createdBy', 'fullName email username');
-    }
-
-    return sendSuccess(res, 200, invoice, 'Invoice fetched successfully');
+    return sendSuccess(res, 200, populatedInvoice, 'Invoice fetched successfully');
   } catch (error) {
     next(error);
   }
@@ -3626,59 +3790,33 @@ export const getEarnings = async (req, res, next) => {
     // Find all trips for this manager
     const trips = await Trip.find({ assignedManager: managerId }).populate('vehicle').populate('driver').sort({ createdAt: -1 });
 
-    let totalRevenue = 0;
-    let totalExpenses = 0;
-    let totalNetEarnings = 0;
+    const tripIds = trips.map(t => t._id);
+    const tripNumbers = trips.map(t => t.tripNumber).filter(Boolean);
+    const cleanTripNumbers = tripNumbers.map(tn => tn.replace('#', ''));
 
-    const tripEarnings = trips.map(trip => {
-      const { revenue, expenses, netEarnings, distance, weight } = calculateTripFinance(trip);
+    const [invoices, fuels, tolls] = await Promise.all([
+      Invoice.find({
+        $or: [
+          { trip: { $in: tripIds } },
+          { invoiceNumber: { $in: trips.map(t => t.tripInvoice?.invoiceNumber).filter(Boolean) } }
+        ]
+      }),
+      Fuel.find({
+        $or: [
+          { tripId: { $in: tripIds.map(id => id.toString()) } },
+          { tripId: { $in: tripNumbers } },
+          { tripId: { $in: cleanTripNumbers } }
+        ]
+      }),
+      TollTransaction.find({ trip: { $in: tripIds } })
+    ]);
 
-      totalRevenue += revenue;
-      totalExpenses += expenses;
-      totalNetEarnings += netEarnings;
-
-      return {
-        tripId: trip._id,
-        tripNumber: trip.tripNumber,
-        vehicleName: trip.vehicleName || (trip.vehicle ? trip.vehicle.vehicleName : 'N/A'),
-        vehiclePlate: trip.vehiclePlate || (trip.vehicle ? trip.vehicle.vehicleNumber : 'N/A'),
-        driverName: trip.driverName || (trip.driver ? trip.driver.fullName : 'Unassigned'),
-        startLocation: trip.startLocation,
-        endLocation: trip.endLocation,
-        status: trip.status,
-        date: trip.createdAt,
-        distance,
-        cargoWeight: weight,
-        revenue,
-        expenses,
-        netEarnings
-      };
-    });
-
-    // Group earnings by month for chart data
-    const monthlyStats = {};
-    tripEarnings.forEach(te => {
-      const date = new Date(te.date);
-      const monthYear = date.toLocaleString('en-IN', { month: 'short', year: '2-digit' });
-      if (!monthlyStats[monthYear]) {
-        monthlyStats[monthYear] = { month: monthYear, revenue: 0, expenses: 0, netEarnings: 0 };
-      }
-      monthlyStats[monthYear].revenue += te.revenue;
-      monthlyStats[monthYear].expenses += te.expenses;
-      monthlyStats[monthYear].netEarnings += te.netEarnings;
-    });
-
-    const chartData = Object.values(monthlyStats).reverse();
+    const fleetEarnings = calculateFleetEarnings(trips, invoices, fuels, tolls);
 
     return sendSuccess(res, 200, {
-      stats: {
-        totalRevenue,
-        totalExpenses,
-        totalNetEarnings,
-        tripCount: trips.length
-      },
-      chartData,
-      tripEarnings
+      stats: fleetEarnings.stats,
+      chartData: fleetEarnings.chartData,
+      tripEarnings: fleetEarnings.tripEarnings
     }, 'Earnings data retrieved');
   } catch (error) {
     next(error);
@@ -3758,43 +3896,35 @@ export const createVehicleComplaint = async (req, res, next) => {
 export const listVehicleComplaints = async (req, res, next) => {
   try {
     const { tripId } = req.query;
-    let filter = {};
+    const managerId = req.user._id;
 
+    const trips = await Trip.find({ assignedManager: managerId }, '_id');
+    const tripIds = trips.map(t => t._id);
+
+    const drivers = await Driver.find({ assignedManager: managerId }, '_id');
+    const driverIds = drivers.map(d => d._id);
+
+    const vehicles = await Vehicle.find({ assignedManager: managerId }, '_id');
+    const vehicleIds = vehicles.map(v => v._id);
+
+    const conditions = [
+      { manager: managerId },
+      { assignedManager: managerId }
+    ];
+    if (tripIds.length > 0) conditions.push({ trip: { $in: tripIds } });
+    if (driverIds.length > 0) conditions.push({ driver: { $in: driverIds } });
+    if (vehicleIds.length > 0) conditions.push({ vehicle: { $in: vehicleIds } });
+
+    let filter = { $or: conditions };
     if (tripId) {
-      filter.trip = tripId;
-    } else {
-      const managerId = req.user._id;
-      const trips = await Trip.find({ assignedManager: managerId }, '_id');
-      const tripIds = trips.map(t => t._id);
-
-      const drivers = await Driver.find({ assignedManager: managerId }, '_id');
-      const driverIds = drivers.map(d => d._id);
-
-      const vehicles = await Vehicle.find({ assignedManager: managerId }, '_id');
-      const vehicleIds = vehicles.map(v => v._id);
-
-      filter = {
-        $or: [
-          { trip: { $in: tripIds } },
-          { driver: { $in: driverIds } },
-          { vehicle: { $in: vehicleIds } }
-        ]
-      };
+      filter = { $and: [filter, { trip: tripId }] };
     }
 
-    let complaints = await VehicleComplaint.find(filter)
+    const complaints = await VehicleComplaint.find(filter)
       .populate('driver', 'fullName email phoneNumber')
       .populate('vehicle', 'registrationNumber make model plateNumber')
       .populate('trip', 'tripNumber origin destination')
       .sort({ createdAt: -1 });
-
-    if (complaints.length === 0 && !tripId) {
-      complaints = await VehicleComplaint.find({})
-        .populate('driver', 'fullName email phoneNumber')
-        .populate('vehicle', 'registrationNumber make model plateNumber')
-        .populate('trip', 'tripNumber origin destination')
-        .sort({ createdAt: -1 });
-    }
 
     return sendSuccess(res, 200, complaints, 'Vehicle complaints retrieved successfully');
   } catch (error) {

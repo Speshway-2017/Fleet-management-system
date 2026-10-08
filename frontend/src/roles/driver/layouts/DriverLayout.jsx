@@ -5,6 +5,7 @@ import { useTheme } from "@/context/ThemeContext";
 import driverApi from "../api/driverApi";
 import UserProfileCard from "@/components/common/UserProfileCard";
 import NotificationOverlay from "@/components/layout/NotificationOverlay";
+import { applyApplicationLanguage, getLanguageName } from "@/utils/languageUtils";
 import { toast } from "react-hot-toast";
 import {
   LayoutDashboard,
@@ -62,6 +63,13 @@ export default function DriverLayout() {
       const res = await driverApi.getProfile();
       if (res?.success && res.data) {
         setDriverProfile(res.data);
+        if (res.data.language) {
+          const currentLang = localStorage.getItem("app_language");
+          const targetLang = getLanguageName(res.data.language);
+          if (currentLang !== targetLang) {
+            applyApplicationLanguage(targetLang, false);
+          }
+        }
         const activeDuty = res.data.isDuty ?? res.data.isOnline ?? (res.data.driverStatus && res.data.driverStatus !== "OFFLINE" && res.data.driverStatus !== "OFF_DUTY");
         setIsOnDuty(Boolean(activeDuty));
       }

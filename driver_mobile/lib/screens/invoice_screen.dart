@@ -178,14 +178,20 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     if (dist == 0.0 && trip['estimatedDistance'] != null) {
       dist = double.tryParse(trip['estimatedDistance'].toString()) ?? 0.0;
     }
-    final freight = (dist * 230 / 100).round() * 100;
-    final loading = 2500;
-    final unloading = 2500;
-    final fuel = (dist * 42 / 100).round() * 100;
-    final toll = (dist * 6 / 100).round() * 100;
-    final subtotal = freight + loading + unloading + fuel + toll;
+    final weight = double.tryParse(trip['cargoWeight']?.toString() ?? '') ?? 0.0;
+    final freight = (trip['freightCharges'] != null)
+        ? (double.tryParse(trip['freightCharges'].toString())?.round() ?? (dist * 52 + weight * 4.5).round())
+        : (dist * 52 + weight * 4.5).round();
+    final serviceFee = (trip['serviceFee'] != null)
+        ? (double.tryParse(trip['serviceFee'].toString())?.round() ?? 500)
+        : (trip['serviceType']?.toString().contains('Express') == true ? 1500 : trip['serviceType']?.toString().contains('Same Day') == true ? 3000 : 500);
+    final loading = (trip['loadingCharges'] != null) ? (double.tryParse(trip['loadingCharges'].toString())?.round() ?? 2500) : 2500;
+    final unloading = (trip['unloadingCharges'] != null) ? (double.tryParse(trip['unloadingCharges'].toString())?.round() ?? 2500) : 2500;
+    final fuel = (trip['fuelAmount'] != null) ? (double.tryParse(trip['fuelAmount'].toString())?.round() ?? 0) : 0;
+    final toll = (trip['tollAmount'] != null) ? (double.tryParse(trip['tollAmount'].toString())?.round() ?? 0) : 0;
+    final subtotal = freight + serviceFee + loading + unloading + fuel + toll;
     final tax = (subtotal * 0.18).round();
-    final grandTotal = subtotal + tax;
+    final grandTotal = (trip['totalAmount'] != null) ? (double.tryParse(trip['totalAmount'].toString())?.round() ?? (subtotal + tax)) : (subtotal + tax);
 
     return {
       'invoiceNumber': invNum,
@@ -195,6 +201,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       'trip': trip,
       'charges': {
         'freightCharges': freight,
+        'serviceFee': serviceFee,
         'loadingCharges': loading,
         'unloadingCharges': unloading,
         'fuelCharges': fuel,

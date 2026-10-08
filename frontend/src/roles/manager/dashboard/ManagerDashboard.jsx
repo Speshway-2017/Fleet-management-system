@@ -109,8 +109,8 @@ export default function ManagerDashboard() {
             color="orange"
           />
           <DashboardCard
-            title="Total Earnings"
-            value={stats.totalEarnings}
+            title="Total Revenue"
+            value={stats.totalRevenue || stats.totalEarnings}
             icon={Wallet}
             color="dark"
             darkTheme={true}

@@ -24,13 +24,8 @@ import { syncVehicleLocationFromLatestTrip } from '../utils/driverLocationHelper
 export const listVehicles = async (req, res, next) => {
   try {
     const managerId = req.user._id;
-    const orgId = req.user.organization;
     const filter = {
-      $or: [
-        { assignedManager: managerId },
-        { createdBy: managerId },
-        ...(orgId ? [{ organization: orgId }] : [])
-      ]
+      assignedManager: managerId
     };
     const vehicles = await getVehicles(filter);
     for (const v of vehicles) {

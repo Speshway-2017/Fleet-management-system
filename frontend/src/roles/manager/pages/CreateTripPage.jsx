@@ -966,6 +966,16 @@ export default function CreateTripPage() {
 
     try {
       const distance = routeInfo.distanceKm || 0;
+      const parsedWeight = parseFloat(cargoWeight);
+      const safeCargoWeight = (!isNaN(parsedWeight) && parsedWeight > 0) ? parsedWeight : 0;
+      const serviceFeeVal = serviceType.includes("Express") ? 1500 : serviceType.includes("Same Day") ? 3000 : 500;
+      const baseFreightVal = Math.round(distance * 52 + safeCargoWeight * 4.5);
+      const loadingChargesVal = 2500;
+      const unloadingChargesVal = 2500;
+      const subtotalVal = baseFreightVal + serviceFeeVal + loadingChargesVal + unloadingChargesVal;
+      const gstTaxVal = Math.round(subtotalVal * 0.18);
+      const estimatedTotalVal = subtotalVal + gstTaxVal;
+
       await managerApi.createTrip({
         tripNumber,
         vehicle: vehicle._id || vehicle.id,
@@ -1037,13 +1047,22 @@ export default function CreateTripPage() {
         status,
         description: description || "General Dispatch Cargo",
         cargoType,
-        cargoWeight: cargoWeight ? Number(cargoWeight) : undefined,
+        cargoWeight: safeCargoWeight,
         tripNotes,
         serviceType,
         paymentMethod,
         codAmount: paymentMethod === "COD" ? Number(codAmount) : 0,
         paymentStatus,
-        estimatedDistance: distance
+        estimatedDistance: distance,
+        freightCharges: baseFreightVal,
+        serviceFee: serviceFeeVal,
+        loadingCharges: loadingChargesVal,
+        unloadingCharges: unloadingChargesVal,
+        subtotal: subtotalVal,
+        gstTax: gstTaxVal,
+        totalAmount: estimatedTotalVal,
+        billingAmount: estimatedTotalVal,
+        revenue: estimatedTotalVal
       });
 
       toast.success("Trip dispatched successfully!");
@@ -2081,24 +2100,44 @@ export default function CreateTripPage() {
             {(() => {
               const parsedWeight = parseFloat(cargoWeight);
               const safeCargoWeight = (!isNaN(parsedWeight) && parsedWeight > 0) ? parsedWeight : 0;
+              const distanceKm = routeInfo.distanceKm || 0;
               const serviceFeeVal = serviceType.includes("Express") ? 1500 : serviceType.includes("Same Day") ? 3000 : 500;
-              const baseFreightVal = safeCargoWeight * 450;
-              const estimatedTotalVal = baseFreightVal + serviceFeeVal;
-              const formattedBaseFreight = baseFreightVal > 1e12 ? baseFreightVal.toExponential(2) : baseFreightVal.toLocaleString("en-IN", { maximumFractionDigits: 2 });
-              const formattedTotal = estimatedTotalVal > 1e12 ? estimatedTotalVal.toExponential(2) : estimatedTotalVal.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+              const baseFreightVal = Math.round(distanceKm * 52 + safeCargoWeight * 4.5);
+              const loadingChargesVal = 2500;
+              const unloadingChargesVal = 2500;
+              const subtotalVal = baseFreightVal + serviceFeeVal + loadingChargesVal + unloadingChargesVal;
+              const gstTaxVal = Math.round(subtotalVal * 0.18);
+              const estimatedTotalVal = subtotalVal + gstTaxVal;
+
+              const formattedBaseFreight = baseFreightVal.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+              const formattedSubtotal = subtotalVal.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+              const formattedGst = gstTaxVal.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+              const formattedTotal = estimatedTotalVal.toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
               return (
-                <div className="bg-slate-50/80 p-4 rounded-xl border border-slate-200/80 space-y-2.5">
+                <div className="bg-slate-50/80 p-4.5 rounded-xl border border-slate-200/80 space-y-2.5">
                   <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Estimated Payment Summary</h3>
                   <div className="flex justify-between items-center gap-3 text-xs text-slate-600">
-                    <span className="shrink-0 font-medium">Base Freight Rate</span>
-                    <span className="font-semibold text-right truncate max-w-[60%] shrink min-w-0" title={`₹${formattedBaseFreight}`}>
+                    <span className="shrink-0 font-medium">Base Freight Transport</span>
+                    <span className="font-semibold text-right truncate max-w-[60%] shrink min-w-0" title={`Distance: ${distanceKm} KM, Weight: ${safeCargoWeight} kg`}>
                       ₹{formattedBaseFreight}
                     </span>
                   </div>
                   <div className="flex justify-between items-center gap-3 text-xs text-slate-600">
+                    <span className="shrink-0 font-medium">Loading & Handling Charges</span>
+                    <span className="font-semibold text-right shrink-0">₹{loadingChargesVal.toLocaleString("en-IN")}</span>
+                  </div>
+                  <div className="flex justify-between items-center gap-3 text-xs text-slate-600">
+                    <span className="shrink-0 font-medium">Unloading Charges</span>
+                    <span className="font-semibold text-right shrink-0">₹{unloadingChargesVal.toLocaleString("en-IN")}</span>
+                  </div>
+                  <div className="flex justify-between items-center gap-3 text-xs text-slate-600">
                     <span className="shrink-0 font-medium">Service Fee ({serviceType.split(' ')[0]})</span>
                     <span className="font-semibold text-right shrink-0">₹{serviceFeeVal.toLocaleString("en-IN")}</span>
+                  </div>
+                  <div className="flex justify-between items-center gap-3 text-xs text-slate-600">
+                    <span className="shrink-0 font-medium">GST / Taxes (18%)</span>
+                    <span className="font-semibold text-right shrink-0">₹{formattedGst}</span>
                   </div>
                   <div className="flex justify-between items-center gap-3 text-xs text-slate-600">
                     <span className="shrink-0 font-medium">Payment Method</span>
