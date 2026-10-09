@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { adminApi } from "@/api/adminApi";
+import { getSocket } from "@/api/socket";
 import { 
   Building2, Users, Activity, TrendingUp, CheckCircle2, 
   Wrench, Droplets, MapPin 
@@ -35,7 +36,10 @@ export default function Analytics() {
   const [analyticsData, setAnalyticsData] = useState({
     kpis: {
       totalOrganizations: 0,
+      activeOrganizations: 0,
       fleetManagers: 0,
+      activeFleetManagers: 0,
+      inactiveFleetManagers: 0,
       vehicles: 0,
       drivers: 0,
       activeTrips: 0,
@@ -51,8 +55,8 @@ export default function Analytics() {
     }
   });
 
-  const fetchAnalytics = async (selectedFilter) => {
-    setLoading(true);
+  const fetchAnalytics = useCallback(async (selectedFilter, isBackground = false) => {
+    if (!isBackground) setLoading(true);
     try {
       const response = await adminApi.getAnalytics(selectedFilter);
       const result = response.data?.data || response.data;
@@ -60,16 +64,63 @@ export default function Analytics() {
         setAnalyticsData(result);
       }
     } catch (error) {
-      toast.error("Failed to load analytics data");
+      if (!isBackground) {
+        toast.error("Failed to load analytics data");
+      }
       console.error(error);
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchAnalytics(filter);
-  }, [filter]);
+
+    // Real-time socket events for live sync
+    const socket = getSocket();
+    let cleanupSocket = () => {};
+
+    if (socket) {
+      socket.emit("joinRoleRoom", "SUPER_ADMIN");
+
+      const handleLiveUpdate = () => {
+        fetchAnalytics(filter, true);
+      };
+
+      socket.on("dashboard:refresh", handleLiveUpdate);
+      socket.on("manager:created", handleLiveUpdate);
+      socket.on("manager:updated", handleLiveUpdate);
+      socket.on("manager:deleted", handleLiveUpdate);
+      socket.on("organization:created", handleLiveUpdate);
+      socket.on("organization:updated", handleLiveUpdate);
+      socket.on("organization:deleted", handleLiveUpdate);
+      socket.on("trip:completed", handleLiveUpdate);
+      socket.on("trip:approved", handleLiveUpdate);
+      socket.on("trip:status-updated", handleLiveUpdate);
+
+      cleanupSocket = () => {
+        socket.off("dashboard:refresh", handleLiveUpdate);
+        socket.off("manager:created", handleLiveUpdate);
+        socket.off("manager:updated", handleLiveUpdate);
+        socket.off("manager:deleted", handleLiveUpdate);
+        socket.off("organization:created", handleLiveUpdate);
+        socket.off("organization:updated", handleLiveUpdate);
+        socket.off("organization:deleted", handleLiveUpdate);
+        socket.off("trip:completed", handleLiveUpdate);
+        socket.off("trip:approved", handleLiveUpdate);
+        socket.off("trip:status-updated", handleLiveUpdate);
+      };
+    }
+
+    const intervalId = setInterval(() => {
+      fetchAnalytics(filter, true);
+    }, 15000);
+
+    return () => {
+      clearInterval(intervalId);
+      cleanupSocket();
+    };
+  }, [filter, fetchAnalytics]);
 
   const { kpis, charts } = analyticsData;
 
@@ -130,8 +181,8 @@ export default function Analytics() {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-8">
-            <KPICard title="Organizations" value={kpis?.organizations?.total || 0} icon={Building2} />
-            <KPICard title="Fleet Managers" value={kpis?.managers?.total || 0} icon={Users} />
+            <KPICard title="Organizations" value={kpis?.organizations?.total ?? kpis?.totalOrganizations ?? 0} icon={Building2} />
+            <KPICard title="Active Fleet Managers" value={kpis?.managers?.active ?? kpis?.activeFleetManagers ?? kpis?.managers?.total ?? kpis?.fleetManagers ?? 0} icon={Users} />
             <KPICard title="Active Trips" value={kpis?.activeTrips ?? 0} icon={MapPin} />
             <KPICard title="Completed Trips" value={kpis?.completedTrips ?? 0} icon={CheckCircle2} />
           </div>

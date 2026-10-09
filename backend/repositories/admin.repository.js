@@ -11,7 +11,7 @@ import { calculateDistance } from '../utils/distanceCalculator.js';
 import { calculateTripFinance } from '../utils/earningsCalculator.js';
 
 export const getAllManagers = async () => {
-  return User.find({ role: 'FLEET_MANAGER' }).populate('organization', 'name').select('-password');
+  return User.find({ role: { $in: ['FLEET_MANAGER', 'fleet_manager'] } }).populate('organization', 'name status _id').select('-password');
 };
 
 export const createManager = async (managerData) => {
@@ -20,13 +20,17 @@ export const createManager = async (managerData) => {
 };
 
 export const getManagerById = async (id) => {
-  return User.findOne({ _id: id, role: { $in: ['FLEET_MANAGER', 'fleet_manager'] } }).populate('organization', 'name _id').select('-password');
+  return User.findOne({ _id: id, role: { $in: ['FLEET_MANAGER', 'fleet_manager'] } }).populate('organization', 'name status _id').select('-password');
 };
 
 export const getDistinctOrganizations = async (filter = {}) => {
   const query = {};
-  if (filter.isActive !== undefined) {
-    query.status = filter.isActive ? 'Active' : 'Pending';
+  if (filter.isActive === true) {
+    query.status = 'Active';
+  } else if (filter.isActive === false) {
+    query.status = { $ne: 'Active' };
+  } else if (filter.status) {
+    query.status = filter.status;
   }
   return Organization.countDocuments(query);
 };

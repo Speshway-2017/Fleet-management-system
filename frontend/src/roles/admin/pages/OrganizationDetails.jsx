@@ -59,9 +59,12 @@ export default function OrganizationDetails() {
     }
   }, [id]);
 
-  const orgManagers = org?.fleetManagers || (org 
+  const rawManagers = org?.fleetManagers || (org 
     ? fleetManagers.filter(m => m.organizationId === (org.id || org._id))
     : []);
+  const orgManagers = rawManagers.map(m => 
+    org?.status === "Suspended" ? { ...m, status: "Inactive", isActive: false } : m
+  );
 
   const layout = (content) => (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
@@ -380,6 +383,7 @@ export default function OrganizationDetails() {
       const res = await adminApi.getOrganizationDetails(id);
       setOrg(res.data?.data || res.data);
       if (fetchOrganizations) await fetchOrganizations();
+      if (fetchFleetManagers) await fetchFleetManagers();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to update status");
     }

@@ -14,6 +14,9 @@ import Organization from '../models/Organization.js';
 import User from '../models/User.js';
 
 export const getAdminDashboardData = async () => {
+  const suspendedOrgs = await Organization.find({ status: 'Suspended' }).select('_id');
+  const suspendedOrgIds = suspendedOrgs.map(o => o._id);
+
   const [
     totalOrganizations,
     activeOrganizations,
@@ -30,9 +33,14 @@ export const getAdminDashboardData = async () => {
   ] = await Promise.all([
     getDistinctOrganizations(), // total organizations
     getDistinctOrganizations({ isActive: true }), // active organizations
-    getUsersCount({ role: 'FLEET_MANAGER' }), // total fleet managers
-    getUsersCount({ role: 'FLEET_MANAGER', isActive: { $ne: false } }), // active fleet managers
-    getVehiclesCount({ status: 'Active' }), // active vehicles count
+    getUsersCount({ role: { $in: ['FLEET_MANAGER', 'fleet_manager'] } }), // total fleet managers
+    getUsersCount({
+      role: { $in: ['FLEET_MANAGER', 'fleet_manager'] },
+      isActive: { $ne: false },
+      status: { $nin: ['Inactive', 'Suspended'] },
+      organization: { $nin: suspendedOrgIds }
+    }), // active fleet managers (excluding managers of suspended orgs)
+    getVehiclesCount({ status: { $nin: ['Inactive', 'Retired', 'Out of Service'] } }), // active vehicles count
     getRevenueAggregate(), // total revenue
     getTodayRevenueAggregate(), // today revenue
     getPendingRequestsCount(), // pending requests count
@@ -95,7 +103,7 @@ export const getMonthlyGrowthStats = async () => {
   // Get cumulative start counts
   const firstMonthStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
   let orgCumulative = await Organization.countDocuments({ createdAt: { $lt: firstMonthStart } });
-  let managerCumulative = await User.countDocuments({ role: 'FLEET_MANAGER', createdAt: { $lt: firstMonthStart } });
+  let managerCumulative = await User.countDocuments({ role: { $in: ['FLEET_MANAGER', 'fleet_manager'] }, createdAt: { $lt: firstMonthStart } });
 
   // Grouped counts per month
   const orgGrowthAgg = await Organization.aggregate([
@@ -109,7 +117,7 @@ export const getMonthlyGrowthStats = async () => {
   ]);
 
   const managerGrowthAgg = await User.aggregate([
-    { $match: { role: 'FLEET_MANAGER', createdAt: { $gte: firstMonthStart } } },
+    { $match: { role: { $in: ['FLEET_MANAGER', 'fleet_manager'] }, createdAt: { $gte: firstMonthStart } } },
     {
       $group: {
         _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },

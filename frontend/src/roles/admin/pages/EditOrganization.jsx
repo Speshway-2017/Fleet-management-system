@@ -35,7 +35,7 @@ function OrgTabs({ activeId, active }) {
 export default function EditOrganization() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { organizations, fetchOrganizations } = useAdmin();
+  const { organizations, fetchOrganizations, fetchFleetManagers } = useAdmin();
 
   const org = organizations.find(o => String(o._id || o.id) === String(id));
 
@@ -207,6 +207,7 @@ export default function EditOrganization() {
       await adminApi.updateOrganization(id, payload);
       toast.success("Organization updated successfully!");
       if (fetchOrganizations) await fetchOrganizations();
+      if (fetchFleetManagers) await fetchFleetManagers();
       navigate("/admin/organizations");
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to update organization");
@@ -220,6 +221,7 @@ export default function EditOrganization() {
       await adminApi.deleteOrganization(id);
       toast.success('Organization deleted successfully!');
       if (fetchOrganizations) await fetchOrganizations();
+      if (fetchFleetManagers) await fetchFleetManagers();
       navigate('/admin/organizations');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete organization');

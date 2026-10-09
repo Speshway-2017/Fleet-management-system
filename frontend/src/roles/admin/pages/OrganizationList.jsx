@@ -40,7 +40,7 @@ export default function OrganizationList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchError, setSearchError] = useState("");
   const [loading, setLoading] = useState(true);
-  const { organizations, fetchOrganizations } = useAdmin();
+  const { organizations, fetchOrganizations, fetchFleetManagers } = useAdmin();
 
   const handleSearchKeyDown = (e) => {
     if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) {
@@ -60,7 +60,6 @@ export default function OrganizationList() {
     const raw = e.target.value;
     let val = raw;
     let hasInvalid = false;
-
     if (/[^a-zA-Z\s\-]/.test(raw)) {
       hasInvalid = true;
       val = raw.replace(/[^a-zA-Z\s\-]/g, '');
@@ -83,6 +82,9 @@ export default function OrganizationList() {
       if (fetchOrganizations) {
         await fetchOrganizations();
       }
+      if (fetchFleetManagers) {
+        await fetchFleetManagers();
+      }
       setLoading(false);
     };
     loadData();
@@ -94,6 +96,7 @@ export default function OrganizationList() {
       await adminApi.deleteOrganization(id);
       toast.success("Organization deleted successfully");
       if (fetchOrganizations) await fetchOrganizations();
+      if (fetchFleetManagers) await fetchFleetManagers();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to delete organization");
     }
@@ -112,6 +115,7 @@ export default function OrganizationList() {
       await adminApi.suspendOrganization(orgId, nextStatus);
       toast.success(isSuspended ? "Organization reactivated successfully" : "Organization suspended successfully");
       if (fetchOrganizations) await fetchOrganizations();
+      if (fetchFleetManagers) await fetchFleetManagers();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to update organization status");
     }
@@ -256,7 +260,7 @@ export default function OrganizationList() {
                         </div>
                       </td>
                       <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{org.industry}</td>
-                      <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{org.activeManagers}</td>
+                      <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{org.status === "Suspended" ? 0 : (org.activeManagers ?? 0)}</td>
                       <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{org.subscription}</td>
                       <td className="py-4 px-6 whitespace-nowrap text-center">
                         <StatusBadge status={org.status} />
@@ -313,7 +317,7 @@ export default function OrganizationList() {
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     <div className="flex flex-col">
                       <span className="text-[10px] uppercase font-bold text-slate-400">Managers</span>
-                      <span className="text-sm font-medium text-slate-700">{org.activeManagers}</span>
+                      <span className="text-sm font-medium text-slate-700">{org.status === "Suspended" ? 0 : (org.activeManagers ?? 0)}</span>
                     </div>
                     <div className="flex flex-col">
                       <span className="text-[10px] uppercase font-bold text-slate-400">Plan</span>
