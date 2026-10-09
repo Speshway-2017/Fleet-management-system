@@ -1323,7 +1323,11 @@ export const createTrip = async (req, res, next) => {
       cargoType,
       cargoWeight,
       tripNotes,
-      estimatedDistance
+      estimatedDistance,
+      serviceType,
+      paymentMethod,
+      codAmount,
+      paymentStatus
     } = req.body;
 
     const finalPickupAddress = normalizeAddress(pickupAddress || fromAddress);

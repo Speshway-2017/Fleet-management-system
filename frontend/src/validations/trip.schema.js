@@ -30,7 +30,11 @@ export const tripSchema = z.object({
   cargoWeight: numericAmountSchema('Cargo Weight').optional(),
   scheduledDate: z.string().or(z.date()).optional(),
   tripNotes: z.string().trim().max(1000).optional(),
-  notes: z.string().trim().max(1000).optional()
+  notes: z.string().trim().max(1000).optional(),
+  serviceType: z.string().trim().optional(),
+  paymentMethod: z.string().trim().optional(),
+  codAmount: z.number().optional(),
+  paymentStatus: z.string().trim().optional()
 }).refine(data => data.vehicle || data.vehicleId, {
   message: 'Vehicle is required',
   path: ['vehicle']

@@ -22,7 +22,11 @@ export const createTripSchema = z.object({
   cargoType: z.string().trim().optional(),
   cargoWeight: numericAmountSchema('Cargo Weight').optional(),
   scheduledDate: z.string().or(z.date()).optional(),
-  notes: z.string().trim().max(1000).optional()
+  notes: z.string().trim().max(1000).optional(),
+  serviceType: z.string().trim().optional(),
+  paymentMethod: z.string().trim().optional(),
+  codAmount: z.number().optional(),
+  paymentStatus: z.string().trim().optional()
 });
 
 export const updateTripSchema = z.object({
@@ -68,7 +72,11 @@ export const updateTripSchema = z.object({
   ]).optional(),
   cargoType: z.string().trim().optional(),
   cargoWeight: numericAmountSchema('Cargo Weight').optional(),
-  notes: z.string().trim().max(1000).optional()
+  notes: z.string().trim().max(1000).optional(),
+  serviceType: z.string().trim().optional(),
+  paymentMethod: z.string().trim().optional(),
+  codAmount: z.number().optional(),
+  paymentStatus: z.string().trim().optional()
 });
 
 export const tripChatSchema = z.object({
