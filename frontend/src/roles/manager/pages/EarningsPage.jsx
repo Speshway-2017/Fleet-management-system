@@ -25,6 +25,7 @@ import {
   Legend
 } from "recharts";
 import { formatCurrency, formatFullCurrency, parseNumericValue } from "@/utils/currencyFormatter";
+import { getSocket } from "@/api/socket";
 import toast from "react-hot-toast";
 import { validateSearchQuery } from "@/validations/common.schema.js";
 
@@ -58,11 +59,26 @@ export default function EarningsPage() {
 
   useEffect(() => {
     fetchEarnings();
+
+    const socket = getSocket();
+    const handleInstantRefresh = () => fetchEarnings(false);
+
+    socket.on("trip:status-updated", handleInstantRefresh);
+    socket.on("trip:completed", handleInstantRefresh);
+    socket.on("dashboard:refresh", handleInstantRefresh);
+    socket.on("trip:created", handleInstantRefresh);
+
+    return () => {
+      socket.off("trip:status-updated", handleInstantRefresh);
+      socket.off("trip:completed", handleInstantRefresh);
+      socket.off("dashboard:refresh", handleInstantRefresh);
+      socket.off("trip:created", handleInstantRefresh);
+    };
   }, []);
 
-  const fetchEarnings = async () => {
+  const fetchEarnings = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const { data: resData } = await axiosClient.get("/manager/earnings");
       if (resData.success) {
         setData(resData.data);
@@ -71,9 +87,9 @@ export default function EarningsPage() {
       }
     } catch (error) {
       console.error("Error fetching earnings:", error);
-      toast.error("Failed to connect to backend server");
+      if (showLoading) toast.error("Failed to connect to backend server");
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -181,14 +197,29 @@ export default function EarningsPage() {
 
   const dynamicStats = useMemo(() => {
     let totalRevenue = 0;
-    let totalExpenses = 0;
+    let totalExpenses = 0; // Operational costs from completed trips
     let totalNetEarnings = 0;
 
-    filteredEarnings.forEach(item => {
-      totalRevenue += item.revenue;
-      totalExpenses += item.expenses;
-      totalNetEarnings += item.netEarnings;
+    const isCompletedStatus = (st) => {
+      const s = String(st || '').trim().toLowerCase();
+      return s === 'completed' || s === 'complete trip' || s === 'delivered';
+    };
+
+    // Use completed trips so all 3 KPI cards stay consistent with the same trips and date filters
+    const completedList = statusFilter === 'All'
+      ? filteredEarnings.filter(item => item.isCompleted ?? isCompletedStatus(item.status))
+      : filteredEarnings;
+
+    const targetTrips = completedList.length > 0 ? completedList : filteredEarnings;
+
+    targetTrips.forEach(item => {
+      const rev = Number(item.revenue) || 0;
+      const exp = Number(item.expenses) || 0;
+      totalRevenue += rev;
+      totalExpenses += exp;
     });
+
+    totalNetEarnings = totalRevenue - totalExpenses;
 
     const marginPercent = totalRevenue > 0
       ? Math.round((totalNetEarnings / totalRevenue) * 100)
@@ -200,7 +231,7 @@ export default function EarningsPage() {
       totalNetEarnings,
       marginPercent
     };
-  }, [filteredEarnings]);
+  }, [filteredEarnings, statusFilter]);
 
 
 
@@ -252,7 +283,7 @@ export default function EarningsPage() {
           </div>
           <div className="mt-4">
             <h3 className="text-2xl font-bold font-poppins text-[#1E293B]">
-              {formatCurrency(dynamicStats.totalRevenue)}
+              {formatFullCurrency(dynamicStats.totalRevenue)}
             </h3>
             <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-1.5">
               <TrendingUp className="w-3.5 h-3.5" /> Gross earnings
@@ -270,7 +301,7 @@ export default function EarningsPage() {
           </div>
           <div className="mt-4">
             <h3 className="text-2xl font-bold font-poppins text-[#1E293B]">
-              {formatCurrency(dynamicStats.totalExpenses)}
+              {formatFullCurrency(dynamicStats.totalExpenses)}
             </h3>
             <span className="text-[11px] text-red-500 font-semibold flex items-center gap-1 mt-1.5">
               Fuel, tolls & allowances
@@ -288,10 +319,10 @@ export default function EarningsPage() {
           </div>
           <div className="mt-4">
             <h3 className="text-2xl font-bold font-poppins text-[#1E293B]">
-              {formatCurrency(dynamicStats.totalNetEarnings)}
+              {formatFullCurrency(dynamicStats.totalNetEarnings)}
             </h3>
             <span className="text-[11px] text-[#A14000] font-semibold flex items-center gap-1 mt-1.5">
-              After operating deductions
+              <TrendingUp className="w-3.5 h-3.5" /> After operating deductions ({dynamicStats.marginPercent}%)
             </span>
           </div>
         </div>
