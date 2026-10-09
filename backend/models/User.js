@@ -21,6 +21,7 @@ const userSchema = new mongoose.Schema(
     dispatchEmail: { type: String, default: '' },
     organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
     isActive: { type: Boolean, default: true },
+    status: { type: String, enum: ['Active', 'Inactive', 'Suspended'], default: 'Active' },
     resetPasswordOtp: { type: String },
     resetPasswordExpires: { type: Date },
     resetPasswordAttempts: { type: Number, default: 0 },

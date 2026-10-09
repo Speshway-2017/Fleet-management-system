@@ -65,9 +65,16 @@ export const listOrganizations = async (_req, res, next) => {
     
     // Map to frontend expected format
     const formattedOrgs = await Promise.all(orgs.map(async (org) => {
-      const activeManagers = await User.countDocuments({
-        role: 'FLEET_MANAGER',
+      const isSuspended = org.status === 'Suspended';
+      const totalManagersCount = await User.countDocuments({
+        role: { $in: ['FLEET_MANAGER', 'fleet_manager'] },
         organization: org._id
+      });
+      const activeManagers = isSuspended ? 0 : await User.countDocuments({
+        role: { $in: ['FLEET_MANAGER', 'fleet_manager'] },
+        organization: org._id,
+        isActive: { $ne: false },
+        status: { $nin: ['Inactive', 'Suspended'] }
       });
 
       const totalRevenue = await getSettledRevenueForOrganization(org._id);
@@ -84,8 +91,8 @@ export const listOrganizations = async (_req, res, next) => {
         subscription: org.plan || 'Standard',
         status: currentStatus,
         createdAt: new Date(org.createdAt).toLocaleDateString(),
-        activeManagers,
-        managers: activeManagers, // support details page
+        activeManagers: isSuspended ? 0 : activeManagers,
+        managers: isSuspended ? 0 : activeManagers,
         joined: new Date(org.createdAt).toLocaleDateString(),
         address: org.address,
         city: org.city,
@@ -93,7 +100,8 @@ export const listOrganizations = async (_req, res, next) => {
         country: org.country,
         plan: org.plan,
         stats: {
-          totalFleetManagers: activeManagers,
+          totalFleetManagers: isSuspended ? 0 : totalManagersCount,
+          activeFleetManagers: isSuspended ? 0 : activeManagers,
           totalRevenue
         }
       };
@@ -171,12 +179,15 @@ export const getOrganizationDetails = async (req, res, next) => {
         ? nameParts[0][0] + nameParts[nameParts.length - 1][0] 
         : nameParts[0]?.substring(0, 2) || 'NA';
 
+      const isSuspended = org.status === 'Suspended';
+      const resolvedStatus = isSuspended ? 'Inactive' : (manager.status || (manager.isActive ? 'Active' : 'Inactive'));
+
       return {
         id: manager._id.toString(),
         name: manager.name,
         email: manager.email,
         phone: manager.phone,
-        status: manager.status || (manager.isActive ? 'Active' : 'Inactive'),
+        status: resolvedStatus,
         role: manager.role === 'FLEET_MANAGER' ? 'Fleet Manager' : manager.role,
         initials: initials.toUpperCase(),
         vehiclesManaged,
@@ -188,6 +199,7 @@ export const getOrganizationDetails = async (req, res, next) => {
       };
     });
 
+    const isOrgSuspended = org.status === 'Suspended';
     const totalActiveTrips = activeTrips.length;
     const orgTotalRevenue = orgTrips.reduce((sum, t) => {
       const inv = invoiceMap.get(t._id?.toString()) || (t.tripInvoice?.invoiceNumber ? invoiceMap.get(t.tripInvoice.invoiceNumber) : null);
@@ -197,6 +209,9 @@ export const getOrganizationDetails = async (req, res, next) => {
     const totalVehiclesCount = orgVehicles.length;
 
     const currentStatus = org.status || 'Pending';
+    const activeManagersCount = isOrgSuspended
+      ? 0
+      : orgManagers.filter(m => m.isActive !== false && m.status !== 'Inactive' && m.status !== 'Suspended').length;
 
     const formattedOrg = {
       id: org._id.toString(),
@@ -208,10 +223,11 @@ export const getOrganizationDetails = async (req, res, next) => {
       subscription: org.plan || 'Standard',
       status: currentStatus,
       createdAt: new Date(org.createdAt).toLocaleDateString(),
-      activeManagers: orgManagers.length,
+      activeManagers: activeManagersCount,
       managers: orgManagers.length,
       stats: {
         totalFleetManagers: orgManagers.length,
+        activeFleetManagers: activeManagersCount,
         totalVehicles: totalVehiclesCount,
         totalActiveTrips: totalActiveTrips,
         totalRevenue: orgTotalRevenue,
@@ -377,9 +393,17 @@ export const updateOrganization = async (req, res, next) => {
       if (req.body.status === 'Active') {
         statusMsg = ' and activated';
         notificationType = 'success';
+        await User.updateMany(
+          { organization: id, role: { $in: ['FLEET_MANAGER', 'fleet_manager'] } },
+          { status: 'Active', isActive: true }
+        );
       } else if (req.body.status === 'Suspended') {
         statusMsg = ' and suspended/deactivated';
         notificationType = 'warning';
+        await User.updateMany(
+          { organization: id, role: { $in: ['FLEET_MANAGER', 'fleet_manager'] } },
+          { status: 'Inactive', isActive: false }
+        );
       } else {
         statusMsg = ` and status set to ${req.body.status}`;
       }
@@ -397,6 +421,9 @@ export const updateOrganization = async (req, res, next) => {
     const io = req.app.locals.io || req.io;
     if (io) {
       io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
+      io.emit('dashboard:refresh');
+      io.emit('organization:updated', updatedOrg);
+      io.emit('manager:updated');
     }
 
     return sendSuccess(res, 200, updatedOrg, 'Organization updated successfully');
@@ -432,6 +459,9 @@ export const deleteOrganization = async (req, res, next) => {
     const io = req.app.locals.io || req.io;
     if (io) {
       io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
+      io.emit('dashboard:refresh');
+      io.emit('organization:deleted', { id });
+      io.emit('manager:updated');
     }
 
     return sendSuccess(res, 200, null, 'Organization deleted successfully');
@@ -452,10 +482,23 @@ export const suspendOrganization = async (req, res, next) => {
     org.status = newStatus;
     await org.save();
 
+    // Cascade suspend/activate to all Fleet Managers belonging to this organization
+    if (newStatus === 'Suspended') {
+      await User.updateMany(
+        { organization: id, role: { $in: ['FLEET_MANAGER', 'fleet_manager'] } },
+        { status: 'Inactive', isActive: false }
+      );
+    } else {
+      await User.updateMany(
+        { organization: id, role: { $in: ['FLEET_MANAGER', 'fleet_manager'] } },
+        { status: 'Active', isActive: true }
+      );
+    }
+
     // Store Admin Notification in MongoDB
     const notification = await createNotificationInRepo({
       title: newStatus === 'Suspended' ? 'Organization Suspended' : 'Organization Activated',
-      message: `Organization "${org.name}" status has been changed to ${newStatus}.`,
+      message: `Organization "${org.name}" status has been changed to ${newStatus}. All assigned fleet managers are now ${newStatus === 'Suspended' ? 'Inactive' : 'Active'}.`,
       type: newStatus === 'Suspended' ? 'warning' : 'success',
       recipientRole: 'SUPER_ADMIN',
       createdBy: req.user?._id,
@@ -465,6 +508,9 @@ export const suspendOrganization = async (req, res, next) => {
     const io = req.app.locals.io || req.io;
     if (io) {
       io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
+      io.emit('dashboard:refresh');
+      io.emit('organization:updated', org);
+      io.emit('manager:updated');
     }
 
     return sendSuccess(res, 200, org, `Organization ${newStatus === 'Suspended' ? 'suspended' : 'activated'} successfully`);
@@ -506,6 +552,9 @@ export const listManagers = async (_req, res, next) => {
         ]
       });
 
+      const isOrgSuspended = manager.organization?.status === 'Suspended';
+      const resolvedStatus = isOrgSuspended ? 'Inactive' : (manager.status || (manager.isActive ? 'Active' : 'Inactive'));
+
       return {
         id: manager._id.toString(),
         name: manager.name,
@@ -515,11 +564,12 @@ export const listManagers = async (_req, res, next) => {
         organization: manager.organization ? {
           _id: manager.organization._id.toString(),
           id: manager.organization._id.toString(),
-          name: manager.organization.name
+          name: manager.organization.name,
+          status: manager.organization.status
         } : null,
         organizationId: manager.organization ? manager.organization._id.toString() : null,
         role: manager.role === 'FLEET_MANAGER' ? 'Fleet Manager' : manager.role,
-        status: manager.status || (manager.isActive ? 'Active' : 'Inactive'),
+        status: resolvedStatus,
         lastLogin: manager.lastLogin ? new Date(manager.lastLogin).toLocaleDateString() : 'Never',
         initials: initials.toUpperCase(),
         created: new Date(manager.createdAt).toLocaleDateString(),
@@ -584,6 +634,12 @@ export const createManager = async (req, res, next) => {
     const io = req.app.locals.io || req.io;
     if (io) {
       io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
+      io.emit('dashboard:refresh');
+      io.emit('manager:created', {
+        id: manager._id,
+        name: manager.name,
+        organizationId: manager.organization
+      });
     }
 
     // Send manager welcome email with credentials via Nodemailer
@@ -682,6 +738,12 @@ export const updateManager = async (req, res, next) => {
     const io = req.app.locals.io || req.io;
     if (io) {
       io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
+      io.emit('dashboard:refresh');
+      io.emit('manager:updated', {
+        id: updatedManager._id,
+        name: updatedManager.name,
+        organizationId: updatedManager.organization
+      });
     }
 
     return sendSuccess(res, 200, updatedManager, 'Fleet manager updated successfully');
@@ -765,20 +827,24 @@ export const getManagerDetails = async (req, res, next) => {
       ]
     });
 
-    const formatted = {
-      id: manager._id.toString(),
-      name: manager.name,
-      email: manager.email,
-      phone: manager.phone || 'N/A',
-      org: manager.organization ? manager.organization.name : 'N/A',
-      organization: manager.organization ? {
-        _id: manager.organization._id.toString(),
-        id: manager.organization._id.toString(),
-        name: manager.organization.name
-      } : null,
-      organizationId: manager.organization ? manager.organization._id.toString() : null,
-      role: manager.role === 'FLEET_MANAGER' ? 'Fleet Manager' : manager.role,
-      status: manager.status || (manager.isActive ? 'Active' : 'Inactive'),
+      const isOrgSuspended = manager.organization?.status === 'Suspended';
+      const resolvedStatus = isOrgSuspended ? 'Inactive' : (manager.status || (manager.isActive ? 'Active' : 'Inactive'));
+
+      const formatted = {
+        id: manager._id.toString(),
+        name: manager.name,
+        email: manager.email,
+        phone: manager.phone || 'N/A',
+        org: manager.organization ? manager.organization.name : 'N/A',
+        organization: manager.organization ? {
+          _id: manager.organization._id.toString(),
+          id: manager.organization._id.toString(),
+          name: manager.organization.name,
+          status: manager.organization.status
+        } : null,
+        organizationId: manager.organization ? manager.organization._id.toString() : null,
+        role: manager.role === 'FLEET_MANAGER' ? 'Fleet Manager' : manager.role,
+        status: resolvedStatus,
       lastLogin: manager.lastLogin ? new Date(manager.lastLogin).toLocaleDateString() : 'Never',
       initials: initials.toUpperCase(),
       created: new Date(manager.createdAt).toLocaleDateString(),
@@ -1018,6 +1084,9 @@ export const getAnalytics = async (req, res, next) => {
       startDate.setFullYear(startDate.getFullYear() - 1);
     }
 
+    const suspendedOrgDocs = await Organization.find({ status: 'Suspended' }).select('_id');
+    const suspendedOrgIds = suspendedOrgDocs.map(o => o._id);
+
     const [
       totalOrgs,
       activeOrgs,
@@ -1037,9 +1106,21 @@ export const getAnalytics = async (req, res, next) => {
       Organization.countDocuments(),
       Organization.countDocuments({ status: 'Active' }),
       Organization.countDocuments({ status: 'Suspended' }),
-      User.countDocuments({ role: 'FLEET_MANAGER' }),
-      User.countDocuments({ role: 'FLEET_MANAGER', status: 'Active' }),
-      User.countDocuments({ role: 'FLEET_MANAGER', status: 'Inactive' }),
+      User.countDocuments({ role: { $in: ['FLEET_MANAGER', 'fleet_manager'] } }),
+      User.countDocuments({
+        role: { $in: ['FLEET_MANAGER', 'fleet_manager'] },
+        isActive: { $ne: false },
+        status: { $nin: ['Inactive', 'Suspended'] },
+        organization: { $nin: suspendedOrgIds }
+      }),
+      User.countDocuments({
+        role: { $in: ['FLEET_MANAGER', 'fleet_manager'] },
+        $or: [
+          { isActive: false },
+          { status: { $in: ['Inactive', 'Suspended'] } },
+          { organization: { $in: suspendedOrgIds } }
+        ]
+      }),
       PlatformIssue.countDocuments(),
       PlatformIssue.countDocuments({ status: 'Open' }),
       PlatformIssue.countDocuments({ status: 'Resolved' }),
@@ -1110,6 +1191,11 @@ export const getAnalytics = async (req, res, next) => {
           active: activeManagers,
           inactive: inactiveManagers
         },
+        totalOrganizations: totalOrgs,
+        activeOrganizations: activeOrgs,
+        fleetManagers: totalManagers,
+        activeFleetManagers: activeManagers,
+        inactiveFleetManagers: inactiveManagers,
         issues: {
           total: totalIssues,
           open: openIssues,

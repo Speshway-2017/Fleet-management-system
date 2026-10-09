@@ -190,11 +190,29 @@ export function AdminProvider({ children }) {
         setNotifications(prev => prev.filter(n => n.id !== data.id));
       });
 
+      socket.on("organization:updated", () => {
+        fetchOrganizations();
+        fetchFleetManagers();
+      });
+
+      socket.on("manager:updated", () => {
+        fetchFleetManagers();
+        fetchOrganizations();
+      });
+
+      socket.on("dashboard:refresh", () => {
+        fetchOrganizations();
+        fetchFleetManagers();
+      });
+
       return () => {
         socket.off("notification:new");
         socket.off("notification:read");
         socket.off("notification:update");
         socket.off("notification:delete");
+        socket.off("organization:updated");
+        socket.off("manager:updated");
+        socket.off("dashboard:refresh");
       };
     } else {
       // Disconnect if not authenticated

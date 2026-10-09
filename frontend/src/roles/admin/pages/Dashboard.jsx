@@ -62,7 +62,14 @@ function Dashboard() {
         // Extract data assuming standard { data: { data: ... } } from axios and sendSuccess
         const result = response.data?.data || response.data;
         if (result) {
-          setData(result);
+          setData(prev => ({
+            ...prev,
+            ...result,
+            statistics: {
+              ...prev.statistics,
+              ...(result.statistics || result)
+            }
+          }));
         }
       } catch (error) {
         if (error?.response?.status !== 401) {
@@ -88,6 +95,12 @@ function Dashboard() {
       };
 
       socket.on("dashboard:refresh", handleLiveEvent);
+      socket.on("manager:created", handleLiveEvent);
+      socket.on("manager:updated", handleLiveEvent);
+      socket.on("manager:deleted", handleLiveEvent);
+      socket.on("organization:created", handleLiveEvent);
+      socket.on("organization:updated", handleLiveEvent);
+      socket.on("organization:deleted", handleLiveEvent);
       socket.on("trip:completed", handleLiveEvent);
       socket.on("trip:approved", handleLiveEvent);
       socket.on("trip:status-updated", handleLiveEvent);
@@ -98,6 +111,12 @@ function Dashboard() {
 
       cleanupSocket = () => {
         socket.off("dashboard:refresh", handleLiveEvent);
+        socket.off("manager:created", handleLiveEvent);
+        socket.off("manager:updated", handleLiveEvent);
+        socket.off("manager:deleted", handleLiveEvent);
+        socket.off("organization:created", handleLiveEvent);
+        socket.off("organization:updated", handleLiveEvent);
+        socket.off("organization:deleted", handleLiveEvent);
         socket.off("trip:completed", handleLiveEvent);
         socket.off("trip:approved", handleLiveEvent);
         socket.off("trip:status-updated", handleLiveEvent);
@@ -144,9 +163,26 @@ function Dashboard() {
     { name: "Suspended", value: suspendedOrgs, color: "#ef4444" }, // red-500
   ];
 
+  // Robust active & total manager resolution with AdminContext fallback
+  const activeFleetManagersCount = 
+    (statistics?.activeFleetManagers !== undefined && statistics?.activeFleetManagers !== null && Number(statistics.activeFleetManagers) > 0)
+      ? Number(statistics.activeFleetManagers)
+      : (statistics?.fleetManagers !== undefined && statistics?.fleetManagers !== null && Number(statistics.fleetManagers) > 0)
+      ? Number(statistics.fleetManagers)
+      : (Array.isArray(fleetManagers) && fleetManagers.length > 0)
+      ? fleetManagers.filter(m => m.status === 'Active' || m.status === 'ACTIVE' || m.isActive !== false).length || fleetManagers.length
+      : Number(statistics?.activeFleetManagers) || 0;
+
+  const totalFleetManagersCount = 
+    (statistics?.fleetManagers !== undefined && statistics?.fleetManagers !== null && Number(statistics.fleetManagers) > 0)
+      ? Number(statistics.fleetManagers)
+      : (Array.isArray(fleetManagers) && fleetManagers.length > 0)
+      ? fleetManagers.length
+      : activeFleetManagersCount;
+
   // Transform data for bar chart
-  const activeManagers = statistics.activeFleetManagers || 0;
-  const totalManagers = statistics.fleetManagers || 0;
+  const activeManagers = activeFleetManagersCount;
+  const totalManagers = totalFleetManagersCount;
   const inactiveManagers = Math.max(0, totalManagers - activeManagers);
 
   const fleetManagerData = [
@@ -222,9 +258,9 @@ function Dashboard() {
             />
             <KPICard
               title="Active Fleet Managers"
-              value={loading ? null : (statistics.activeFleetManagers || 0).toString()}
-              loading={loading}
-              subtitle="Currently active"
+              value={loading && activeFleetManagersCount === 0 ? null : activeFleetManagersCount.toString()}
+              loading={loading && activeFleetManagersCount === 0}
+              subtitle={`${totalFleetManagersCount > 0 ? Math.round((activeFleetManagersCount / totalFleetManagersCount) * 100) : 100}% of total`}
               icon={<Users className="w-4 h-4 text-[#0085FF]" />}
               variant="blue"
               filledBarsRatio={0.8}
@@ -349,7 +385,7 @@ function Dashboard() {
                 </div>
                 <div className="text-right shrink-0 min-w-0">
                   <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider truncate">Total Managers</div>
-                  <div className="text-sm sm:text-base font-black text-slate-800 leading-tight truncate">{statistics.fleetManagers || 0}</div>
+                  <div className="text-sm sm:text-base font-black text-slate-800 leading-tight truncate">{totalFleetManagersCount}</div>
                 </div>
               </div>
               <div className="h-56">
