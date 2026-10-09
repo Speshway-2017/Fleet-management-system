@@ -222,6 +222,10 @@ export const getDashboard = async (req, res, next) => {
       totalRevenue: fleetEarnings.formattedRevenue,
       totalRevenueNumeric: fleetEarnings.totalRevenue,
       revenue: fleetEarnings.totalRevenue,
+      totalExpenses: fleetEarnings.formattedExpenses,
+      totalExpensesNumeric: fleetEarnings.totalExpenses,
+      operationalCosts: fleetEarnings.formattedExpenses,
+      operationalCostsNumeric: fleetEarnings.totalExpenses,
       stats: fleetEarnings.stats,
       chartData: fleetEarnings.chartData,
       tripEarnings: fleetEarnings.tripEarnings
@@ -969,7 +973,11 @@ export const listTrips = async (req, res, next) => {
     });
 
     const fuelsByTripId = new Map();
+    const seenFuelIds = new Set();
     fuels.forEach(f => {
+      const fId = (f._id || f.id)?.toString();
+      if (fId && seenFuelIds.has(fId)) return;
+      if (fId) seenFuelIds.add(fId);
       const key = f.tripId?.toString().replace('#', '');
       if (key) {
         if (!fuelsByTripId.has(key)) fuelsByTripId.set(key, []);
@@ -978,7 +986,11 @@ export const listTrips = async (req, res, next) => {
     });
 
     const tollsByTripId = new Map();
+    const seenTollIds = new Set();
     tolls.forEach(t => {
+      const tId = (t._id || t.id)?.toString();
+      if (tId && seenTollIds.has(tId)) return;
+      if (tId) seenTollIds.add(tId);
       if (t.trip) {
         const key = t.trip.toString();
         if (!tollsByTripId.has(key)) tollsByTripId.set(key, []);

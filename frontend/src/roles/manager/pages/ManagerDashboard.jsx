@@ -168,6 +168,8 @@ export default function ManagerDashboard() {
     const handleInstantRefresh = () => fetchAllData(false);
 
     socket.on("trip:status-updated", handleInstantRefresh);
+    socket.on("trip:completed", handleInstantRefresh);
+    socket.on("dashboard:refresh", handleInstantRefresh);
     socket.on("trip:created", handleInstantRefresh);
     socket.on("driver:status-updated", handleInstantRefresh);
     socket.on("driver:location-update", handleInstantRefresh);
@@ -181,6 +183,8 @@ export default function ManagerDashboard() {
     return () => {
       clearInterval(intervalId);
       socket.off("trip:status-updated", handleInstantRefresh);
+      socket.off("trip:completed", handleInstantRefresh);
+      socket.off("dashboard:refresh", handleInstantRefresh);
       socket.off("trip:created", handleInstantRefresh);
       socket.off("driver:status-updated", handleInstantRefresh);
       socket.off("driver:location-update", handleInstantRefresh);
@@ -330,6 +334,11 @@ export default function ManagerDashboard() {
     let cod = 0;
     const periodTripPool = filtered.length > 0 ? filtered : trips;
 
+    const isCompletedStatus = (status) => {
+      const s = String(status || '').trim().toLowerCase();
+      return s === 'completed' || s === 'complete trip' || s === 'delivered';
+    };
+
     periodTripPool.forEach(t => {
       const tripIdStr = String(t._id || t.id || '');
       const cleanNum = String(t.tripNumber || '').replace('#', '');
@@ -340,11 +349,15 @@ export default function ManagerDashboard() {
         : Number(t.revenue || t.totalAmount || t.billingAmount || t.tripInvoice?.totalAmount || 0);
 
       const pMethod = String(t.paymentMethod || t.paymentType || "Prepaid").toUpperCase();
+      const isCompleted = isCompletedStatus(t.status);
 
       rev += tripRevenue;
 
-      if (pMethod.includes("COD") || pMethod.includes("CASH")) {
-        const codAmt = Number(t.codAmount) > 0 ? Number(t.codAmount) : tripRevenue;
+      // COD Collected strictly adds the exact COD amount when the trip is completed
+      if (isCompleted && (pMethod.includes("COD") || pMethod.includes("CASH") || Number(t.codAmount) > 0)) {
+        const codAmt = (t.codAmount !== undefined && Number(t.codAmount) > 0)
+          ? Number(t.codAmount)
+          : tripRevenue;
         cod += codAmt;
       }
     });
