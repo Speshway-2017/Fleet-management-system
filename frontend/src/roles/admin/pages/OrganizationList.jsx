@@ -40,7 +40,23 @@ export default function OrganizationList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchError, setSearchError] = useState("");
   const [loading, setLoading] = useState(true);
-  const { organizations, fetchOrganizations, fetchFleetManagers } = useAdmin();
+  const { organizations, fetchOrganizations, fetchFleetManagers, fleetManagers } = useAdmin();
+
+  const getFleetManagersCount = (org) => {
+    const orgId = org.id || org._id;
+    if (Array.isArray(fleetManagers) && fleetManagers.length > 0) {
+      const matchingCount = fleetManagers.filter(m => 
+        (m.organizationId && String(m.organizationId) === String(orgId)) ||
+        (m.organization?._id && String(m.organization._id) === String(orgId)) ||
+        (m.organization?.id && String(m.organization.id) === String(orgId))
+      ).length;
+      if (matchingCount > 0) return matchingCount;
+    }
+    if (typeof org.managers === "number") return org.managers;
+    if (typeof org.totalManagers === "number") return org.totalManagers;
+    if (typeof org.stats?.totalFleetManagers === "number") return org.stats.totalFleetManagers;
+    return org.activeManagers ?? 0;
+  };
 
   const handleSearchKeyDown = (e) => {
     if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) {
@@ -260,7 +276,7 @@ export default function OrganizationList() {
                         </div>
                       </td>
                       <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{org.industry}</td>
-                      <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{org.status === "Suspended" ? 0 : (org.activeManagers ?? 0)}</td>
+                      <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{getFleetManagersCount(org)}</td>
                       <td className="py-4 px-6 text-sm text-slate-500 font-medium whitespace-nowrap text-center">{org.subscription}</td>
                       <td className="py-4 px-6 whitespace-nowrap text-center">
                         <StatusBadge status={org.status} />
@@ -317,7 +333,7 @@ export default function OrganizationList() {
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     <div className="flex flex-col">
                       <span className="text-[10px] uppercase font-bold text-slate-400">Managers</span>
-                      <span className="text-sm font-medium text-slate-700">{org.status === "Suspended" ? 0 : (org.activeManagers ?? 0)}</span>
+                      <span className="text-sm font-medium text-slate-700">{getFleetManagersCount(org)}</span>
                     </div>
                     <div className="flex flex-col">
                       <span className="text-[10px] uppercase font-bold text-slate-400">Plan</span>
