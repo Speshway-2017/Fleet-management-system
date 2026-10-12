@@ -31,7 +31,7 @@ export const calculateTripFinance = (trip, invoice = null, fuelRecords = [], tol
     }
   }
 
-  // 1. Actual recorded operational expenses: Fuel (Single Source of Truth, prevent duplicates)
+  // 1. Actual recorded operational expenses: Fuel (Single Source of Truth, prevent duplicates & rogue values)
   let actualFuelAmount = 0;
   if (Array.isArray(fuelRecords) && fuelRecords.length > 0) {
     const seenFuelIds = new Set();
@@ -40,15 +40,19 @@ export const calculateTripFinance = (trip, invoice = null, fuelRecords = [], tol
       if (fId && seenFuelIds.has(fId)) return sum;
       if (fId) seenFuelIds.add(fId);
       const amt = Number(f?.amount || f?.totalAmount) || 0;
-      return sum + (amt > 0 ? amt : 0);
+      // Sanitize: ensure fuel amount is finite, positive, and realistic (<= ₹5,00,000 per fill)
+      const validAmt = (Number.isFinite(amt) && amt > 0 && amt <= 500000) ? Math.round(amt) : 0;
+      return sum + validAmt;
     }, 0);
   } else if (Number(invoice?.charges?.fuelCharges) > 0) {
-    actualFuelAmount = Number(invoice.charges.fuelCharges);
+    const amt = Number(invoice.charges.fuelCharges);
+    actualFuelAmount = (Number.isFinite(amt) && amt > 0 && amt <= 500000) ? Math.round(amt) : 0;
   } else if (Number(trip?.totalFuelAmount) > 0) {
-    actualFuelAmount = Number(trip.totalFuelAmount);
+    const amt = Number(trip.totalFuelAmount);
+    actualFuelAmount = (Number.isFinite(amt) && amt > 0 && amt <= 500000) ? Math.round(amt) : 0;
   }
 
-  // 2. Actual recorded operational expenses: Tolls (Single Source of Truth, prevent duplicates)
+  // 2. Actual recorded operational expenses: Tolls (Single Source of Truth, prevent duplicates & rogue values)
   let actualTollAmount = 0;
   if (Array.isArray(tollRecords) && tollRecords.length > 0) {
     const seenTollIds = new Set();
@@ -57,12 +61,16 @@ export const calculateTripFinance = (trip, invoice = null, fuelRecords = [], tol
       if (tId && seenTollIds.has(tId)) return sum;
       if (tId) seenTollIds.add(tId);
       const amt = Number(t?.amountPaid || t?.amount) || 0;
-      return sum + (amt > 0 ? amt : 0);
+      // Sanitize: ensure toll amount is finite, positive, and realistic (<= ₹1,00,000 per trip)
+      const validAmt = (Number.isFinite(amt) && amt > 0 && amt <= 100000) ? Math.round(amt) : 0;
+      return sum + validAmt;
     }, 0);
   } else if (Number(invoice?.charges?.tollCharges) > 0) {
-    actualTollAmount = Number(invoice.charges.tollCharges);
+    const amt = Number(invoice.charges.tollCharges);
+    actualTollAmount = (Number.isFinite(amt) && amt > 0 && amt <= 100000) ? Math.round(amt) : 0;
   } else if (Number(trip?.totalTollsAmount) > 0) {
-    actualTollAmount = Number(trip.totalTollsAmount);
+    const amt = Number(trip.totalTollsAmount);
+    actualTollAmount = (Number.isFinite(amt) && amt > 0 && amt <= 100000) ? Math.round(amt) : 0;
   }
 
   // 3. Actual recorded / calculated Driver Allowance (Single Source of Truth, count missing as ₹0)

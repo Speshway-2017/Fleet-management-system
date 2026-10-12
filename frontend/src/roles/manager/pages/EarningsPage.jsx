@@ -67,12 +67,28 @@ export default function EarningsPage() {
     socket.on("trip:completed", handleInstantRefresh);
     socket.on("dashboard:refresh", handleInstantRefresh);
     socket.on("trip:created", handleInstantRefresh);
+    socket.on("trip:updated", handleInstantRefresh);
+    socket.on("fuel:created", handleInstantRefresh);
+    socket.on("fuel:approved", handleInstantRefresh);
+    socket.on("fuel:updated", handleInstantRefresh);
+    socket.on("toll:created", handleInstantRefresh);
+
+    // Auto-refresh interval every 20 seconds for continuous dynamic synchronization
+    const intervalId = setInterval(() => {
+      fetchEarnings(false);
+    }, 20000);
 
     return () => {
       socket.off("trip:status-updated", handleInstantRefresh);
       socket.off("trip:completed", handleInstantRefresh);
       socket.off("dashboard:refresh", handleInstantRefresh);
       socket.off("trip:created", handleInstantRefresh);
+      socket.off("trip:updated", handleInstantRefresh);
+      socket.off("fuel:created", handleInstantRefresh);
+      socket.off("fuel:approved", handleInstantRefresh);
+      socket.off("fuel:updated", handleInstantRefresh);
+      socket.off("toll:created", handleInstantRefresh);
+      clearInterval(intervalId);
     };
   }, []);
 
@@ -196,31 +212,59 @@ export default function EarningsPage() {
   };
 
   const dynamicStats = useMemo(() => {
+    const serverStats = data.stats || {};
+    const isSearchingOrFiltering = Boolean(searchTerm.trim() || (statusFilter !== "All"));
+
+    // If viewing unfiltered overall state, prioritize canonical server stats from backend single source of truth
+    if (!isSearchingOrFiltering && serverStats.totalRevenue !== undefined && Number(serverStats.totalRevenue) > 0) {
+      const totalRevenue = Number(serverStats.totalRevenue) || 0;
+      const totalExpenses = Number(serverStats.totalExpenses) || 0;
+      const totalNetEarnings = Number(serverStats.totalNetEarnings) || (totalRevenue - totalExpenses);
+      const marginPercent = Number(serverStats.marginPercent) ?? (totalRevenue > 0 ? Math.round((totalNetEarnings / totalRevenue) * 100) : 0);
+      const fuelExpenses = Number(serverStats.totalFuelExpenses) || 0;
+      const tollExpenses = Number(serverStats.totalTollExpenses) || 0;
+      const completedCount = Number(serverStats.completedTripCount) || 0;
+      const tripCount = Number(serverStats.tripCount) || data.tripEarnings.length;
+
+      return {
+        totalRevenue,
+        totalExpenses,
+        totalNetEarnings,
+        marginPercent,
+        fuelExpenses,
+        tollExpenses,
+        completedCount,
+        tripCount,
+        isFiltered: false
+      };
+    }
+
+    // Dynamic aggregation for filtered view or fallback from trips list
     let totalRevenue = 0;
-    let totalExpenses = 0; // Operational costs from completed trips
-    let totalNetEarnings = 0;
+    let totalExpenses = 0;
+    let fuelExpenses = 0;
+    let tollExpenses = 0;
+    let completedCount = 0;
 
     const isCompletedStatus = (st) => {
       const s = String(st || '').trim().toLowerCase();
       return s === 'completed' || s === 'complete trip' || s === 'delivered';
     };
 
-    // Use completed trips so all 3 KPI cards stay consistent with the same trips and date filters
-    const completedList = statusFilter === 'All'
-      ? filteredEarnings.filter(item => item.isCompleted ?? isCompletedStatus(item.status))
-      : filteredEarnings;
+    const targetList = isSearchingOrFiltering ? filteredEarnings : data.tripEarnings;
 
-    const targetTrips = completedList.length > 0 ? completedList : filteredEarnings;
-
-    targetTrips.forEach(item => {
+    targetList.forEach(item => {
+      const isComp = item.isCompleted ?? isCompletedStatus(item.status);
+      if (isComp) completedCount++;
       const rev = Number(item.revenue) || 0;
       const exp = Number(item.expenses) || 0;
       totalRevenue += rev;
       totalExpenses += exp;
+      fuelExpenses += Number(item.fuelExpense) || 0;
+      tollExpenses += Number(item.tollExpense) || 0;
     });
 
-    totalNetEarnings = totalRevenue - totalExpenses;
-
+    const totalNetEarnings = totalRevenue - totalExpenses;
     const marginPercent = totalRevenue > 0
       ? Math.round((totalNetEarnings / totalRevenue) * 100)
       : 0;
@@ -229,11 +273,14 @@ export default function EarningsPage() {
       totalRevenue,
       totalExpenses,
       totalNetEarnings,
-      marginPercent
+      marginPercent,
+      fuelExpenses,
+      tollExpenses,
+      completedCount,
+      tripCount: targetList.length,
+      isFiltered: isSearchingOrFiltering
     };
-  }, [filteredEarnings, statusFilter]);
-
-
+  }, [data.stats, data.tripEarnings, filteredEarnings, searchTerm, statusFilter]);
 
   return (
     <div className="w-full px-6 md:px-8 py-8 overflow-x-hidden">
@@ -273,7 +320,7 @@ export default function EarningsPage() {
 
       {/* KPI Cards row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {/* Revenue Card */}
+        {/* Total Revenue Card */}
         <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-5 hover:-translate-y-0.5 transition-transform duration-300">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Total Revenue</span>
@@ -285,13 +332,16 @@ export default function EarningsPage() {
             <h3 className="text-2xl font-bold font-poppins text-[#1E293B]">
               {formatFullCurrency(dynamicStats.totalRevenue)}
             </h3>
-            <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-1.5">
-              <TrendingUp className="w-3.5 h-3.5" /> Gross earnings
+            <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-1.5 truncate">
+              <TrendingUp className="w-3.5 h-3.5 shrink-0" />
+              {dynamicStats.completedCount > 0 
+                ? `From ${dynamicStats.completedCount} completed trip${dynamicStats.completedCount === 1 ? '' : 's'}`
+                : "Gross freight & billing revenue"}
             </span>
           </div>
         </div>
 
-        {/* Expenses Card */}
+        {/* Operational Costs Card */}
         <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-5 hover:-translate-y-0.5 transition-transform duration-300">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Operational Costs</span>
@@ -303,13 +353,15 @@ export default function EarningsPage() {
             <h3 className="text-2xl font-bold font-poppins text-[#1E293B]">
               {formatFullCurrency(dynamicStats.totalExpenses)}
             </h3>
-            <span className="text-[11px] text-red-500 font-semibold flex items-center gap-1 mt-1.5">
-              Fuel, tolls & allowances
+            <span className="text-[11px] text-red-500 font-semibold flex items-center gap-1 mt-1.5 truncate" title={`Fuel: ${formatCurrency(dynamicStats.fuelExpenses)} • Tolls: ${formatCurrency(dynamicStats.tollExpenses)}`}>
+              {dynamicStats.fuelExpenses > 0 || dynamicStats.tollExpenses > 0
+                ? `Fuel: ${formatCurrency(dynamicStats.fuelExpenses)} • Tolls: ${formatCurrency(dynamicStats.tollExpenses)}`
+                : "Fuel, tolls & allowances"}
             </span>
           </div>
         </div>
 
-        {/* Net Profit Card */}
+        {/* Net Earnings Card */}
         <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-5 hover:-translate-y-0.5 transition-transform duration-300">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Net Earnings</span>
@@ -321,13 +373,14 @@ export default function EarningsPage() {
             <h3 className="text-2xl font-bold font-poppins text-[#1E293B]">
               {formatFullCurrency(dynamicStats.totalNetEarnings)}
             </h3>
-            <span className="text-[11px] text-[#A14000] font-semibold flex items-center gap-1 mt-1.5">
-              <TrendingUp className="w-3.5 h-3.5" /> After operating deductions ({dynamicStats.marginPercent}%)
+            <span className="text-[11px] text-[#A14000] font-semibold flex items-center gap-1 mt-1.5 truncate">
+              <TrendingUp className="w-3.5 h-3.5 shrink-0" />
+              After operating deductions ({dynamicStats.marginPercent}%)
             </span>
           </div>
         </div>
 
-        {/* ROI / Margin Card */}
+        {/* Profit Margin Card */}
         <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-5 hover:-translate-y-0.5 transition-transform duration-300">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Profit Margin</span>
@@ -339,8 +392,12 @@ export default function EarningsPage() {
             <h3 className="text-2xl font-bold font-poppins text-[#1E293B]">
               {dynamicStats.marginPercent}%
             </h3>
-            <span className="text-[11px] text-blue-600 font-semibold flex items-center gap-1 mt-1.5">
-              Efficiency index
+            <span className="text-[11px] text-blue-600 font-semibold flex items-center gap-1 mt-1.5 truncate">
+              {dynamicStats.marginPercent >= 75 
+                ? "Optimal operational efficiency" 
+                : dynamicStats.marginPercent >= 50 
+                ? "Healthy profitability index" 
+                : "Net margin performance"}
             </span>
           </div>
         </div>

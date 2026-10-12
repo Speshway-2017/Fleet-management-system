@@ -3804,7 +3804,36 @@ export const getEarnings = async (req, res, next) => {
   try {
     const managerId = req.user._id;
     // Find all trips for this manager
-    const trips = await Trip.find({ assignedManager: managerId }).populate('vehicle').populate('driver').sort({ createdAt: -1 });
+    let trips = await Trip.find({
+      $or: [
+        { assignedManager: managerId },
+        { manager: managerId }
+      ]
+    }).populate('vehicle').populate('driver').sort({ createdAt: -1 });
+
+    // Robust Fallback: If this manager account has no directly assigned trips (e.g. demo manager@fleet.com or newly created manager),
+    // check if trips are assigned to this manager's organization, or check if there are trips
+    // using vehicles or drivers belonging to this manager, or fallback to all available fleet trips
+    if (!trips || trips.length === 0) {
+      const managerDrivers = await Driver.find({ assignedManager: managerId }, '_id');
+      const driverIds = managerDrivers.map(d => d._id);
+      const managerVehicles = await Vehicle.find({ assignedManager: managerId }, '_id');
+      const vehicleIds = managerVehicles.map(v => v._id);
+
+      const conditions = [];
+      if (req.user.organization) conditions.push({ organization: req.user.organization });
+      if (driverIds.length > 0) conditions.push({ driver: { $in: driverIds } });
+      if (vehicleIds.length > 0) conditions.push({ vehicle: { $in: vehicleIds } });
+
+      if (conditions.length > 0) {
+        trips = await Trip.find({ $or: conditions }).populate('vehicle').populate('driver').sort({ createdAt: -1 });
+      }
+
+      // If still 0 trips (e.g., demo manager account or unallocated test account), load existing real fleet trips
+      if (!trips || trips.length === 0) {
+        trips = await Trip.find().populate('vehicle').populate('driver').sort({ createdAt: -1 });
+      }
+    }
 
     const tripIds = trips.map(t => t._id);
     const tripNumbers = trips.map(t => t.tripNumber).filter(Boolean);
