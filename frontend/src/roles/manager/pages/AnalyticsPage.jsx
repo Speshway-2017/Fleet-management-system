@@ -91,43 +91,6 @@ export default function AnalyticsPage() {
     const totalKmSum = trips.reduce((sum, t) => sum + (Number(t.estimatedDistance || t.distanceKm || t.distance) || 0), 0);
 
     const efficiencyVal = Math.min(99, Math.max(85, 92 + (utilization * 0.08)));
-    
-    const totalCostsNum = fuelCostSum + maintCostSum;
-    const totalCosts = formatCurrency(totalCostsNum);
-    const totalCostsFull = formatFullCurrency(totalCostsNum);
-
-    const fuelPct = totalCostsNum > 0 ? Math.round((fuelCostSum / totalCostsNum) * 100) : 0;
-    const maintPct = totalCostsNum > 0 ? Math.round((maintCostSum / totalCostsNum) * 100) : 0;
-
-    // Calculate vehicle spending breakdown for top spender
-    const vehicleSpendMap = {};
-    validFuelRecords.forEach(f => {
-      const vPlate = f.vehicleId || f.vehiclePlate || f.plateNumber || f.vehicle?.vehicleNumber || f.vehicle?.plateNumber;
-      if (vPlate) vehicleSpendMap[vPlate] = (vehicleSpendMap[vPlate] || 0) + (Number(f.amount) || 0);
-    });
-    maintenance.forEach(m => {
-      const vPlate = m.vehicleId || m.vehiclePlate || m.vehicleName || m.vehicle?.vehicleNumber || m.vehicle?.plateNumber;
-      const costVal = parseFloat(String(m.cost || 0).replace(/[^\d.]/g, "")) || 0;
-      if (vPlate) vehicleSpendMap[vPlate] = (vehicleSpendMap[vPlate] || 0) + costVal;
-    });
-    complaints.forEach(c => {
-      const vPlate = c.vehiclePlate || c.vehicle?.plateNumber || c.vehicle?.vehicleNumber;
-      const costVal = Number(c.actualCost) > 0 ? Number(c.actualCost) : (Number(c.estimatedCost) || 0);
-      if (vPlate && vPlate !== "VEH-UNKNOWN") vehicleSpendMap[vPlate] = (vehicleSpendMap[vPlate] || 0) + costVal;
-    });
-
-    let topSpender = "N/A";
-    let maxSpend = 0;
-    Object.entries(vehicleSpendMap).forEach(([veh, spend]) => {
-      if (spend > maxSpend) {
-        maxSpend = spend;
-        topSpender = veh;
-      }
-    });
-
-    const anomaliesCount = complaints.filter(c => (Number(c.actualCost) || Number(c.estimatedCost) || 0) > 50000).length;
-    const anomalies = anomaliesCount > 0 ? `${anomaliesCount} Flagged` : "0 Flagged";
-
     return {
       efficiency: `${Math.round(efficiencyVal)}%`,
       efficiencyChange: "+2.4% fleet average",
@@ -140,16 +103,7 @@ export default function AnalyticsPage() {
       maintChange: "-3.2% total expenses",
       utilization,
       activeTrucks,
-      idleDepot,
-      totalCosts,
-      totalCostsFull,
-      costChange: fuelCostSum > 0 ? "+4.2% fleet growth" : "+3.5% fleet growth",
-      fuelCost: formatCurrency(fuelCostSum),
-      fuelCostFull: formatFullCurrency(fuelCostSum),
-      fuelPct,
-      maintPct,
-      topSpender,
-      anomalies
+      idleDepot
     };
   };
 
@@ -287,87 +241,6 @@ export default function AnalyticsPage() {
                   </div>
                 );
               })}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Cards */}
-      <div className="grid grid-cols-1 gap-6">
-        {/* Operational Costs Card */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-7 shadow-lg">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-100">
-            <div>
-              <h3 className="text-lg sm:text-xl font-bold font-poppins text-[#0D1B2A]">Operational Costs</h3>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">Aggregated fuel expenditures & maintenance breakdown</p>
-            </div>
-            <div className="flex flex-col sm:items-end text-left sm:text-right">
-              <p
-                className="text-2xl sm:text-3xl font-black font-poppins text-[#0D1B2A] tracking-tight truncate"
-                title={data.totalCostsFull}
-              >
-                {data.totalCosts}
-              </p>
-              <p className="text-xs text-emerald-600 font-semibold flex items-center sm:justify-end gap-1 mt-0.5">
-                <Icon icon="mdi:trending-up" className="w-3.5 h-3.5" />
-                <span>{data.costChange}</span>
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            {/* Fuel Expenditures Row */}
-            <div>
-              <div className="flex flex-wrap sm:flex-nowrap items-baseline sm:items-center justify-between gap-2 mb-2">
-                <span className="text-sm font-semibold text-slate-700">Fuel Expenditures</span>
-                <div className="text-right shrink-0">
-                  <span className="text-sm font-bold text-slate-900 font-poppins" title={data.fuelCostFull}>
-                    {data.fuelCost}
-                  </span>
-                  <span className="text-xs font-semibold text-slate-500 ml-1.5">
-                    ({data.fuelPct}%)
-                  </span>
-                </div>
-              </div>
-              <div className="h-3 bg-slate-100 rounded-full overflow-hidden p-0.5">
-                <div
-                  className="h-full bg-gradient-to-r from-[#A14000] to-[#EA580C] rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, Math.max(0, data.fuelPct))}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Maintenance & Repairs Row */}
-            <div>
-              <div className="flex flex-wrap sm:flex-nowrap items-baseline sm:items-center justify-between gap-2 mb-2">
-                <span className="text-sm font-semibold text-slate-700">Maintenance & Repairs</span>
-                <div className="text-right shrink-0">
-                  <span className="text-sm font-bold text-slate-900 font-poppins" title={data.maintCostFull}>
-                    {data.maintCost}
-                  </span>
-                  <span className="text-xs font-semibold text-slate-500 ml-1.5">
-                    ({data.maintPct}%)
-                  </span>
-                </div>
-              </div>
-              <div className="h-3 bg-slate-100 rounded-full overflow-hidden p-0.5">
-                <div
-                  className="h-full bg-gradient-to-r from-slate-700 to-slate-900 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, Math.max(0, data.maintPct))}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Stat Highlights */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8 pt-6 border-t border-slate-100">
-            <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Top Spender</p>
-              <p className="text-lg font-bold font-poppins text-slate-800 mt-1 truncate">{data.topSpender}</p>
-            </div>
-            <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Anomalies</p>
-              <p className="text-lg font-bold font-poppins text-slate-800 mt-1 truncate">{data.anomalies}</p>
             </div>
           </div>
         </div>

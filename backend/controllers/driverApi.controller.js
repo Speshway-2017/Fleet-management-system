@@ -2436,30 +2436,39 @@ export const getDriverMaintenance = async (req, res, next) => {
       ]
     }).sort({ createdAt: -1 });
 
-    const activeMaintenances = maintenances.filter(m => m.status !== 'Completed' && m.status !== 'Cancelled');
-    const completedMaintenances = maintenances.filter(m => m.status === 'Completed');
-
-    // Calculate upcoming and overdue
-    let upcomingCount = 0;
-    let overdueCount = 0;
     const now = new Date();
     now.setHours(0, 0, 0, 0);
 
-    activeMaintenances.forEach(m => {
-      if (m.status === 'Scheduled' || m.status === 'In Progress') {
-        if (m.scheduledDate) {
+    const inProgressList = [];
+    const upcomingList = [];
+    const overdueList = [];
+    const completedList = [];
+
+    maintenances.forEach(m => {
+      const mObj = m.toObject ? m.toObject() : { ...m };
+      const s = (mObj.status || '').toLowerCase();
+
+      if (s === 'completed' || s === 'resolved') {
+        completedList.push({ ...mObj, status: 'Completed' });
+      } else if (s === 'in progress' || s === 'in-progress' || s === 'under repair' || s === 'under maintenance') {
+        inProgressList.push({ ...mObj, status: 'In Progress' });
+      } else if (s === 'overdue') {
+        overdueList.push({ ...mObj, status: 'Overdue' });
+      } else {
+        // Scheduled, Pending, etc.
+        let isOverdue = false;
+        if (mObj.scheduledDate) {
           try {
-            const schedDate = new Date(m.scheduledDate);
+            const schedDate = new Date(mObj.scheduledDate);
             if (!isNaN(schedDate.getTime()) && schedDate < now) {
-              overdueCount++;
-            } else {
-              upcomingCount++;
+              isOverdue = true;
             }
-          } catch (_) {
-            upcomingCount++;
-          }
+          } catch (_) {}
+        }
+        if (isOverdue) {
+          overdueList.push({ ...mObj, status: 'Overdue' });
         } else {
-          upcomingCount++;
+          upcomingList.push({ ...mObj, status: mObj.status || 'Scheduled' });
         }
       }
     });
@@ -2469,14 +2478,32 @@ export const getDriverMaintenance = async (req, res, next) => {
     if (nextServiceDate) {
       const serviceDue = new Date(nextServiceDate);
       if (!isNaN(serviceDue.getTime())) {
-        if (serviceDue < now && overdueCount === 0) {
-          overdueCount++;
-        } else if (serviceDue >= now && upcomingCount === 0) {
-          upcomingCount++;
+        const hasExisting = maintenances.some(m => {
+          if (!m.scheduledDate) return false;
+          const d = new Date(m.scheduledDate);
+          return Math.abs(d.getTime() - serviceDue.getTime()) < 86400000;
+        });
+        if (!hasExisting) {
+          const serviceItem = {
+            _id: `service-${vehicle._id}`,
+            serviceType: 'Routine Periodic Maintenance',
+            status: serviceDue < now ? 'Overdue' : 'Scheduled',
+            scheduledDate: nextServiceDate,
+            comments: 'System scheduled interval maintenance based on vehicle service cycle.',
+            garage: vehicle.branchDepot || 'Fleet Service Center',
+            isSystemAlert: true
+          };
+          if (serviceDue < now) {
+            overdueList.push(serviceItem);
+          } else {
+            upcomingList.push(serviceItem);
+          }
         }
       }
     }
 
+    const activeMaintenances = [...inProgressList, ...overdueList, ...upcomingList];
+    const completedMaintenances = completedList;
     const lastCompleted = completedMaintenances.length > 0 ? completedMaintenances[0] : null;
 
     return sendSuccess(res, 200, {
@@ -2494,9 +2521,14 @@ export const getDriverMaintenance = async (req, res, next) => {
       },
       maintenances,
       activeMaintenances,
-      completedMaintenances,
-      upcomingCount,
-      overdueCount,
+      inProgressMaintenances: inProgressList,
+      upcomingMaintenances: upcomingList,
+      overdueMaintenances: overdueList,
+      completedMaintenances: completedList,
+      activeCount: inProgressList.length,
+      upcomingCount: upcomingList.length,
+      overdueCount: overdueList.length,
+      completedCount: completedList.length,
       lastCompleted
     }, 'Driver maintenance list retrieved successfully');
   } catch (error) {

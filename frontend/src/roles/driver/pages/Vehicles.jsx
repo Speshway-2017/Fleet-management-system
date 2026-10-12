@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import driverApi from "../api/driverApi";
+import { useDriverSocket } from "../hooks/useDriverSocket";
 
 const resolveDocumentUrl = (url) => {
   if (!url || typeof url !== "string") return "";
@@ -52,11 +53,17 @@ export default function DriverVehiclesPage() {
   const [isAssigned, setIsAssigned] = useState(false);
   const [maintenance, setMaintenance] = useState({
     activeMaintenances: [],
+    inProgressMaintenances: [],
+    upcomingMaintenances: [],
+    overdueMaintenances: [],
     completedMaintenances: [],
+    activeCount: 0,
     upcomingCount: 0,
     overdueCount: 0,
+    completedCount: 0,
     lastCompleted: null
   });
+  const [alertFilter, setAlertFilter] = useState("all"); // 'all' | 'active' | 'upcoming' | 'overdue' | 'completed'
   const [documents, setDocuments] = useState([]);
   const [activeTab, setActiveTab] = useState(location.state?.tab || "details"); // 'details' | 'status' | 'alerts' | 'documents'
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
@@ -104,12 +111,8 @@ export default function DriverVehiclesPage() {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       // 1. Fetch assigned vehicle
       const vehRes = await driverApi.getAssignedVehicle();
@@ -128,57 +131,111 @@ export default function DriverVehiclesPage() {
           driverApi.getTickets().catch(() => null)
         ]);
 
-        let activeMain = [];
-        let completedMain = [];
-        let upcoming = 0;
-        let overdue = 0;
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
 
+        let inProgressList = [];
+        let upcomingList = [];
+        let overdueList = [];
+        let completedList = [];
+
+        // Seed with backend-classified maintenance lists
         if (mainRes?.success && mainRes.data) {
-          activeMain = mainRes.data.activeMaintenances || [];
-          completedMain = mainRes.data.completedMaintenances || [];
-          upcoming = mainRes.data.upcomingCount || 0;
-          overdue = mainRes.data.overdueCount || 0;
+          if (Array.isArray(mainRes.data.inProgressMaintenances)) {
+            inProgressList = [...mainRes.data.inProgressMaintenances];
+          }
+          if (Array.isArray(mainRes.data.upcomingMaintenances)) {
+            upcomingList = [...mainRes.data.upcomingMaintenances];
+          }
+          if (Array.isArray(mainRes.data.overdueMaintenances)) {
+            overdueList = [...mainRes.data.overdueMaintenances];
+          }
+          if (Array.isArray(mainRes.data.completedMaintenances)) {
+            completedList = [...mainRes.data.completedMaintenances];
+          }
+
+          // Fallback if raw maintenances array provided without breakdown
+          if (inProgressList.length === 0 && upcomingList.length === 0 && overdueList.length === 0 && completedList.length === 0 && Array.isArray(mainRes.data.maintenances)) {
+            mainRes.data.maintenances.forEach(m => {
+              const s = (m.status || '').toLowerCase();
+              if (s === 'completed' || s === 'resolved') {
+                completedList.push({ ...m, status: 'Completed' });
+              } else if (s === 'in progress' || s === 'in-progress' || s === 'under repair' || s === 'under maintenance') {
+                inProgressList.push({ ...m, status: 'In Progress' });
+              } else if (s === 'overdue') {
+                overdueList.push({ ...m, status: 'Overdue' });
+              } else {
+                let isPast = false;
+                if (m.scheduledDate) {
+                  const d = new Date(m.scheduledDate);
+                  if (!isNaN(d.getTime()) && d < now) isPast = true;
+                }
+                if (isPast) {
+                  overdueList.push({ ...m, status: 'Overdue' });
+                } else {
+                  upcomingList.push({ ...m, status: m.status || 'Scheduled' });
+                }
+              }
+            });
+          }
         }
 
+        // Process driver issue complaints / tickets
         const ticketList = ticketsRes?.data || ticketsRes || [];
         if (Array.isArray(ticketList)) {
           ticketList.forEach(t => {
-            const st = t.status || "Open";
-            const isDone = st === "Resolved" || st === "Closed" || st === "Completed" || st === "Repair Completed";
+            const st = (t.status || "Open").trim();
+            const lowerSt = st.toLowerCase();
+            const isDone = lowerSt === "resolved" || lowerSt === "closed" || lowerSt === "completed" || lowerSt === "repair completed";
+
+            let schedDate = null;
+            if (t.reportedAt || t.createdAt) {
+              try {
+                schedDate = new Date(t.reportedAt || t.createdAt);
+              } catch (_) {}
+            }
+
             const formattedTicket = {
               _id: t._id || t.ticketId,
               serviceType: t.issueType || t.title || "Vehicle Issue",
-              status: st === "Need Maintenance" ? "Maintenance Needed" : st,
+              status: isDone ? "Completed" : (lowerSt === "need maintenance" ? "Maintenance Needed" : st),
               scheduledDate: t.reportedAt || t.createdAt,
               comments: t.description || "Issue reported by driver.",
               garage: t.assignedMechanic?.location || "Garage Workshop",
               assignedMechanic: t.assignedMechanic,
               isTicket: true
             };
+
+            const exists = (list) => list.some(item => item._id === formattedTicket._id);
+
             if (isDone) {
-              if (!completedMain.some(m => m._id === formattedTicket._id)) {
-                completedMain.unshift(formattedTicket);
-              }
+              if (!exists(completedList)) completedList.unshift(formattedTicket);
+            } else if (lowerSt === "in progress" || lowerSt === "under repair" || lowerSt === "under maintenance") {
+              if (!exists(inProgressList)) inProgressList.unshift({ ...formattedTicket, status: "In Progress" });
             } else {
-              if (!activeMain.some(m => m._id === formattedTicket._id)) {
-                activeMain.unshift(formattedTicket);
+              const isPast = schedDate && !isNaN(schedDate.getTime()) && schedDate < now;
+              if (isPast) {
+                if (!exists(overdueList)) overdueList.unshift({ ...formattedTicket, status: "Overdue" });
+              } else {
+                if (!exists(upcomingList)) upcomingList.unshift({ ...formattedTicket, status: formattedTicket.status || "Scheduled" });
               }
             }
           });
         }
 
-        // Keep activeMaintenances focused strictly on active needed maintenance
-        const filteredActive = activeMain.filter(m => {
-          const s = (m.status || "").toLowerCase();
-          return !s.includes("completed") && !s.includes("resolved") && !s.includes("closed");
-        });
+        const activeCombined = [...inProgressList, ...overdueList, ...upcomingList];
 
         setMaintenance({
-          activeMaintenances: filteredActive,
-          completedMaintenances: completedMain,
-          upcomingCount: upcoming,
-          overdueCount: overdue,
-          lastCompleted: completedMain[0] || null
+          inProgressMaintenances: inProgressList,
+          upcomingMaintenances: upcomingList,
+          overdueMaintenances: overdueList,
+          completedMaintenances: completedList,
+          activeMaintenances: activeCombined,
+          activeCount: inProgressList.length,
+          upcomingCount: upcomingList.length,
+          overdueCount: overdueList.length,
+          completedCount: completedList.length,
+          lastCompleted: completedList[0] || null
         });
       } catch (err) {
         console.warn("Could not fetch maintenance data:", err);
@@ -199,10 +256,27 @@ export default function DriverVehiclesPage() {
       setIsAssigned(false);
       setVehicle(null);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+
+    // Auto-refresh interval for real-time dynamic sync
+    const interval = setInterval(() => {
+      fetchData(true);
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  useDriverSocket({
+    onTicketStatusUpdated: () => fetchData(true),
+    onTripStatusUpdated: () => fetchData(true),
+    onNotification: () => fetchData(true)
+  });
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -220,7 +294,20 @@ export default function DriverVehiclesPage() {
     }
   };
 
+  // Dynamic alerts list based on active filter
+  const displayedAlerts = useMemo(() => {
+    if (alertFilter === "active") return maintenance.inProgressMaintenances || [];
+    if (alertFilter === "upcoming") return maintenance.upcomingMaintenances || [];
+    if (alertFilter === "overdue") return maintenance.overdueMaintenances || [];
+    if (alertFilter === "completed") return maintenance.completedMaintenances || [];
 
+    return [
+      ...(maintenance.overdueMaintenances || []),
+      ...(maintenance.inProgressMaintenances || []),
+      ...(maintenance.upcomingMaintenances || []),
+      ...(maintenance.completedMaintenances || [])
+    ];
+  }, [alertFilter, maintenance]);
 
   // Formatting display variables from dynamic vehicle
   const vehicleCode = vehicle?.vehicleNumber || vehicle?.registrationNumber || "N/A";
@@ -232,8 +319,8 @@ export default function DriverVehiclesPage() {
   const imageUrl = vehicle?.image || "";
 
   // Maintenance alert badges
-  const totalAlertsCount = (maintenance?.overdueCount || 0) + (maintenance?.activeMaintenances?.length || 0);
-  const hasCriticalAlert = maintenance?.overdueCount > 0;
+  const totalAlertsCount = (maintenance?.overdueCount || 0) + (maintenance?.activeCount || 0) + (maintenance?.upcomingCount || 0);
+  const hasCriticalAlert = (maintenance?.overdueCount || 0) > 0;
 
   return (
     <div className="space-y-6 font-nunito pb-12 max-w-7xl mx-auto">
@@ -413,10 +500,18 @@ export default function DriverVehiclesPage() {
                   <div>
                     <span className="font-bold font-poppins text-sm block">Maintenance Alerts</span>
                     {hasCriticalAlert ? (
-                      <span className="text-[10px] font-extrabold uppercase font-poppins text-red-500 block">1 CRITICAL</span>
+                      <span className="text-[10px] font-extrabold uppercase font-poppins text-red-500 block">
+                        {maintenance?.overdueCount || 0} CRITICAL
+                      </span>
                     ) : totalAlertsCount > 0 ? (
-                      <span className="text-[10px] font-bold font-poppins text-amber-500 block">{totalAlertsCount} ACTIVE</span>
-                    ) : null}
+                      <span className="text-[10px] font-bold font-poppins text-amber-500 block">
+                        {totalAlertsCount} ACTIVE
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-semibold font-poppins text-emerald-500 block">
+                        ALL CLEAR ✓
+                      </span>
+                    )}
                   </div>
                 </div>
                 <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${activeTab === "alerts" ? "text-white" : "text-slate-400"}`} />
@@ -438,7 +533,7 @@ export default function DriverVehiclesPage() {
                   <div>
                     <span className="font-bold font-poppins text-sm block">Vehicle Documents</span>
                     <span className="text-[10px] font-extrabold font-poppins text-slate-400 block">
-                      {(vehicle?.complianceDocuments?.length || 5)} Documents
+                      {(documents?.length || vehicle?.complianceDocuments?.length || 0)} Documents
                     </span>
                   </div>
                 </div>
@@ -622,70 +717,188 @@ export default function DriverVehiclesPage() {
                   </span>
                 </div>
 
-                {/* Summary Alert Counters */}
+                {/* Summary Alert Counters (Interactive Filters) */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <span className="text-xs text-slate-500 font-semibold block">Active Work Orders</span>
-                    <strong className="text-xl font-bold font-poppins text-slate-900">{maintenance?.activeMaintenances?.length || 0}</strong>
-                  </div>
-                  <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200">
-                    <span className="text-xs text-amber-700 font-semibold block">Upcoming Scheduled</span>
-                    <strong className="text-xl font-bold font-poppins text-amber-800">{maintenance?.upcomingCount || 0}</strong>
-                  </div>
-                  <div className="p-4 bg-red-50 rounded-2xl border border-red-200">
-                    <span className="text-xs text-red-700 font-semibold block">Overdue Alerts</span>
-                    <strong className="text-xl font-bold font-poppins text-red-800">{maintenance?.overdueCount || 0}</strong>
-                  </div>
-                  <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200">
-                    <span className="text-xs text-emerald-700 font-semibold block">Completed Services</span>
-                    <strong className="text-xl font-bold font-poppins text-emerald-800">{maintenance?.completedMaintenances?.length || 0}</strong>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAlertFilter(prev => prev === "active" ? "all" : "active")}
+                    className={`p-4 rounded-2xl border text-center transition cursor-pointer ${
+                      alertFilter === "active"
+                        ? "bg-slate-900 text-white border-slate-900 shadow-md ring-2 ring-slate-900/20"
+                        : "bg-slate-50 hover:bg-slate-100/90 text-slate-900 border-slate-200"
+                    }`}
+                  >
+                    <span className={`text-xs font-semibold block ${alertFilter === "active" ? "text-slate-300" : "text-slate-500"}`}>
+                      Active Work Orders
+                    </span>
+                    <strong className="text-xl font-bold font-poppins">{maintenance?.activeCount || 0}</strong>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setAlertFilter(prev => prev === "upcoming" ? "all" : "upcoming")}
+                    className={`p-4 rounded-2xl border text-center transition cursor-pointer ${
+                      alertFilter === "upcoming"
+                        ? "bg-amber-600 text-white border-amber-600 shadow-md ring-2 ring-amber-600/20"
+                        : "bg-amber-50 hover:bg-amber-100/80 text-amber-900 border-amber-200"
+                    }`}
+                  >
+                    <span className={`text-xs font-semibold block ${alertFilter === "upcoming" ? "text-amber-100" : "text-amber-700"}`}>
+                      Upcoming Scheduled
+                    </span>
+                    <strong className="text-xl font-bold font-poppins">{maintenance?.upcomingCount || 0}</strong>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setAlertFilter(prev => prev === "overdue" ? "all" : "overdue")}
+                    className={`p-4 rounded-2xl border text-center transition cursor-pointer ${
+                      alertFilter === "overdue"
+                        ? "bg-red-600 text-white border-red-600 shadow-md ring-2 ring-red-600/20"
+                        : "bg-red-50 hover:bg-red-100/80 text-red-900 border-red-200"
+                    }`}
+                  >
+                    <span className={`text-xs font-semibold block ${alertFilter === "overdue" ? "text-red-100" : "text-red-700"}`}>
+                      Overdue Alerts
+                    </span>
+                    <strong className="text-xl font-bold font-poppins">{maintenance?.overdueCount || 0}</strong>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setAlertFilter(prev => prev === "completed" ? "all" : "completed")}
+                    className={`p-4 rounded-2xl border text-center transition cursor-pointer ${
+                      alertFilter === "completed"
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-md ring-2 ring-emerald-600/20"
+                        : "bg-emerald-50 hover:bg-emerald-100/80 text-emerald-900 border-emerald-200"
+                    }`}
+                  >
+                    <span className={`text-xs font-semibold block ${alertFilter === "completed" ? "text-emerald-100" : "text-emerald-700"}`}>
+                      Completed Services
+                    </span>
+                    <strong className="text-xl font-bold font-poppins">{maintenance?.completedCount || 0}</strong>
+                  </button>
+                </div>
+
+                {/* Section Subheader & Filter Status */}
+                <div className="flex items-center justify-between gap-2 pt-2">
+                  <h4 className="font-bold font-poppins text-slate-800 text-sm">
+                    {alertFilter === "all" ? "All Maintenance & Service Alerts" :
+                     alertFilter === "active" ? "Active In-Progress Work Orders" :
+                     alertFilter === "upcoming" ? "Upcoming Scheduled Services" :
+                     alertFilter === "overdue" ? "Critical Overdue Alerts" : "Completed Service Records"}
+                    <span className="text-xs font-semibold text-slate-400 ml-2">({displayedAlerts.length})</span>
+                  </h4>
+                  {alertFilter !== "all" && (
+                    <button
+                      type="button"
+                      onClick={() => setAlertFilter("all")}
+                      className="text-xs font-semibold text-[#A14000] hover:underline cursor-pointer"
+                    >
+                      Show All Alerts
+                    </button>
+                  )}
                 </div>
 
                 {/* Maintenance List */}
-                {maintenance?.activeMaintenances?.length > 0 ? (
+                {displayedAlerts.length > 0 ? (
                   <div className="space-y-4">
-                    {maintenance.activeMaintenances.map((item, idx) => (
-                      <div key={item._id || idx} className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <div className="flex items-start gap-3">
-                          <div className={`p-3 rounded-xl ${
-                            item.status?.toLowerCase() === 'overdue' 
-                              ? 'bg-red-100 text-red-600' 
-                              : 'bg-amber-100 text-[#A14000]'
-                          }`}>
-                            <AlertTriangle className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-bold font-poppins text-slate-900 text-sm">
-                                {item.serviceType || item.title || 'Vehicle Maintenance'}
-                              </h4>
-                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
-                                item.status?.toLowerCase() === 'overdue'
-                                  ? 'bg-red-100 text-red-700'
-                                  : 'bg-amber-100 text-amber-800'
-                              }`}>
-                                {item.status || 'Scheduled'}
-                              </span>
+                    {displayedAlerts.map((item, idx) => {
+                      const isOverdue = item.status?.toLowerCase() === 'overdue';
+                      const isCompleted = item.status?.toLowerCase() === 'completed';
+                      const isInProgress = item.status?.toLowerCase() === 'in progress' || item.status?.toLowerCase() === 'under repair';
+
+                      return (
+                        <div
+                          key={item._id || idx}
+                          className={`p-4 rounded-2xl border transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+                            isOverdue
+                              ? 'border-red-200 bg-red-50/40'
+                              : isCompleted
+                              ? 'border-emerald-200 bg-emerald-50/30'
+                              : isInProgress
+                              ? 'border-amber-200 bg-amber-50/40'
+                              : 'border-slate-200 bg-slate-50/50'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`p-3 rounded-xl shrink-0 ${
+                              isOverdue
+                                ? 'bg-red-100 text-red-600'
+                                : isCompleted
+                                ? 'bg-emerald-100 text-emerald-600'
+                                : isInProgress
+                                ? 'bg-amber-100 text-[#A14000]'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              {isCompleted ? (
+                                <CheckCircle2 className="w-5 h-5" />
+                              ) : isOverdue ? (
+                                <AlertTriangle className="w-5 h-5" />
+                              ) : isInProgress ? (
+                                <Wrench className="w-5 h-5" />
+                              ) : (
+                                <Calendar className="w-5 h-5" />
+                              )}
                             </div>
-                            <p className="text-xs text-slate-500 mt-1">
-                              {item.comments || item.notes || item.garage || 'Scheduled maintenance service work order issued by Fleet Operations Manager.'}
-                            </p>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="font-bold font-poppins text-slate-900 text-sm">
+                                  {item.serviceType || item.title || 'Vehicle Maintenance'}
+                                </h4>
+                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                                  isOverdue
+                                    ? 'bg-red-100 text-red-700'
+                                    : isCompleted
+                                    ? 'bg-emerald-100 text-emerald-700'
+                                    : isInProgress
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {item.status || 'Scheduled'}
+                                </span>
+                                {item.cost && (
+                                  <span className="text-[11px] font-bold text-slate-600 font-poppins">
+                                    {item.cost}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-500 mt-1">
+                                {item.comments || item.notes || item.garage || 'Scheduled maintenance service work order issued by Fleet Operations Manager.'}
+                              </p>
+                              {item.garage && (
+                                <p className="text-[11px] text-slate-400 mt-0.5">
+                                  Garage: {item.garage} {item.specialist ? `• Specialist: ${item.specialist}` : ''}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-left sm:text-right shrink-0 text-xs">
+                            <span className="text-slate-400 block">
+                              {isCompleted ? 'Completed Date' : 'Scheduled Date'}
+                            </span>
+                            <strong className="text-slate-800 font-poppins">
+                              {formatDate(item.scheduledDate || item.completedDate || item.updatedAt || item.createdAt)}
+                            </strong>
                           </div>
                         </div>
-                        <div className="text-right shrink-0 text-xs">
-                          <span className="text-slate-400 block">Scheduled Date</span>
-                          <strong className="text-slate-800 font-poppins">{formatDate(item.scheduledDate)}</strong>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200/80">
                     <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2 opacity-80" />
-                    <h4 className="font-bold font-poppins text-slate-800 text-sm">No Active Maintenance Alerts</h4>
+                    <h4 className="font-bold font-poppins text-slate-800 text-sm">
+                      {alertFilter === "active" ? "No Active In-Progress Work Orders" :
+                       alertFilter === "upcoming" ? "No Upcoming Scheduled Services" :
+                       alertFilter === "overdue" ? "No Overdue Maintenance Alerts" :
+                       alertFilter === "completed" ? "No Completed Service Records Found" :
+                       "No Maintenance Alerts On Record"}
+                    </h4>
                     <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
-                      Your vehicle is currently in healthy operating condition with no pending work orders.
+                      {alertFilter === "all"
+                        ? "Your vehicle is currently in healthy operating condition with no pending alerts."
+                        : "There are currently no records matching the selected status filter."}
                     </p>
                   </div>
                 )}

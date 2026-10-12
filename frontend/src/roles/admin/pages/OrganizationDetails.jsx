@@ -59,11 +59,16 @@ export default function OrganizationDetails() {
     }
   }, [id]);
 
+  const currentOrgId = String(org?.id || org?._id || id || "");
   const rawManagers = org?.fleetManagers || (org 
-    ? fleetManagers.filter(m => m.organizationId === (org.id || org._id))
+    ? fleetManagers.filter(m => {
+        const mOrgId = String(m.organizationId || m.organization?._id || m.organization?.id || "");
+        return mOrgId && mOrgId === currentOrgId;
+      })
     : []);
+  const isOrgSuspended = org?.status === "Suspended";
   const orgManagers = rawManagers.map(m => 
-    org?.status === "Suspended" ? { ...m, status: "Inactive", isActive: false } : m
+    isOrgSuspended ? { ...m, status: "Inactive", isActive: false } : m
   );
 
   const layout = (content) => (
@@ -515,8 +520,8 @@ export default function OrganizationDetails() {
             <div className="bg-white rounded-xl p-4 sm:p-6 md:p-8 border border-slate-200 shadow-sm grid grid-cols-2 md:grid-cols-4 gap-y-6 md:gap-0 md:divide-x divide-slate-100 items-stretch">
               
               <div className="flex flex-col items-center justify-center p-2 md:p-4 w-full text-center min-w-0">
-                <span className="text-2xl sm:text-2xl md:text-3xl font-black text-slate-800 mb-1 truncate max-w-full" title={String(org.stats?.totalFleetManagers ?? org.managers ?? 0)}>
-                  {org.stats?.totalFleetManagers ?? org.managers ?? 0}
+                <span className="text-2xl sm:text-2xl md:text-3xl font-black text-slate-800 mb-1 truncate max-w-full" title={String(orgManagers.length > 0 ? orgManagers.length : (org.stats?.totalFleetManagers ?? org.managers ?? 0))}>
+                  {orgManagers.length > 0 ? orgManagers.length : (org.stats?.totalFleetManagers ?? org.managers ?? 0)}
                 </span>
                 <span className="text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate max-w-full">Fleet Managers</span>
               </div>
