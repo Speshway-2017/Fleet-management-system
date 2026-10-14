@@ -216,10 +216,18 @@ export const approveRequest = async (req, res, next) => {
       { new: true }
     );
 
+    let normalizedPlan = 'Standard';
+    const rawPlanName = plan?.name ? String(plan.name).toLowerCase() : '';
+    if (rawPlanName.includes('enterprise')) {
+      normalizedPlan = 'Enterprise';
+    } else if (rawPlanName.includes('pro')) {
+      normalizedPlan = 'Professional';
+    }
+
     if (manager && manager.organization) {
       await Organization.findByIdAndUpdate(manager.organization, {
         status: 'Active',
-        plan: plan.name || 'Standard'
+        plan: normalizedPlan
       });
     }
 
@@ -237,6 +245,10 @@ export const approveRequest = async (req, res, next) => {
     const io = req.app.locals.io || req.io;
     if (io) {
       io.to(`manager:${manager._id.toString()}`).emit('notification:new', notification);
+      io.emit('dashboard:refresh');
+      io.emit('organization:updated', { _id: manager.organization, plan: normalizedPlan, status: 'Active' });
+      io.emit('subscription:approved', { manager: manager._id, organization: manager.organization, plan: normalizedPlan });
+      io.emit('subscription:updated');
     }
 
     return sendSuccess(res, 200, request, 'Subscription request approved successfully');
@@ -280,6 +292,9 @@ export const rejectRequest = async (req, res, next) => {
     const io = req.app.locals.io || req.io;
     if (io) {
       io.to(`manager:${manager._id.toString()}`).emit('notification:new', notification);
+      io.emit('dashboard:refresh');
+      io.emit('subscription:rejected', { manager: manager._id });
+      io.emit('subscription:updated');
     }
 
     return sendSuccess(res, 200, request, 'Subscription request rejected successfully');

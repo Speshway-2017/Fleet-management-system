@@ -352,7 +352,7 @@ export default function EditOrganization() {
             </div>
           </div>
 
-          {/* Phone */}
+          {/* Phone & Subscription Plan */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">
@@ -370,6 +370,22 @@ export default function EditOrganization() {
                 className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${errors.phone ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"}`}
               />
               {errors.phone && <p className="text-xs text-red-500 mt-1 font-medium">{errors.phone}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">
+                Subscription Plan <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="plan"
+                value={form.plan || "Standard"}
+                onChange={handleChange}
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] transition-all text-slate-800 font-medium"
+              >
+                <option value="Standard">Standard</option>
+                <option value="Professional">Professional</option>
+                <option value="Enterprise">Enterprise</option>
+              </select>
             </div>
           </div>
 

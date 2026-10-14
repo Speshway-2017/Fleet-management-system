@@ -12,16 +12,16 @@ import {
 } from "recharts";
 import NewAdminSidebar from "@/components/layout/NewAdminSidebar";
 import NewAdminTopNav from "@/components/layout/NewAdminTopNav";
-import { formatFullCurrency } from "@/utils/currencyFormatter";
+import { formatCurrency, formatFullCurrency } from "@/utils/currencyFormatter";
 import toast from "react-hot-toast";
 
-function KPICard({ title, value, icon: Icon }) {
+function KPICard({ title, value, fullValue, icon: Icon }) {
   return (
     <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-between h-full hover:shadow-md transition-shadow">
       <div className="flex justify-between items-start mb-2 gap-2">
         <div className="overflow-hidden">
           <h3 className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1 truncate" title={title}>{title}</h3>
-          <div className="text-xl font-black text-slate-900 truncate" title={value}>{value}</div>
+          <div className="text-xl font-black text-slate-900 truncate" title={fullValue || value}>{value}</div>
         </div>
         <div className="w-8 h-8 shrink-0 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 border border-slate-100">
           <Icon className="w-4 h-4" />
@@ -44,7 +44,7 @@ export default function Analytics() {
       drivers: 0,
       activeTrips: 0,
       completedTrips: 156,
-      revenue: 15183043,
+      revenue: 0,
       maintenanceCount: 0,
       fuelUsage: 0
     },
@@ -112,6 +112,12 @@ export default function Analytics() {
       socket.on("trip:completed", handleLiveUpdate);
       socket.on("trip:approved", handleLiveUpdate);
       socket.on("trip:status-updated", handleLiveUpdate);
+      socket.on("trip:created", handleLiveUpdate);
+      socket.on("trip:updated", handleLiveUpdate);
+      socket.on("trip:deleted", handleLiveUpdate);
+      socket.on("subscription:approved", handleLiveUpdate);
+      socket.on("subscription:rejected", handleLiveUpdate);
+      socket.on("subscription:updated", handleLiveUpdate);
 
       cleanupSocket = () => {
         socket.off("dashboard:refresh", handleLiveUpdate);
@@ -124,6 +130,12 @@ export default function Analytics() {
         socket.off("trip:completed", handleLiveUpdate);
         socket.off("trip:approved", handleLiveUpdate);
         socket.off("trip:status-updated", handleLiveUpdate);
+        socket.off("trip:created", handleLiveUpdate);
+        socket.off("trip:updated", handleLiveUpdate);
+        socket.off("trip:deleted", handleLiveUpdate);
+        socket.off("subscription:approved", handleLiveUpdate);
+        socket.off("subscription:rejected", handleLiveUpdate);
+        socket.off("subscription:updated", handleLiveUpdate);
       };
     }
 
@@ -200,10 +212,15 @@ export default function Analytics() {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-8">
-            <KPICard title="Organizations" value={kpis?.organizations?.total ?? kpis?.totalOrganizations ?? 18} icon={Building2} />
+            <KPICard title="Organizations" value={kpis?.organizations?.total ?? kpis?.totalOrganizations ?? 17} icon={Building2} />
             <KPICard title="Fleet Managers" value={kpis?.managers?.total ?? kpis?.fleetManagers ?? 28} icon={Users} />
             <KPICard title="Completed Trips" value={kpis?.completedTrips ?? 156} icon={CheckCircle2} />
-            <KPICard title="Revenue" value={kpis?.revenue ? (typeof kpis.revenue === 'number' ? formatFullCurrency(kpis.revenue) : kpis.revenue) : "₹1,51,83,043"} icon={TrendingUp} />
+            <KPICard
+              title="Total Revenue"
+              value={formatCurrency(kpis?.revenue ?? 0)}
+              fullValue={formatFullCurrency(kpis?.revenue ?? 0)}
+              icon={TrendingUp}
+            />
           </div>
 
           {/* Charts Row 1 */}

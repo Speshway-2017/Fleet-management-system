@@ -584,7 +584,7 @@ export default function Home() {
             </div>
           </AnimeStaggerGroup>
         </div>
-        <div className="max-w-[1550px] mx-auto space-y-8">
+        <div id="fleet-ecosystem" className="max-w-[1550px] mx-auto space-y-8 pt-20 sm:pt-24 md:pt-32">
           <AnimeScrollReveal direction="top" className="text-center space-y-2">
             <h3 className="text-[#A14000] text-xs sm:text-sm font-bold tracking-widest uppercase">Our Fleet Ecosystem</h3>
             <ScrollHighlight
