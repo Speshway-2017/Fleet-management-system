@@ -27,7 +27,8 @@ import {
   fetchInvoicesMap,
   calculateTripRevenue,
   getSettledRevenueForOrganization,
-  getSettledRevenueForManager
+  getSettledRevenueForManager,
+  getRevenueAggregate
 } from '../repositories/admin.repository.js';
 import { calculateTripFinance } from '../utils/earningsCalculator.js';
 import { changeUserPassword } from '../services/auth.service.js';
@@ -81,6 +82,14 @@ export const listOrganizations = async (_req, res, next) => {
 
       const currentStatus = org.status || 'Pending';
 
+      const rawPlan = org.plan ? String(org.plan).trim() : '';
+      let normalizedPlan = 'Standard';
+      if (rawPlan.toLowerCase().includes('enterprise')) {
+        normalizedPlan = 'Enterprise';
+      } else if (rawPlan.toLowerCase().includes('pro')) {
+        normalizedPlan = 'Professional';
+      }
+
       return {
         id: org._id.toString(),
         name: org.name,
@@ -88,7 +97,7 @@ export const listOrganizations = async (_req, res, next) => {
         email: org.email,
         phone: org.phone,
         industry: org.industry,
-        subscription: org.plan || 'Standard',
+        subscription: normalizedPlan,
         status: currentStatus,
         createdAt: new Date(org.createdAt).toLocaleDateString(),
         activeManagers: isSuspended ? 0 : activeManagers,
@@ -99,7 +108,7 @@ export const listOrganizations = async (_req, res, next) => {
         city: org.city,
         state: org.state,
         country: org.country,
-        plan: org.plan,
+        plan: normalizedPlan,
         stats: {
           totalFleetManagers: totalManagersCount,
           activeFleetManagers: isSuspended ? 0 : activeManagers,
@@ -1140,20 +1149,46 @@ export const getAnalytics = async (req, res, next) => {
 
     const { orgGrowthData, managerGrowthData } = await getMonthlyGrowthStats();
 
-    // Group organizations by plan for subscription distribution
-    const plansAgg = await Organization.aggregate([
-      { $match: { plan: { $exists: true, $ne: '' } } },
-      { $group: { _id: '$plan', count: { $sum: 1 } } }
+    // Dynamic total revenue matching Admin Dashboard
+    const totalRevenueAmount = await getRevenueAggregate();
+
+    // Group organizations by plan for dynamic subscription distribution
+    const [allOrgs, managersWithPlans] = await Promise.all([
+      Organization.find({}).select('_id plan name').lean(),
+      User.find({
+        role: { $in: ['FLEET_MANAGER', 'fleet_manager'] },
+        subscriptionPlan: { $ne: null }
+      }).populate('subscriptionPlan', 'name').lean()
     ]);
+
+    const orgManagerPlanMap = new Map();
+    managersWithPlans.forEach(m => {
+      if (m.organization && m.subscriptionPlan?.name) {
+        const orgIdStr = m.organization._id ? m.organization._id.toString() : m.organization.toString();
+        const planName = String(m.subscriptionPlan.name).trim().toLowerCase();
+        const existing = orgManagerPlanMap.get(orgIdStr);
+        if (!existing || planName.includes('enterprise') || (planName.includes('pro') && !existing.includes('enterprise'))) {
+          orgManagerPlanMap.set(orgIdStr, planName);
+        }
+      }
+    });
+
     const plansMap = { Enterprise: 0, Professional: 0, Standard: 0 };
-    plansAgg.forEach(p => {
-      const planName = p._id ? String(p._id).trim().toLowerCase() : '';
+    allOrgs.forEach(org => {
+      let planName = org.plan ? String(org.plan).trim().toLowerCase() : '';
+      if (!planName) {
+        const mgrPlan = orgManagerPlanMap.get(org._id.toString());
+        if (mgrPlan) {
+          planName = mgrPlan;
+        }
+      }
+
       if (planName.includes('enterprise')) {
-        plansMap.Enterprise += p.count;
+        plansMap.Enterprise += 1;
       } else if (planName.includes('pro')) {
-        plansMap.Professional += p.count;
-      } else if (planName.includes('standard') || planName.includes('basic')) {
-        plansMap.Standard += p.count;
+        plansMap.Professional += 1;
+      } else {
+        plansMap.Standard += 1;
       }
     });
 
@@ -1207,7 +1242,7 @@ export const getAnalytics = async (req, res, next) => {
         drivers,
         activeTrips: activeTripsCount,
         completedTrips: completedTripsCount > 0 ? completedTripsCount : 156,
-        revenue: 15183043,
+        revenue: Number(totalRevenueAmount) || 0,
         fuelUsage
       },
       charts: {

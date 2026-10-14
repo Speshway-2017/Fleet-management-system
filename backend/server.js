@@ -13,6 +13,7 @@ import { validateEnv } from './config/env.validate.js';
 import app from './app.js';
 import { connectDB } from './config/db.config.js';
 import { seedPlans } from './utils/seedPlans.js';
+import { syncOrganizationPlans } from './utils/syncOrganizationPlans.js';
 import { seedTolls } from './utils/seedTolls.js';
 import { syncAllVehicleStatuses } from './utils/syncVehicleStatus.js';
 import { syncDriverLocations } from './utils/syncDriverLocations.js';
@@ -31,6 +32,7 @@ const startServer = async () => {
   // 2. Connect to MongoDB Atlas
   await connectDB();
   await seedPlans();
+  await syncOrganizationPlans();
   await seedTolls();
   await syncAllVehicleStatuses();
   await syncDriverLocations();

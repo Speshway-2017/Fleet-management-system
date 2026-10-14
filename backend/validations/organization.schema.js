@@ -30,7 +30,7 @@ export const createOrganizationSchema = z.object({
   city: citySchema,
   state: stateSchema,
   country: countrySchema,
-  plan: z.enum(['Enterprise', 'Professional', 'Standard', '']).optional().nullable(),
+  plan: z.enum(['Enterprise', 'Professional', 'Standard', 'Basic', '']).optional().nullable(),
   status: z.enum(['Active', 'Pending', 'Suspended', '']).optional().nullable(),
   managers: z.array(managerItemSchema).optional()
 }).passthrough();
@@ -53,7 +53,7 @@ export const updateOrganizationSchema = z.object({
   city: citySchema,
   state: stateSchema,
   country: countrySchema,
-  plan: z.enum(['Enterprise', 'Professional', 'Standard', '']).optional().nullable(),
+  plan: z.enum(['Enterprise', 'Professional', 'Standard', 'Basic', '']).optional().nullable(),
   status: z.enum(['Active', 'Pending', 'Suspended', '']).optional().nullable()
 });
 

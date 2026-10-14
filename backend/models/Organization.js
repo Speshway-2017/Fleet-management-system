@@ -90,8 +90,8 @@ const organizationSchema = new mongoose.Schema(
     },
     plan: {
       type: String,
-      enum: ['Enterprise', 'Professional', 'Standard', ''],
-      default: ''
+      enum: ['Enterprise', 'Professional', 'Standard', 'Basic', ''],
+      default: 'Standard'
     },
     status: {
       type: String,

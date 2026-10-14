@@ -109,6 +109,9 @@ function Dashboard() {
       socket.on("trip:updated", handleLiveEvent);
       socket.on("trip:deleted", handleLiveEvent);
       socket.on("notification:new", handleLiveEvent);
+      socket.on("subscription:approved", handleLiveEvent);
+      socket.on("subscription:rejected", handleLiveEvent);
+      socket.on("subscription:updated", handleLiveEvent);
 
       cleanupSocket = () => {
         socket.off("dashboard:refresh", handleLiveEvent);
@@ -125,6 +128,9 @@ function Dashboard() {
         socket.off("trip:updated", handleLiveEvent);
         socket.off("trip:deleted", handleLiveEvent);
         socket.off("notification:new", handleLiveEvent);
+        socket.off("subscription:approved", handleLiveEvent);
+        socket.off("subscription:rejected", handleLiveEvent);
+        socket.off("subscription:updated", handleLiveEvent);
       };
     }
 
