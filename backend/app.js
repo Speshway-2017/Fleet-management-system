@@ -1,5 +1,6 @@
 import express        from 'express';
 import fs from 'fs';
+import compression from 'compression';
 
 // Main app
 import cors from 'cors';
@@ -25,6 +26,8 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 const app = express();
+
+app.use(compression());
 
 app.use(
   cors({

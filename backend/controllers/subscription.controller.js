@@ -176,13 +176,30 @@ export const listRequests = async (req, res, next) => {
     const requests = await SubscriptionRequest.find()
       .populate({
         path: 'manager',
-        select: 'name email organization',
-        populate: { path: 'organization', select: 'name' }
+        select: 'name email organization subscriptionPlan',
+        populate: [
+          { path: 'organization', select: 'name plan' },
+          { path: 'subscriptionPlan', select: 'name price duration' }
+        ]
       })
       .populate('plan')
       .sort({ createdAt: -1 });
 
-    return sendSuccess(res, 200, requests, 'Subscription requests fetched');
+    const basicPlan = await SubscriptionPlan.findOne({ name: 'Basic' }).lean();
+
+    const formattedRequests = await Promise.all(requests.map(async (r) => {
+      const obj = r.toObject ? r.toObject() : r;
+      if (!obj.plan) {
+        const fallbackPlan = obj.manager?.subscriptionPlan || basicPlan;
+        if (fallbackPlan) {
+          obj.plan = fallbackPlan;
+          SubscriptionRequest.updateOne({ _id: obj._id }, { $set: { plan: fallbackPlan._id } }).exec().catch(() => {});
+        }
+      }
+      return obj;
+    }));
+
+    return sendSuccess(res, 200, formattedRequests, 'Subscription requests fetched');
   } catch (error) {
     next(error);
   }
@@ -216,12 +233,14 @@ export const approveRequest = async (req, res, next) => {
       { new: true }
     );
 
-    let normalizedPlan = 'Standard';
+    let normalizedPlan = 'Basic';
     const rawPlanName = plan?.name ? String(plan.name).toLowerCase() : '';
     if (rawPlanName.includes('enterprise')) {
       normalizedPlan = 'Enterprise';
     } else if (rawPlanName.includes('pro')) {
       normalizedPlan = 'Professional';
+    } else if (rawPlanName.includes('basic')) {
+      normalizedPlan = 'Basic';
     }
 
     if (manager && manager.organization) {

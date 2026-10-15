@@ -208,8 +208,8 @@ export default function ProfilePage() {
               <p className="text-xs font-bold text-[#A14000] mt-1 font-poppins font-semibold">
                 {(() => {
                   const p = orgObj?.plan || (typeof user?.subscriptionPlan === 'object' ? user?.subscriptionPlan?.name : user?.subscriptionPlan);
-                  if (!p) return "Standard";
-                  if (typeof p === 'string' && p.length === 24) return "Standard";
+                  if (!p) return "Basic";
+                  if (typeof p === 'string' && p.length === 24) return "Basic";
                   return p;
                 })()}
               </p>

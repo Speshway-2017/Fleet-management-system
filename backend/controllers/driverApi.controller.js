@@ -811,37 +811,41 @@ export const getDriverDashboard = async (req, res, next) => {
 
     const completedStatuses = ['Completed', 'COMPLETED'];
 
-    const activeTripsCount = await Trip.countDocuments({
-      ...driverFilter,
-      status: { $in: activeStatuses }
-    });
-
-    const upcomingTripsCount = await Trip.countDocuments({
-      ...driverFilter,
-      status: { $in: upcomingStatuses }
-    });
-
-    const completedTripsCount = await Trip.countDocuments({
-      ...driverFilter,
-      status: { $in: completedStatuses }
-    });
+    const [
+      activeTripsCount,
+      upcomingTripsCount,
+      completedTripsCount,
+      todaySchedule,
+      notifications
+    ] = await Promise.all([
+      Trip.countDocuments({
+        ...driverFilter,
+        status: { $in: activeStatuses }
+      }),
+      Trip.countDocuments({
+        ...driverFilter,
+        status: { $in: upcomingStatuses }
+      }),
+      Trip.countDocuments({
+        ...driverFilter,
+        status: { $in: completedStatuses }
+      }),
+      Trip.find({
+        ...driverFilter,
+        status: { $nin: ['Cancelled', 'CANCELLED'] }
+      }).sort({ departureTime: 1, createdAt: -1 }).limit(5).lean(),
+      Notification.find({
+        $or: [
+          { recipient: driverId },
+          { user: driverId },
+          ...(driverDoc ? [{ recipient: driverDoc._id }, { user: driverDoc._id }] : []),
+          { recipientRole: 'DRIVER', recipient: { $exists: false } },
+          { recipientRole: 'DRIVER', recipient: null }
+        ]
+      }).sort({ createdAt: -1 }).limit(5).lean()
+    ]);
 
     const totalActiveAndScheduled = activeTripsCount + upcomingTripsCount;
-
-    const todaySchedule = await Trip.find({
-      ...driverFilter,
-      status: { $nin: ['Cancelled', 'CANCELLED'] }
-    }).sort({ departureTime: 1, createdAt: -1 }).limit(5);
-
-    const notifications = await Notification.find({
-      $or: [
-        { recipient: driverId },
-        { user: driverId },
-        ...(driverDoc ? [{ recipient: driverDoc._id }, { user: driverDoc._id }] : []),
-        { recipientRole: 'DRIVER', recipient: { $exists: false } },
-        { recipientRole: 'DRIVER', recipient: null }
-      ]
-    }).sort({ createdAt: -1 }).limit(5);
 
     return sendSuccess(res, 200, {
       activeTrips: activeTripsCount,

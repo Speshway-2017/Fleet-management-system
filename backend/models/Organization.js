@@ -91,7 +91,7 @@ const organizationSchema = new mongoose.Schema(
     plan: {
       type: String,
       enum: ['Enterprise', 'Professional', 'Standard', 'Basic', ''],
-      default: 'Standard'
+      default: 'Basic'
     },
     status: {
       type: String,
@@ -101,6 +101,8 @@ const organizationSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+organizationSchema.index({ status: 1 });
 
 const Organization = mongoose.model('Organization', organizationSchema);
 

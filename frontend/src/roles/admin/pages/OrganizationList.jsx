@@ -39,8 +39,8 @@ function StatusBadge({ status }) {
 export default function OrganizationList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchError, setSearchError] = useState("");
-  const [loading, setLoading] = useState(true);
   const { organizations, fetchOrganizations, fetchFleetManagers, fleetManagers } = useAdmin();
+  const [loading, setLoading] = useState(organizations.length === 0);
 
   const getFleetManagersCount = (org) => {
     const orgId = org.id || org._id;
@@ -94,16 +94,14 @@ export default function OrganizationList() {
   };
 
   useEffect(() => {
-    const loadData = async () => {
-      if (fetchOrganizations) {
-        await fetchOrganizations();
-      }
-      if (fetchFleetManagers) {
-        await fetchFleetManagers();
-      }
-      setLoading(false);
-    };
-    loadData();
+    let isMounted = true;
+    Promise.all([
+      fetchOrganizations ? fetchOrganizations() : Promise.resolve(),
+      fetchFleetManagers ? fetchFleetManagers() : Promise.resolve()
+    ]).finally(() => {
+      if (isMounted) setLoading(false);
+    });
+    return () => { isMounted = false; };
   }, []);
 
   const handleDelete = async (id) => {

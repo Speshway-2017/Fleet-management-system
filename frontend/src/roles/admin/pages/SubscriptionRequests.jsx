@@ -432,12 +432,26 @@ export default function SubscriptionRequests() {
                               </span>
                             </td>
                             <td className="px-6 py-4">
-                              <div className="flex flex-col">
-                                <span className="text-xs font-extrabold text-slate-800">{req.plan?.name || "N/A"}</span>
-                                <span className="text-[10px] text-slate-400 font-bold mt-0.5">
-                                  ₹{req.plan?.price || 0} / {req.plan?.duration || 0} Days
-                                </span>
-                              </div>
+                              {(() => {
+                                const rawName = req.plan?.name;
+                                const fallbackName = req.manager?.subscriptionPlan?.name || req.manager?.organization?.plan || (req.status === 'Approved' ? 'Basic' : 'N/A');
+                                const resolvedName = rawName || fallbackName;
+                                const isEnt = resolvedName.toLowerCase().includes('enterprise');
+                                const isPro = resolvedName.toLowerCase().includes('pro');
+                                const defaultPrice = isEnt ? 4999 : isPro ? 2499 : 999;
+                                const defaultDuration = isEnt ? 90 : 30;
+                                const displayPrice = req.plan?.price ?? (resolvedName !== 'N/A' ? defaultPrice : 0);
+                                const displayDuration = req.plan?.duration ?? (resolvedName !== 'N/A' ? defaultDuration : 0);
+
+                                return (
+                                  <div className="flex flex-col">
+                                    <span className="text-xs font-extrabold text-slate-800">{resolvedName}</span>
+                                    <span className="text-[10px] text-slate-400 font-bold mt-0.5">
+                                      ₹{displayPrice} / {displayDuration} Days
+                                    </span>
+                                  </div>
+                                );
+                              })()}
                             </td>
                             <td className="px-6 py-4 text-xs font-bold text-slate-600">
                               <span className="flex items-center gap-1.5">

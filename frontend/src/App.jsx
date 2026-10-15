@@ -107,6 +107,13 @@ const DriverSelfProfilePage = lazy(() => import("@/roles/driver/pages/Profile"))
 const DriverSettingsPage = lazy(() => import("@/roles/driver/pages/Settings"));
 const DriverDocumentsPage = lazy(() => import("@/roles/driver/pages/Documents"));
 
+import {
+  preloadAdminRoutes,
+  preloadManagerRoutes,
+  preloadDriverRoutes,
+  preloadPublicRoutes
+} from "@/utils/routePreloader";
+
 function PublicRoute({ children }) {
   const { isAuthenticated, role } = useAuth();
 
@@ -119,12 +126,32 @@ function PublicRoute({ children }) {
   return children;
 }
 
+function RoutePrefetchTrigger() {
+  const { isAuthenticated, role } = useAuth();
+
+  React.useEffect(() => {
+    preloadPublicRoutes();
+    if (isAuthenticated) {
+      if (role === "SUPER_ADMIN" || role === "admin") {
+        preloadAdminRoutes();
+      } else if (role === "DRIVER" || role === "driver") {
+        preloadDriverRoutes();
+      } else {
+        preloadManagerRoutes();
+      }
+    }
+  }, [isAuthenticated, role]);
+
+  return null;
+}
+
 export default function App() {
   return (
     <ThemeProvider>
       <LanguageProvider>
         <SettingsProvider>
         <AuthProvider>
+          <RoutePrefetchTrigger />
           <BrowserRouter>
             <ScrollToTop />
             <Toaster position="top-right" />

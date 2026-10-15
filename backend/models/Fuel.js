@@ -33,4 +33,8 @@ const fuelSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+fuelSchema.index({ recordedBy: 1 });
+fuelSchema.index({ vehicle: 1 });
+fuelSchema.index({ tripId: 1 });
+
 export default mongoose.model('Fuel', fuelSchema);

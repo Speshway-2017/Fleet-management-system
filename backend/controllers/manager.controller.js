@@ -80,61 +80,57 @@ import { syncDriverLocationFromLatestTrip, updateDriverAndVehicleOnCompletion } 
 import { processFastagDeduction } from '../services/fastag.service.js';
 import { parseDateTimeIST } from '../utils/dateHelper.js';
 
+// Lightweight memory cache for high-frequency manager dashboard requests
+const managerDashboardCache = new Map();
+export const invalidateManagerDashboardCache = (managerId) => {
+  if (managerId) managerDashboardCache.delete(managerId.toString());
+  else managerDashboardCache.clear();
+};
+
 export const getDashboard = async (req, res, next) => {
   try {
     const managerId = req.user._id;
+    const nowTime = Date.now();
+    const cached = managerDashboardCache.get(managerId.toString());
+    if (cached && (nowTime - cached.time) < 5000) {
+      return sendSuccess(res, 200, cached.data, 'Dashboard stats loaded');
+    }
 
-    // 1. Fetch total and active vehicles
-    const totalVehicles = await Vehicle.countDocuments({ assignedManager: managerId });
-    const activeVehicles = await Vehicle.countDocuments({
-      assignedManager: managerId,
-      currentStatus: { $in: ['Active', 'On Trip'] }
-    });
+    // 1. Concurrent Batch 1: Primary counts and lookups
+    const [
+      totalVehicles,
+      activeVehicles,
+      tripsToday,
+      managerVehicles,
+      underRepair,
+      driversAvailable,
+      managerDriversForFuel,
+      trips
+    ] = await Promise.all([
+      Vehicle.countDocuments({ assignedManager: managerId }),
+      Vehicle.countDocuments({
+        assignedManager: managerId,
+        currentStatus: { $in: ['Active', 'On Trip'] }
+      }),
+      Trip.countDocuments({
+        assignedManager: managerId,
+        status: { $in: ['Scheduled', 'On Transit', 'Delayed', 'SCHEDULED', 'IN_TRANSIT', 'DISPATCHED'] }
+      }),
+      Vehicle.find({ assignedManager: managerId }, '_id vehicleNumber').lean(),
+      Vehicle.countDocuments({
+        assignedManager: managerId,
+        currentStatus: { $in: ['Maintenance', 'MAINTENANCE', 'Under Maintenance', 'Repair'] }
+      }),
+      Driver.countDocuments({
+        assignedManager: managerId,
+        driverStatus: 'AVAILABLE'
+      }),
+      Driver.find({ assignedManager: managerId }, '_id employeeId').lean(),
+      Trip.find({ assignedManager: managerId }).populate('vehicle').populate('driver').sort({ createdAt: -1 }).lean()
+    ]);
 
-    // 2. Trips Today (scheduled, on transit, delayed)
-    const tripsToday = await Trip.countDocuments({
-      assignedManager: managerId,
-      status: { $in: ['Scheduled', 'On Transit', 'Delayed', 'SCHEDULED', 'IN_TRANSIT', 'DISPATCHED'] }
-    });
-
-    // 3. Vehicles under repair and active maintenance alerts / complaints
-    const managerVehicles = await Vehicle.find({ assignedManager: managerId }, '_id vehicleNumber');
     const vehicleIds = managerVehicles.map(v => v._id);
     const vehicleNumbers = managerVehicles.map(v => v.vehicleNumber).filter(Boolean);
-
-    const underRepair = await Vehicle.countDocuments({
-      assignedManager: managerId,
-      currentStatus: { $in: ['Maintenance', 'MAINTENANCE', 'Under Maintenance', 'Repair'] }
-    });
-
-    const activeTicketsCount = await VehicleComplaint.countDocuments({
-      $or: [
-        { manager: managerId },
-        { assignedManager: managerId },
-        { vehicle: { $in: vehicleIds } },
-        { vehiclePlate: { $in: vehicleNumbers } }
-      ],
-      status: { $nin: ['Resolved', 'Closed', 'RESOLVED', 'CLOSED'] }
-    });
-
-    const activeMaintenanceSchedules = await Maintenance.countDocuments({
-      $or: [
-        { vehicle: { $in: vehicleIds } },
-        { recordedBy: managerId }
-      ],
-      status: { $in: ['Scheduled', 'In Progress', 'SCHEDULED', 'IN_PROGRESS', 'OVERDUE', 'Pending', 'Overdue'] }
-    });
-
-    const maintenanceAlertsCount = activeTicketsCount > 0 ? (activeTicketsCount + underRepair) : (underRepair > 0 ? underRepair : activeMaintenanceSchedules);
-
-    // 4. Drivers available
-    const driversAvailable = await Driver.countDocuments({
-      assignedManager: managerId,
-      driverStatus: 'AVAILABLE'
-    });
-
-    // 5. Fuel Expense: sum up amounts from Approved/Eligible Fuel records with exact decimal/paise arithmetic
-    const managerDriversForFuel = await Driver.find({ assignedManager: managerId }, '_id employeeId');
     const driverIdsForFuel = managerDriversForFuel.map(d => d._id);
     const employeeIdsForFuel = managerDriversForFuel.map(d => d.employeeId).filter(Boolean);
 
@@ -147,32 +143,49 @@ export const getDashboard = async (req, res, next) => {
       fuelConditions.push({ driverId: { $in: driverIdsForFuel.map(id => id.toString()).concat(employeeIdsForFuel) } });
     }
 
-    const fuelDocs = await Fuel.find({ $or: fuelConditions });
-    const { totalSpend: fuelSum } = calculateTotalFuelSpend(fuelDocs);
-    const fuelExpense = formatFuelSpend(fuelSum);
-
-    // 6. Total Earnings & Total Revenue: single source of truth using calculateFleetEarnings
-    const trips = await Trip.find({ assignedManager: managerId }).populate('vehicle').populate('driver').sort({ createdAt: -1 });
     const tripIds = trips.map(t => t._id);
     const tripNumbers = trips.map(t => t.tripNumber).filter(Boolean);
     const cleanTripNumbers = tripNumbers.map(tn => tn.replace('#', ''));
 
-    const [invoices, fuels, tolls] = await Promise.all([
+    // 2. Concurrent Batch 2: Secondary tickets, fuel, invoices, tolls
+    const [activeTicketsCount, activeMaintenanceSchedules, fuelDocs, invoices, fuels, tolls] = await Promise.all([
+      VehicleComplaint.countDocuments({
+        $or: [
+          { manager: managerId },
+          { assignedManager: managerId },
+          { vehicle: { $in: vehicleIds } },
+          { vehiclePlate: { $in: vehicleNumbers } }
+        ],
+        status: { $nin: ['Resolved', 'Closed', 'RESOLVED', 'CLOSED'] }
+      }),
+      Maintenance.countDocuments({
+        $or: [
+          { vehicle: { $in: vehicleIds } },
+          { recordedBy: managerId }
+        ],
+        status: { $in: ['Scheduled', 'In Progress', 'SCHEDULED', 'IN_PROGRESS', 'OVERDUE', 'Pending', 'Overdue'] }
+      }),
+      Fuel.find({ $or: fuelConditions }).lean(),
       Invoice.find({
         $or: [
           { trip: { $in: tripIds } },
           { invoiceNumber: { $in: trips.map(t => t.tripInvoice?.invoiceNumber).filter(Boolean) } }
         ]
-      }),
+      }).lean(),
       Fuel.find({
         $or: [
           { tripId: { $in: tripIds.map(id => id.toString()) } },
           { tripId: { $in: tripNumbers } },
           { tripId: { $in: cleanTripNumbers } }
         ]
-      }),
-      TollTransaction.find({ trip: { $in: tripIds } })
+      }).lean(),
+      TollTransaction.find({ trip: { $in: tripIds } }).lean()
     ]);
+
+    const maintenanceAlertsCount = activeTicketsCount > 0 ? (activeTicketsCount + underRepair) : (underRepair > 0 ? underRepair : activeMaintenanceSchedules);
+
+    const { totalSpend: fuelSum } = calculateTotalFuelSpend(fuelDocs);
+    const fuelExpense = formatFuelSpend(fuelSum);
 
     const fleetEarnings = calculateFleetEarnings(trips, invoices, fuels, tolls);
 
@@ -184,7 +197,6 @@ export const getDashboard = async (req, res, next) => {
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
       if (diffDays > 0 && diffDays <= 10) {
-        // Check if alert already exists for this expiry date
         const existingNotification = await Notification.findOne({
           recipient: managerId,
           type: 'warning',
@@ -209,7 +221,7 @@ export const getDashboard = async (req, res, next) => {
       }
     }
 
-    return sendSuccess(res, 200, {
+    const dashboardPayload = {
       totalVehicles,
       activeVehicles,
       tripsToday,
@@ -229,7 +241,11 @@ export const getDashboard = async (req, res, next) => {
       stats: fleetEarnings.stats,
       chartData: fleetEarnings.chartData,
       tripEarnings: fleetEarnings.tripEarnings
-    }, 'Dashboard stats loaded');
+    };
+
+    managerDashboardCache.set(managerId.toString(), { data: dashboardPayload, time: nowTime });
+
+    return sendSuccess(res, 200, dashboardPayload, 'Dashboard stats loaded');
   } catch (error) {
     next(error);
   }

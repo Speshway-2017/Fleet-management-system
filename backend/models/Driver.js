@@ -195,4 +195,7 @@ driverSchema.pre('save', async function (next) {
   next();
 });
 
+driverSchema.index({ assignedManager: 1, driverStatus: 1 });
+driverSchema.index({ accountStatus: 1 });
+
 export default mongoose.model('Driver', driverSchema);
