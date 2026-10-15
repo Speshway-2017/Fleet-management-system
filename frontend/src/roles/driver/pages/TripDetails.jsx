@@ -46,7 +46,10 @@ import {
   Printer,
   X,
   Download,
-  Fuel
+  Fuel,
+  Package,
+  Calendar,
+  Clock
 } from "lucide-react";
 import { calculateDrivingRoute } from "../../manager/services/routingService";
 
@@ -983,68 +986,172 @@ export default function DriverTripDetailsPage() {
             </div>
           </div>
 
-          {/* Cargo Specs (Moved from Sidebar) */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+          {/* Trip Specs & Cargo Info Card */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
+            {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-bold font-poppins text-slate-900 uppercase tracking-wider">Trip Specs & Cargo Info</h3>
-              <span className="text-xs font-semibold text-[#A14000] uppercase font-poppins tracking-wider">Specs</span>
+              <h3 className="text-sm font-bold font-poppins text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <Package className="w-4 h-4 text-[#A14000]" />
+                <span>Trip Specs & Cargo Info</span>
+              </h3>
+              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-[#A14000] border border-amber-200/60 uppercase font-poppins tracking-wider">
+                Specifications
+              </span>
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 py-2">
-              <div className="flex-1 min-w-[120px] space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-poppins block">Cargo Type</span>
-                <p className="text-sm font-bold text-slate-800">{trip.cargoType || "Standard Freight"}</p>
-              </div>
-              <div className="flex-1 min-w-[120px] space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-poppins block">Weight</span>
-                <p className="text-sm font-bold text-slate-800">
-                  {(trip.cargoWeight !== undefined && trip.cargoWeight !== null) ? `${trip.cargoWeight} kg` : (trip.weight ? `${trip.weight} Tons` : "N/A")}
+            {/* 5-Column Balanced Specs Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              {/* Cargo Type */}
+              <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/70 flex flex-col justify-between min-h-[72px]">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Package className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-poppins truncate">Cargo Type</span>
+                </div>
+                <p className="text-xs font-bold text-slate-900 font-poppins truncate" title={trip.cargoType || "Standard Freight"}>
+                  {trip.cargoType || "Standard Freight"}
                 </p>
               </div>
-              <div className="flex-1 min-w-[120px] space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-poppins block">Departure Time</span>
-                <p className="text-sm font-bold text-slate-800">
-                  {trip.departureTime ? new Date(trip.departureTime).toLocaleString('en-IN') : 'N/A'}
+
+              {/* Weight */}
+              <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/70 flex flex-col justify-between min-h-[72px]">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Scale className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-poppins truncate">Weight</span>
+                </div>
+                <p className="text-xs font-bold text-slate-900 font-poppins truncate">
+                  {(trip.cargoWeight !== undefined && trip.cargoWeight !== null) 
+                    ? `${Number(trip.cargoWeight).toLocaleString('en-IN')} kg` 
+                    : (trip.weight ? `${trip.weight} Tons` : "N/A")}
                 </p>
               </div>
-              <div className="flex-1 min-w-[120px] space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-poppins block">ETA</span>
-                <p className="text-sm font-bold text-slate-800">
-                  {trip.eta ? new Date(trip.eta).toLocaleString('en-IN') : 'N/A'}
-                </p>
+
+              {/* Departure Time */}
+              <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/70 flex flex-col justify-between min-h-[72px]">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-poppins truncate">Departure</span>
+                </div>
+                {trip.departureTime ? (
+                  <div className="space-y-0.5">
+                    <div className="text-xs font-bold text-slate-900 font-poppins leading-tight">
+                      {new Date(trip.departureTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-medium font-poppins leading-none">
+                      {new Date(trip.departureTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs font-bold text-slate-900 font-poppins">N/A</p>
+                )}
               </div>
-              <div className="flex-1 min-w-[100px] space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-poppins block">Distance</span>
-                <p className="text-sm font-bold text-slate-800">
+
+              {/* Estimated ETA */}
+              <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/70 flex flex-col justify-between min-h-[72px]">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Clock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-poppins truncate">Estimated ETA</span>
+                </div>
+                {trip.eta ? (
+                  <div className="space-y-0.5">
+                    <div className="text-xs font-bold text-slate-900 font-poppins leading-tight">
+                      {new Date(trip.eta).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-medium font-poppins leading-none">
+                      {new Date(trip.eta).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs font-bold text-slate-900 font-poppins">N/A</p>
+                )}
+              </div>
+
+              {/* Distance */}
+              <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/70 flex flex-col justify-between min-h-[72px]">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Navigation className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-poppins truncate">Distance</span>
+                </div>
+                <p className="text-xs font-bold text-slate-900 font-poppins truncate">
                   {trip.estimatedDistance || trip.distance ? `${trip.estimatedDistance || trip.distance} km` : 'N/A'}
                 </p>
               </div>
             </div>
 
-            {/* Address Details (Horizontal Row) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-100">
-              <div className="space-y-1 p-3 bg-slate-50 rounded-xl border border-slate-200/80 font-nunito min-w-0">
-                <span className="text-[10px] text-slate-400 uppercase font-bold font-poppins block mb-1">Pickup / From Address</span>
-                {pickupAddr.companyName && <p className="font-bold text-[#A14000] break-words">{pickupAddr.companyName}</p>}
-                {pickupAddr.streetAddress && <p className="text-slate-600 font-semibold break-words">{pickupAddr.streetAddress}</p>}
-                <p className="text-slate-500 font-bold break-words">{pickupAddr.city}, {pickupAddr.state}{(!pickupAddr.streetAddress && pickupAddr.pincode) ? ` - ${pickupAddr.pincode}` : ''}</p>
-                {pickupAddr.streetAddress && pickupAddr.pincode && <p className="text-xs text-slate-500 font-semibold">Pincode: {pickupAddr.pincode}</p>}
-                <p className="text-[10px] text-slate-400 mt-1 border-t border-slate-100 pt-1 font-sans break-words">Contact: {pickupAddr.contactPerson} ({pickupAddr.mobile})</p>
+            {/* Address Details (Equal-Height Symmetrical Grid) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+              {/* Pickup Address */}
+              <div className="flex flex-col justify-between p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 font-nunito min-w-0">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="text-[10px] text-slate-400 uppercase font-bold font-poppins">
+                      Pickup / From Address
+                    </span>
+                  </div>
+                  {pickupAddr.companyName && (
+                    <p className="font-bold text-[#A14000] font-poppins text-xs break-words">{pickupAddr.companyName}</p>
+                  )}
+                  {pickupAddr.streetAddress && (
+                    <p className="text-xs text-slate-700 font-medium break-words">{pickupAddr.streetAddress}</p>
+                  )}
+                  <p className="text-xs text-slate-600 font-bold break-words">
+                    {pickupAddr.city}, {pickupAddr.state}
+                    {(!pickupAddr.streetAddress && pickupAddr.pincode) ? ` - ${pickupAddr.pincode}` : ''}
+                  </p>
+                  {pickupAddr.streetAddress && pickupAddr.pincode && (
+                    <p className="text-[11px] text-slate-500 font-medium">Pincode: {pickupAddr.pincode}</p>
+                  )}
+                </div>
+                <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500">
+                  <span className="font-semibold text-slate-400 uppercase text-[9px] font-poppins">Contact</span>
+                  <span className="font-bold text-slate-700 break-words">
+                    {pickupAddr.contactPerson || 'Dispatch Officer'} {pickupAddr.mobile ? `(${pickupAddr.mobile})` : ''}
+                  </span>
+                </div>
               </div>
-              <div className="space-y-1 p-3 bg-slate-50 rounded-xl border border-slate-200/80 font-nunito min-w-0">
-                <span className="text-[10px] text-slate-400 uppercase font-bold font-poppins block mb-1">Destination / To Address</span>
-                {deliveryAddr.companyName && <p className="font-bold text-[#A14000] break-words">{deliveryAddr.companyName}</p>}
-                {deliveryAddr.streetAddress && <p className="text-slate-600 font-semibold break-words">{deliveryAddr.streetAddress}</p>}
-                <p className="text-slate-500 font-bold break-words">{deliveryAddr.city}, {deliveryAddr.state}{(!deliveryAddr.streetAddress && deliveryAddr.pincode) ? ` - ${deliveryAddr.pincode}` : ''}</p>
-                {deliveryAddr.streetAddress && deliveryAddr.pincode && <p className="text-xs text-slate-500 font-semibold">Pincode: {deliveryAddr.pincode}</p>}
-                <p className="text-[10px] text-slate-400 mt-1 border-t border-slate-100 pt-1 font-sans break-words">Contact: {deliveryAddr.contactPerson} ({deliveryAddr.mobile})</p>
+
+              {/* Destination Address */}
+              <div className="flex flex-col justify-between p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 font-nunito min-w-0">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                    <span className="text-[10px] text-slate-400 uppercase font-bold font-poppins">
+                      Destination / To Address
+                    </span>
+                  </div>
+                  {deliveryAddr.companyName && (
+                    <p className="font-bold text-[#A14000] font-poppins text-xs break-words">{deliveryAddr.companyName}</p>
+                  )}
+                  {deliveryAddr.streetAddress && (
+                    <p className="text-xs text-slate-700 font-medium break-words">{deliveryAddr.streetAddress}</p>
+                  )}
+                  <p className="text-xs text-slate-600 font-bold break-words">
+                    {deliveryAddr.city}, {deliveryAddr.state}
+                    {(!deliveryAddr.streetAddress && deliveryAddr.pincode) ? ` - ${deliveryAddr.pincode}` : ''}
+                  </p>
+                  {deliveryAddr.streetAddress && deliveryAddr.pincode && (
+                    <p className="text-[11px] text-slate-500 font-medium">Pincode: {deliveryAddr.pincode}</p>
+                  )}
+                </div>
+                <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500">
+                  <span className="font-semibold text-slate-400 uppercase text-[9px] font-poppins">Contact</span>
+                  <span className="font-bold text-slate-700 break-words">
+                    {deliveryAddr.contactPerson || 'Receiving In-charge'} {deliveryAddr.mobile ? `(${deliveryAddr.mobile})` : ''}
+                  </span>
+                </div>
               </div>
             </div>
 
+            {/* Special Instructions & Trip Notes */}
             {(trip.tripNotes || trip.description) && (
               <div className="pt-3 border-t border-slate-100">
-                <span className="text-[10px] text-slate-400 uppercase font-bold font-poppins block mb-1">Trip Notes</span>
-                <p className="text-slate-700 italic bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 leading-relaxed font-nunito break-words">{trip.tripNotes || trip.description}</p>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <FileText className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="text-[10px] text-slate-400 uppercase font-bold font-poppins">Special Instructions & Trip Notes</span>
+                </div>
+                <p className="text-xs text-slate-700 italic bg-slate-50/80 p-3 rounded-xl border border-slate-200/80 leading-relaxed font-nunito break-words">
+                  "{trip.tripNotes || trip.description}"
+                </p>
               </div>
             )}
           </div>
