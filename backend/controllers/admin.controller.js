@@ -28,7 +28,8 @@ import {
   calculateTripRevenue,
   getSettledRevenueForOrganization,
   getSettledRevenueForManager,
-  getRevenueAggregate
+  getRevenueAggregate,
+  invalidateRevenueCache
 } from '../repositories/admin.repository.js';
 import { calculateTripFinance } from '../utils/earningsCalculator.js';
 import { changeUserPassword } from '../services/auth.service.js';
@@ -53,7 +54,11 @@ import SubscriptionPlan from '../models/SubscriptionPlan.js';
 // Lightweight memory caches for high-frequency admin reads
 let adminDashboardCache = null;
 let adminDashboardCacheTime = 0;
-export const invalidateAdminDashboardCache = () => { adminDashboardCache = null; adminDashboardCacheTime = 0; };
+export const invalidateAdminDashboardCache = () => { 
+  adminDashboardCache = null; 
+  adminDashboardCacheTime = 0; 
+  invalidateRevenueCache();
+};
 
 let orgsCache = null;
 let orgsCacheTime = 0;
@@ -551,6 +556,7 @@ export const updateOrganization = async (req, res, next) => {
     }
 
     invalidateOrgsCache();
+    invalidateManagersCache();
     invalidateAdminDashboardCache();
     invalidateAnalyticsCache();
 
@@ -575,6 +581,7 @@ export const deleteOrganization = async (req, res, next) => {
     if (!org) return sendError(res, 404, 'Organization not found');
 
     await deleteOrganizationById(id);
+    await User.deleteMany({ organization: id, role: { $in: ['FLEET_MANAGER', 'fleet_manager'] } });
 
     // Store Admin Notification in MongoDB
     const notification = await createNotificationInRepo({
@@ -590,11 +597,13 @@ export const deleteOrganization = async (req, res, next) => {
       io.emit('dashboard:refresh');
       io.emit('organization:deleted', { id });
       io.emit('manager:updated');
+      io.emit('manager:deleted');
     }
 
     invalidateOrgsCache();
     invalidateAdminDashboardCache();
     invalidateAnalyticsCache();
+    invalidateManagersCache();
 
     return sendSuccess(res, 200, null, 'Organization deleted successfully');
   } catch (error) {
@@ -756,6 +765,7 @@ export const listManagers = async (_req, res, next) => {
         organizationId: manager.organization ? manager.organization._id.toString() : null,
         role: manager.role === 'FLEET_MANAGER' ? 'Fleet Manager' : manager.role,
         status: resolvedStatus,
+        isActive: resolvedStatus === 'Active',
         lastLogin: manager.lastLogin ? new Date(manager.lastLogin).toLocaleDateString() : 'Never',
         initials: initials.toUpperCase(),
         created: new Date(manager.createdAt).toLocaleDateString(),
@@ -851,6 +861,7 @@ export const createManager = async (req, res, next) => {
       : 'Fleet manager created successfully (Email delivery failed - please check SMTP configuration)';
 
     invalidateManagersCache();
+    invalidateOrgsCache();
     invalidateAdminDashboardCache();
     invalidateAnalyticsCache();
 
@@ -916,7 +927,16 @@ export const updateManager = async (req, res, next) => {
         statusMsg = ' and deactivated';
         notificationType = 'warning';
         await User.findByIdAndUpdate(id, { isActive: false, status: 'Inactive' });
+      } else if (updateData.status === 'Suspended') {
+        statusMsg = ' and suspended';
+        notificationType = 'warning';
+        await User.findByIdAndUpdate(id, { isActive: false, status: 'Suspended' });
       }
+    } else if (updateData.isActive !== undefined && updateData.isActive !== oldManager.isActive) {
+      const newStatus = updateData.isActive ? 'Active' : 'Inactive';
+      statusMsg = updateData.isActive ? ' and activated' : ' and deactivated';
+      notificationType = updateData.isActive ? 'success' : 'warning';
+      await User.findByIdAndUpdate(id, { isActive: updateData.isActive, status: newStatus });
     }
 
     // Store Admin Notification in MongoDB
@@ -937,9 +957,11 @@ export const updateManager = async (req, res, next) => {
         name: updatedManager.name,
         organizationId: updatedManager.organization
       });
+      io.emit('organization:updated');
     }
 
     invalidateManagersCache();
+    invalidateOrgsCache();
     invalidateAdminDashboardCache();
     invalidateAnalyticsCache();
 
@@ -978,9 +1000,11 @@ export const deleteManager = async (req, res, next) => {
       io.to(`role:${notification.recipientRole}`).emit('notification:new', notification);
       io.emit('dashboard:refresh');
       io.emit('manager:deleted', { id, organizationId: manager.organization?._id || manager.organization });
+      io.emit('organization:updated');
     }
 
     invalidateManagersCache();
+    invalidateOrgsCache();
     invalidateAdminDashboardCache();
     invalidateAnalyticsCache();
 
@@ -1271,7 +1295,7 @@ export const getAnalytics = async (req, res, next) => {
     const filter = req.query.filter || 'year';
     const nowTime = Date.now();
     const cached = analyticsCache.get(filter);
-    if (cached && (nowTime - cached.time) < 5000) {
+    if (cached && (nowTime - cached.time) < 30000) {
       return sendSuccess(res, 200, cached.data, 'Analytics data loaded');
     }
 
@@ -1290,9 +1314,12 @@ export const getAnalytics = async (req, res, next) => {
       startDate.setFullYear(startDate.getFullYear() - 1);
     }
 
-    const suspendedOrgDocs = await Organization.find({ status: 'Suspended' }).select('_id');
-    const suspendedOrgIds = suspendedOrgDocs.map(o => o._id);
+    const allOrgDocs = await Organization.find().select('_id status').lean();
+    const validOrgIds = allOrgDocs.map(o => o._id);
+    const activeOrgIds = allOrgDocs.filter(o => o.status !== 'Suspended').map(o => o._id);
+    const suspendedOrgIds = allOrgDocs.filter(o => o.status === 'Suspended').map(o => o._id);
 
+    // Parallelize all analytics queries in a single Promise.all
     const [
       totalOrgs,
       activeOrgs,
@@ -1307,24 +1334,33 @@ export const getAnalytics = async (req, res, next) => {
       drivers,
       activeTripsCount,
       completedTripsCount,
-      fuelDocs
+      fuelDocs,
+      growthStats,
+      totalRevenueAmount,
+      allOrgs,
+      managersWithPlans,
+      activityAgg
     ] = await Promise.all([
       Organization.countDocuments(),
       Organization.countDocuments({ status: 'Active' }),
       Organization.countDocuments({ status: 'Suspended' }),
-      User.countDocuments({ role: { $in: ['FLEET_MANAGER', 'fleet_manager'] } }),
       User.countDocuments({
         role: { $in: ['FLEET_MANAGER', 'fleet_manager'] },
-        isActive: { $ne: false },
-        status: { $nin: ['Inactive', 'Suspended'] },
-        organization: { $nin: suspendedOrgIds }
+        organization: { $in: validOrgIds }
       }),
       User.countDocuments({
         role: { $in: ['FLEET_MANAGER', 'fleet_manager'] },
+        organization: { $in: activeOrgIds },
+        isActive: { $ne: false },
+        status: { $nin: ['Inactive', 'Suspended'] }
+      }),
+      User.countDocuments({
+        role: { $in: ['FLEET_MANAGER', 'fleet_manager'] },
+        organization: { $in: validOrgIds },
         $or: [
+          { organization: { $in: suspendedOrgIds } },
           { isActive: false },
-          { status: { $in: ['Inactive', 'Suspended'] } },
-          { organization: { $in: suspendedOrgIds } }
+          { status: { $in: ['Inactive', 'Suspended'] } }
         ]
       }),
       PlatformIssue.countDocuments(),
@@ -1337,27 +1373,26 @@ export const getAnalytics = async (req, res, next) => {
       Fuel.aggregate([
         ...(startDate ? [{ $match: { createdAt: { $gte: startDate } } }] : []),
         { $group: { _id: null, totalFuel: { $sum: '$quantity' } } }
-      ])
-    ]);
-
-    const fuelUsage = fuelDocs.length > 0 ? fuelDocs[0].totalFuel : 0;
-
-    const { orgGrowthData, managerGrowthData } = await getMonthlyGrowthStats();
-
-    // Dynamic total revenue matching Admin Dashboard
-    const totalRevenueAmount = await getRevenueAggregate();
-
-    // Group organizations by plan for dynamic subscription distribution
-    const [allOrgs, managersWithPlans] = await Promise.all([
+      ]),
+      getMonthlyGrowthStats(),
+      getRevenueAggregate(),
       Organization.find({}).select('_id plan name').lean(),
       User.find({
         role: { $in: ['FLEET_MANAGER', 'fleet_manager'] },
         subscriptionPlan: { $ne: null }
-      }).populate('subscriptionPlan', 'name').lean()
+      }).populate('subscriptionPlan', 'name').lean(),
+      AuditLog.aggregate([
+        ...(startDate ? [{ $match: { createdAt: { $gte: startDate } } }] : []),
+        { $group: { _id: { $dayOfWeek: '$createdAt' }, count: { $sum: 1 } } }
+      ])
     ]);
 
+    const fuelUsage = fuelDocs.length > 0 ? fuelDocs[0].totalFuel : 0;
+    const { orgGrowthData, managerGrowthData } = growthStats || { orgGrowthData: [], managerGrowthData: [] };
+
+    // Group organizations by plan for dynamic subscription distribution
     const orgManagerPlanMap = new Map();
-    managersWithPlans.forEach(m => {
+    (managersWithPlans || []).forEach(m => {
       if (m.organization && m.subscriptionPlan?.name) {
         const orgIdStr = m.organization._id ? m.organization._id.toString() : m.organization.toString();
         const planName = String(m.subscriptionPlan.name).trim().toLowerCase();
@@ -1369,7 +1404,7 @@ export const getAnalytics = async (req, res, next) => {
     });
 
     const plansMap = { Basic: 0, Enterprise: 0, Professional: 0 };
-    allOrgs.forEach(org => {
+    (allOrgs || []).forEach(org => {
       let planName = org.plan ? String(org.plan).trim().toLowerCase() : '';
       if (!planName || planName === 'standard') {
         const mgrPlan = orgManagerPlanMap.get(org._id.toString());
@@ -1388,46 +1423,44 @@ export const getAnalytics = async (req, res, next) => {
     });
 
     const subscriptionData = [
-      { name: 'Basic', value: plansMap.Basic || 10, color: '#2563eb' },
-      { name: 'Enterprise', value: plansMap.Enterprise || 5, color: '#0f172a' },
-      { name: 'Professional', value: plansMap.Professional || 5, color: '#b45309' },
+      { name: 'Basic', value: plansMap.Basic || 0, color: '#2563eb' },
+      { name: 'Enterprise', value: plansMap.Enterprise || 0, color: '#0f172a' },
+      { name: 'Professional', value: plansMap.Professional || 0, color: '#b45309' },
     ];
 
     // System activity from AuditLog
     const weekdayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const loginActivityData = weekdayNames.map(day => ({ name: day, value: 0 }));
-    
-    const AuditLog = (await import('../models/AuditLog.js')).default;
-    const activityAgg = await AuditLog.aggregate([
-      ...(startDate ? [{ $match: { createdAt: { $gte: startDate } } }] : []),
-      { $group: { _id: { $dayOfWeek: '$createdAt' }, count: { $sum: 1 } } }
-    ]);
 
-    activityAgg.forEach(item => {
+    (activityAgg || []).forEach(item => {
       const idx = item._id - 1;
       if (idx >= 0 && idx < 7) {
         loginActivityData[idx].value = item.count;
       }
     });
 
+    const dynamicTotalManagers = Number(totalManagers) || 0;
+    const dynamicActiveManagers = Number(activeManagers) || 0;
+    const dynamicInactiveManagers = Number(inactiveManagers) || Math.max(0, dynamicTotalManagers - dynamicActiveManagers);
+
     const analyticsPayload = {
       kpis: {
         organizations: {
-          total: totalOrgs > 0 ? totalOrgs : 20,
+          total: totalOrgs,
           active: activeOrgs,
-          inactive: totalOrgs - activeOrgs,
+          inactive: Math.max(0, totalOrgs - activeOrgs),
           suspended: suspendedOrgs
         },
         managers: {
-          total: 28,
-          active: 23,
-          inactive: 5
+          total: dynamicTotalManagers,
+          active: dynamicActiveManagers,
+          inactive: dynamicInactiveManagers
         },
-        totalOrganizations: totalOrgs > 0 ? totalOrgs : 20,
+        totalOrganizations: totalOrgs,
         activeOrganizations: activeOrgs,
-        fleetManagers: 28,
-        activeFleetManagers: 23,
-        inactiveFleetManagers: 5,
+        fleetManagers: dynamicTotalManagers,
+        activeFleetManagers: dynamicActiveManagers,
+        inactiveFleetManagers: dynamicInactiveManagers,
         issues: {
           total: totalIssues,
           open: openIssues,
@@ -1436,7 +1469,7 @@ export const getAnalytics = async (req, res, next) => {
         vehicles,
         drivers,
         activeTrips: activeTripsCount,
-        completedTrips: completedTripsCount > 0 ? completedTripsCount : 156,
+        completedTrips: completedTripsCount,
         revenue: Number(totalRevenueAmount) || 0,
         fuelUsage
       },
@@ -1448,7 +1481,7 @@ export const getAnalytics = async (req, res, next) => {
       }
     };
 
-    analyticsCache.set(filter, { data: analyticsPayload, time: nowTime });
+    analyticsCache.set(filter, { data: analyticsPayload, time: Date.now() });
 
     return sendSuccess(res, 200, analyticsPayload, 'Analytics data loaded');
   } catch (error) {

@@ -379,10 +379,19 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
                               onTap: () async {
                                 if (!_isAssigned && !_hasActiveTrip) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Fuel logging requires an assigned vehicle or trip. Please contact your manager.'),
-                                      backgroundColor: Colors.orange,
+                                    SnackBar(
+                                      content: Row(
+                                        children: [
+                                          const Icon(Icons.lock_outline_rounded, color: Colors.white, size: 18),
+                                          const SizedBox(width: 8),
+                                          const Expanded(
+                                            child: Text('Fuel logging is locked: Requires an assigned vehicle or active trip.'),
+                                          ),
+                                        ],
+                                      ),
+                                      backgroundColor: const Color(0xFF1E293B),
                                       behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
                                     ),
                                   );
                                   return;
@@ -505,7 +514,7 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
               ),
               const SizedBox(height: 10.0),
               Text(
-                label,
+                isDisabled ? 'Fuel Log\nLocked' : label,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
                   fontSize: 12.5,

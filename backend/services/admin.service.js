@@ -14,8 +14,10 @@ import Organization from '../models/Organization.js';
 import User from '../models/User.js';
 
 export const getAdminDashboardData = async () => {
-  const suspendedOrgs = await Organization.find({ status: 'Suspended' }).select('_id');
-  const suspendedOrgIds = suspendedOrgs.map(o => o._id);
+  const allOrgs = await Organization.find().select('_id status').lean();
+  const validOrgIds = allOrgs.map(o => o._id);
+  const activeOrgIds = allOrgs.filter(o => o.status !== 'Suspended').map(o => o._id);
+  const suspendedOrgIds = allOrgs.filter(o => o.status === 'Suspended').map(o => o._id);
 
   const [
     totalOrganizations,
@@ -33,12 +35,15 @@ export const getAdminDashboardData = async () => {
   ] = await Promise.all([
     getDistinctOrganizations(), // total organizations
     getDistinctOrganizations({ isActive: true }), // active organizations
-    getUsersCount({ role: { $in: ['FLEET_MANAGER', 'fleet_manager'] } }), // total fleet managers
     getUsersCount({
       role: { $in: ['FLEET_MANAGER', 'fleet_manager'] },
+      organization: { $in: validOrgIds }
+    }), // total fleet managers in valid organizations
+    getUsersCount({
+      role: { $in: ['FLEET_MANAGER', 'fleet_manager'] },
+      organization: { $in: activeOrgIds },
       isActive: { $ne: false },
-      status: { $nin: ['Inactive', 'Suspended'] },
-      organization: { $nin: suspendedOrgIds }
+      status: { $nin: ['Inactive', 'Suspended'] }
     }), // active fleet managers (excluding managers of suspended orgs)
     getVehiclesCount({ status: { $nin: ['Inactive', 'Retired', 'Out of Service'] } }), // active vehicles count
     getRevenueAggregate(), // total revenue
@@ -69,13 +74,17 @@ export const getAdminDashboardData = async () => {
     return existing ? existing : { name: month, revenue: 0 };
   });
 
+  const totalFleetMgrs = Number(fleetManagers) || 0;
+  const activeFleetMgrs = Number(activeFleetManagers) || 0;
+  const inactiveFleetMgrs = Math.max(0, totalFleetMgrs - activeFleetMgrs);
+
   return {
     statistics: {
       totalOrganizations: Number(totalOrganizations) || 0,
       activeOrganizations: Number(activeOrganizations) || 0,
-      fleetManagers: 28,
-      activeFleetManagers: 23,
-      inactiveFleetManagers: 5,
+      fleetManagers: totalFleetMgrs,
+      activeFleetManagers: activeFleetMgrs,
+      inactiveFleetManagers: inactiveFleetMgrs,
       activeVehicles: Number(activeVehicles) || 0,
       revenue: Number(revenue) || 0,
       todayRevenue: Number(todayRevenue) || 0,
@@ -101,54 +110,62 @@ export const getMonthlyGrowthStats = async () => {
     });
   }
 
-  // Get cumulative start counts
   const firstMonthStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-  let orgCumulative = await Organization.countDocuments({ createdAt: { $lt: firstMonthStart } });
-  let managerCumulative = await User.countDocuments({ role: { $in: ['FLEET_MANAGER', 'fleet_manager'] }, createdAt: { $lt: firstMonthStart } });
+  const allOrgs = await Organization.find().select('_id').lean();
+  const validOrgIds = allOrgs.map(o => o._id);
 
-  // Grouped counts per month
-  const orgGrowthAgg = await Organization.aggregate([
-    { $match: { createdAt: { $gte: firstMonthStart } } },
-    {
-      $group: {
-        _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
-        count: { $sum: 1 }
+  // Concurrently fetch start cumulative counts and monthly aggregates
+  const [orgCumulativeStart, managerCumulativeStart, orgGrowthAgg, managerGrowthAgg] = await Promise.all([
+    Organization.countDocuments({ createdAt: { $lt: firstMonthStart } }),
+    User.countDocuments({
+      role: { $in: ['FLEET_MANAGER', 'fleet_manager'] },
+      organization: { $in: validOrgIds },
+      createdAt: { $lt: firstMonthStart }
+    }),
+    Organization.aggregate([
+      { $match: { createdAt: { $gte: firstMonthStart } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+          count: { $sum: 1 }
+        }
       }
-    }
+    ]),
+    User.aggregate([
+      {
+        $match: {
+          role: { $in: ['FLEET_MANAGER', 'fleet_manager'] },
+          organization: { $in: validOrgIds },
+          createdAt: { $gte: firstMonthStart }
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+          count: { $sum: 1 }
+        }
+      }
+    ])
   ]);
 
-  const managerGrowthAgg = await User.aggregate([
-    { $match: { role: { $in: ['FLEET_MANAGER', 'fleet_manager'] }, createdAt: { $gte: firstMonthStart } } },
-    {
-      $group: {
-        _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
-        count: { $sum: 1 }
-      }
-    }
-  ]);
+  let orgCumulative = orgCumulativeStart;
+  let managerCumulative = managerCumulativeStart;
 
-  const defaultManagerProgression = [12, 15, 18, 22, 25, 28];
-  const defaultActiveProgression = [10, 12, 15, 18, 21, 23];
-  const defaultOrgProgression = [6, 8, 11, 14, 16, 18];
-
-  const orgGrowthData = months.map((m, idx) => {
+  const orgGrowthData = months.map((m) => {
     const match = orgGrowthAgg.find(item => item._id === m.key);
     orgCumulative += match ? match.count : 0;
-    const finalVal = orgCumulative >= 18 ? orgCumulative : (defaultOrgProgression[idx] ?? orgCumulative);
-    return { name: m.name, value: finalVal };
+    return { name: m.name, value: orgCumulative };
   });
 
-  const managerGrowthData = months.map((m, idx) => {
+  const managerGrowthData = months.map((m) => {
     const match = managerGrowthAgg.find(item => item._id === m.key);
     managerCumulative += match ? match.count : 0;
-    const finalVal = managerCumulative >= 28 ? managerCumulative : (defaultManagerProgression[idx] ?? managerCumulative);
-    const activeVal = defaultActiveProgression[idx] ?? Math.round(finalVal * (23 / 28));
     return { 
       name: m.name, 
-      value: finalVal,
-      total: finalVal,
-      active: activeVal,
-      inactive: Math.max(0, finalVal - activeVal)
+      value: managerCumulative,
+      total: managerCumulative,
+      active: managerCumulative,
+      inactive: 0
     };
   });
 
