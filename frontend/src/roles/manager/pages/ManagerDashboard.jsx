@@ -26,7 +26,7 @@ export default function ManagerDashboard() {
   const [activities, setActivities] = useState([]);
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [timeframe, setTimeframe] = useState("All Time");
+  const [timeframe, setTimeframe] = useState("This Month");
   const [callingDriver, setCallingDriver] = useState(null);
 
   const dashboardRef = useRef(null);
@@ -198,7 +198,7 @@ export default function ManagerDashboard() {
   };
 
   // Dynamic Month & Timeframe Filter for Delivery Analytics
-  const { lineChartData, totalRevenue, totalCod, activeRidersCount } = useMemo(() => {
+  const { lineChartData, totalRevenue, totalCod, activeRidersCount, filteredTrips } = useMemo(() => {
     const now = new Date();
     
     // Map trip earnings from backend single source of truth
@@ -210,63 +210,109 @@ export default function ManagerDashboard() {
       });
     }
 
-    // Filter trips by selected timeframe / month
+    // Helper to reliably extract and parse trip dates
+    const getTripDate = (t) => {
+      if (!t) return null;
+      const dateCandidates = [
+        t.completedAt,
+        t.actualStartTime,
+        t.departureTime,
+        t.dispatchDate,
+        t.createdAt,
+        t.updatedAt
+      ];
+      for (const candidate of dateCandidates) {
+        if (!candidate) continue;
+        const d = new Date(candidate);
+        if (!isNaN(d.getTime()) && d.getFullYear() >= 2000) {
+          return d;
+        }
+      }
+      return null;
+    };
+
+    // Calculate exact timeframe boundaries
+    const getStartOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+    const getEndOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+
+    let filterStart = null;
+    let filterEnd = null;
+
+    if (timeframe === "Today") {
+      filterStart = getStartOfDay(now);
+      filterEnd = getEndOfDay(now);
+    } else if (timeframe === "This Week") {
+      const day = now.getDay();
+      const diffToMonday = (day === 0 ? -6 : 1 - day);
+      filterStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday, 0, 0, 0, 0);
+      filterEnd = new Date(filterStart.getFullYear(), filterStart.getMonth(), filterStart.getDate() + 6, 23, 59, 59, 999);
+    } else if (timeframe === "Last Week") {
+      const day = now.getDay();
+      const diffToMonday = (day === 0 ? -6 : 1 - day) - 7;
+      filterStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday, 0, 0, 0, 0);
+      filterEnd = new Date(filterStart.getFullYear(), filterStart.getMonth(), filterStart.getDate() + 6, 23, 59, 59, 999);
+    } else if (timeframe === "This Month") {
+      filterStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      filterEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    } else if (timeframe === "Last Month") {
+      filterStart = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+      filterEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    } else if (timeframe === "Last 3 Months") {
+      filterStart = new Date(now.getFullYear(), now.getMonth() - 2, 1, 0, 0, 0, 0);
+      filterEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    }
+
+    // Filter trips strictly within the selected timeframe
     const filtered = trips.filter(t => {
-      const dateVal = t.createdAt || t.departureTime || t.dispatchDate || t.updatedAt;
-      if (!dateVal) return true;
-      const tripDate = new Date(dateVal);
-      if (isNaN(tripDate.getTime())) return true;
-
-      if (timeframe === "This Week") {
-        const startOfWeek = new Date(now);
-        const day = startOfWeek.getDay();
-        const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
-        startOfWeek.setDate(diff);
-        startOfWeek.setHours(0, 0, 0, 0);
-
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
-        endOfWeek.setHours(23, 59, 59, 999);
-
-        return tripDate >= startOfWeek && tripDate <= endOfWeek;
-      }
-
-      if (timeframe === "This Month") {
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-        return tripDate >= startOfMonth && tripDate <= endOfMonth;
-      }
-
-      if (timeframe === "Last Month") {
-        const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
-        const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-        return tripDate >= startOfLastMonth && tripDate <= endOfLastMonth;
-      }
-
-      if (timeframe === "Last 3 Months") {
-        const startOf3Months = new Date(now.getFullYear(), now.getMonth() - 2, 1, 0, 0, 0, 0);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-        return tripDate >= startOf3Months && tripDate <= endOfMonth;
-      }
-
-      return true; // All Time
+      if (timeframe === "All Time") return true;
+      const tripDate = getTripDate(t);
+      if (!tripDate) return false;
+      return tripDate >= filterStart && tripDate <= filterEnd;
     });
+
+    // Helper to identify completed trips
+    const isCompletedStatus = (status) => {
+      const s = String(status || '').trim().toLowerCase();
+      return s === 'completed' || s === 'complete trip' || s === 'delivered' || s === 'trip ended' || s === 'reached destination';
+    };
 
     // Compute Line Chart Series
     let chartPoints = [];
-    if (timeframe === "This Week") {
+    if (timeframe === "Today") {
+      const todaySlots = [
+        { label: "00-04", startH: 0, endH: 3 },
+        { label: "04-08", startH: 4, endH: 7 },
+        { label: "08-12", startH: 8, endH: 11 },
+        { label: "12-16", startH: 12, endH: 15 },
+        { label: "16-20", startH: 16, endH: 19 },
+        { label: "20-24", startH: 20, endH: 23 },
+      ];
+      chartPoints = todaySlots.map(slot => {
+        const slotTrips = filtered.filter(t => {
+          const d = getTripDate(t);
+          if (!d) return false;
+          const h = d.getHours();
+          return h >= slot.startH && h <= slot.endH;
+        });
+        return {
+          day: slot.label,
+          dispatches: slotTrips.length,
+          completed: slotTrips.filter(t => isCompletedStatus(t.status)).length,
+        };
+      });
+    } else if (timeframe === "This Week" || timeframe === "Last Week") {
       const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
       chartPoints = daysOfWeek.map((dayName, idx) => {
         const dayTrips = filtered.filter(t => {
-          const d = new Date(t.createdAt || t.departureTime || t.dispatchDate || Date.now());
+          const d = getTripDate(t);
+          if (!d) return false;
           const dayIndex = (d.getDay() + 6) % 7;
           return dayIndex === idx;
         });
-        const completedCount = dayTrips.filter(t => ["COMPLETED", "DELIVERED", "Completed", "Delivered"].includes(t.status)).length;
         return {
           day: dayName,
           dispatches: dayTrips.length,
-          completed: completedCount,
+          completed: dayTrips.filter(t => isCompletedStatus(t.status)).length,
         };
       });
     } else if (timeframe === "This Month" || timeframe === "Last Month") {
@@ -279,15 +325,15 @@ export default function ManagerDashboard() {
       ];
       chartPoints = monthWeeks.map(w => {
         const weekTrips = filtered.filter(t => {
-          const d = new Date(t.createdAt || t.departureTime || t.dispatchDate || Date.now());
+          const d = getTripDate(t);
+          if (!d) return false;
           const dateNum = d.getDate();
           return dateNum >= w.start && dateNum <= w.end;
         });
-        const completedCount = weekTrips.filter(t => ["COMPLETED", "DELIVERED", "Completed", "Delivered"].includes(t.status)).length;
         return {
           day: w.label,
           dispatches: weekTrips.length,
-          completed: completedCount,
+          completed: weekTrips.filter(t => isCompletedStatus(t.status)).length,
         };
       });
     } else if (timeframe === "Last 3 Months") {
@@ -303,43 +349,48 @@ export default function ManagerDashboard() {
 
       chartPoints = monthsList.map(m => {
         const mTrips = filtered.filter(t => {
-          const d = new Date(t.createdAt || t.departureTime || t.dispatchDate || Date.now());
+          const d = getTripDate(t);
+          if (!d) return false;
           return d.getMonth() === m.monthIdx && d.getFullYear() === m.year;
         });
-        const completedCount = mTrips.filter(t => ["COMPLETED", "DELIVERED", "Completed", "Delivered"].includes(t.status)).length;
         return {
           day: m.label,
           dispatches: mTrips.length,
-          completed: completedCount,
+          completed: mTrips.filter(t => isCompletedStatus(t.status)).length,
         };
       });
     } else {
-      const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-      chartPoints = daysOfWeek.map((dayName, idx) => {
-        const dayTrips = filtered.filter(t => {
-          const d = new Date(t.createdAt || t.departureTime || t.dispatchDate || Date.now());
-          return ((d.getDay() + 6) % 7) === idx;
-        });
-        const completedCount = dayTrips.filter(t => ["COMPLETED", "DELIVERED", "Completed", "Delivered"].includes(t.status)).length;
+      // All Time: 6 Months overview
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const monthsList = [5, 4, 3, 2, 1, 0].map(offset => {
+        const d = new Date(now.getFullYear(), now.getMonth() - offset, 1);
         return {
-          day: dayName,
-          dispatches: dayTrips.length,
-          completed: completedCount,
+          monthIdx: d.getMonth(),
+          year: d.getFullYear(),
+          label: `${monthNames[d.getMonth()]} ${String(d.getFullYear()).slice(-2)}`
+        };
+      });
+
+      chartPoints = monthsList.map(m => {
+        const mTrips = filtered.filter(t => {
+          const d = getTripDate(t);
+          if (!d) return false;
+          return d.getMonth() === m.monthIdx && d.getFullYear() === m.year;
+        });
+        return {
+          day: m.label,
+          dispatches: mTrips.length,
+          completed: mTrips.filter(t => isCompletedStatus(t.status)).length,
         };
       });
     }
 
-    // Revenue & COD Calculation using single source of truth
+    // Revenue & COD Calculation dynamically for the period
     let rev = 0;
     let cod = 0;
-    const periodTripPool = filtered.length > 0 ? filtered : trips;
+    const assignedDriverIds = new Set();
 
-    const isCompletedStatus = (status) => {
-      const s = String(status || '').trim().toLowerCase();
-      return s === 'completed' || s === 'complete trip' || s === 'delivered';
-    };
-
-    periodTripPool.forEach(t => {
+    filtered.forEach(t => {
       const tripIdStr = String(t._id || t.id || '');
       const cleanNum = String(t.tripNumber || '').replace('#', '');
       const matchedEarning = tripEarningsMap.get(tripIdStr) || tripEarningsMap.get(cleanNum);
@@ -348,43 +399,45 @@ export default function ManagerDashboard() {
         ? matchedEarning.revenue
         : Number(t.revenue || t.totalAmount || t.billingAmount || t.tripInvoice?.totalAmount || 0);
 
-      const pMethod = String(t.paymentMethod || t.paymentType || "Prepaid").toUpperCase();
       const isCompleted = isCompletedStatus(t.status);
 
-      rev += tripRevenue;
+      // Revenue: strictly from completed deliveries in the period
+      if (isCompleted) {
+        rev += tripRevenue;
+      }
 
-      // COD Collected strictly adds the exact COD amount when the trip is completed
+      // COD Collected: strictly from completed COD/Cash trips in the period
+      const pMethod = String(t.paymentMethod || t.paymentType || "Prepaid").toUpperCase();
       if (isCompleted && (pMethod.includes("COD") || pMethod.includes("CASH") || Number(t.codAmount) > 0)) {
         const codAmt = (t.codAmount !== undefined && Number(t.codAmount) > 0)
           ? Number(t.codAmount)
           : tripRevenue;
         cod += codAmt;
       }
-    });
 
-    // When viewing All Time (or period covering all trips), synchronize directly with backend canonical total
-    if (earningsData?.stats?.totalRevenue !== undefined && (timeframe === "All Time" || filtered.length === trips.length)) {
-      rev = Number(earningsData.stats.totalRevenue);
-    }
-
-    // Active riders operating in period / overall available
-    const assignedDriverIds = new Set();
-    filtered.forEach(t => {
-      if (t.driver) {
-        const dId = typeof t.driver === 'object' ? (t.driver._id || t.driver.id) : t.driver;
-        if (dId) assignedDriverIds.add(String(dId));
+      // Active Riders: distinct drivers who operated trips in this timeframe
+      const drv = t.driver;
+      if (drv) {
+        const dId = typeof drv === 'object'
+          ? (drv._id || drv.id || drv.fullName || drv.name)
+          : drv;
+        if (dId && String(dId).trim()) assignedDriverIds.add(String(dId).trim());
+      } else if (t.driverName && String(t.driverName).trim() && String(t.driverName).trim() !== 'Unassigned') {
+        assignedDriverIds.add(String(t.driverName).trim());
       }
     });
-    const ridersCount = assignedDriverIds.size > 0 
-      ? assignedDriverIds.size 
-      : drivers.filter(d => d.isDuty || d.isOnline || d.driverStatus === "AVAILABLE" || d.driverStatus === "ON_TRIP").length;
+
+    // When viewing All Time, synchronize directly with backend canonical total
+    if (timeframe === "All Time" && earningsData?.stats?.totalRevenue !== undefined && Number(earningsData.stats.totalRevenue) > 0) {
+      rev = Number(earningsData.stats.totalRevenue);
+    }
 
     return {
       filteredTrips: filtered,
       lineChartData: chartPoints,
       totalRevenue: rev,
       totalCod: cod,
-      activeRidersCount: ridersCount,
+      activeRidersCount: assignedDriverIds.size,
     };
   }, [trips, timeframe, drivers, earningsData]);
 
@@ -418,13 +471,23 @@ export default function ManagerDashboard() {
     { name: "Remaining", value: (totalTripsCount - completedTripsCount - inTransitCount - delayedFailedCount) > 0 ? (totalTripsCount - completedTripsCount - inTransitCount - delayedFailedCount) : (totalTripsCount === 0 ? 1 : 0), color: "#334155" }
   ];
 
-  // Calculate Hub Load Distribution dynamically based on vehicle branches
+  // Calculate Hub Load Distribution dynamically based on vehicle branches and filtered trips
   const hubBranchMap = {};
-  vehicles.forEach(v => {
-    const b = v.branch || v.branchDepot || v.currentLocation || "HQ";
-    hubBranchMap[b] = (hubBranchMap[b] || 0) + 1;
-  });
-  const totalHubVeh = vehicles.length || 1;
+  if (filteredTrips && filteredTrips.length > 0) {
+    filteredTrips.forEach(t => {
+      const b = (t.origin && typeof t.origin === 'object' ? t.origin.city : null) ||
+                t.startLocation?.split(',')[0]?.trim() ||
+                (t.vehicle && typeof t.vehicle === 'object' ? (t.vehicle.branch || t.vehicle.currentLocation) : null) ||
+                "HQ";
+      hubBranchMap[b] = (hubBranchMap[b] || 0) + 1;
+    });
+  } else {
+    vehicles.forEach(v => {
+      const b = v.branch || v.branchDepot || v.currentLocation || "HQ";
+      hubBranchMap[b] = (hubBranchMap[b] || 0) + 1;
+    });
+  }
+  const totalHubVeh = Object.values(hubBranchMap).reduce((acc, curr) => acc + curr, 0) || 1;
   const topHubs = Object.keys(hubBranchMap).slice(0, 4);
   const hubColors = ["#0D1B2A", "#A14000", "#1E293B", "#D97706"];
   const hubDistribution = topHubs.map((hName, i) => ({
@@ -606,7 +669,13 @@ export default function ManagerDashboard() {
               <div>
                 <h3 className="font-poppins font-bold text-sm text-slate-900">Delivery Analytics</h3>
                 <p className="text-[10px] text-slate-400 font-medium font-poppins">
-                  {timeframe === "This Week" ? "Completed vs active trip dispatches across the week." : `Completed vs active trip dispatches for ${timeframe.toLowerCase()}.`}
+                  {timeframe === "Today"
+                    ? "Completed vs active trip dispatches for today."
+                    : timeframe === "This Week"
+                    ? "Completed vs active trip dispatches across this week."
+                    : timeframe === "Last Week"
+                    ? "Completed vs active trip dispatches for last week."
+                    : `Completed vs active trip dispatches for ${timeframe.toLowerCase()}.`}
                 </p>
               </div>
               <select
@@ -614,9 +683,11 @@ export default function ManagerDashboard() {
                 onChange={(e) => setTimeframe(e.target.value)}
                 className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 font-poppins focus:outline-none cursor-pointer transition-colors hover:bg-slate-100 shadow-2xs"
               >
+                <option value="Today">Today</option>
+                <option value="This Week">This Week</option>
+                <option value="Last Week">Last Week</option>
                 <option value="This Month">This Month</option>
                 <option value="Last Month">Last Month</option>
-                <option value="This Week">This Week</option>
                 <option value="Last 3 Months">Last 3 Months</option>
                 <option value="All Time">All Time</option>
               </select>
@@ -675,7 +746,7 @@ export default function ManagerDashboard() {
           <div className="mt-3 pt-3 border-t border-slate-100">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-slate-800 font-poppins">Hub Load Distribution</span>
-              <span className="text-[10px] font-semibold text-slate-400 font-poppins">This Month</span>
+              <span className="text-[10px] font-semibold text-slate-400 font-poppins">{timeframe}</span>
             </div>
             <div className="h-2.5 w-full bg-slate-100 rounded-full flex overflow-hidden">
               {hubDistribution.length > 0 ? (

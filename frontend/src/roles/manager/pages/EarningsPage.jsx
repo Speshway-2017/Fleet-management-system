@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axiosClient from "@/api/axiosClient";
 import Breadcrumb from "@/components/common/Breadcrumb";
-import { 
-  TrendingUp, 
-  DollarSign, 
-  Calendar, 
-  Search, 
-  Filter, 
-  Download, 
-  ArrowUpDown, 
-  ChevronLeft, 
-  ChevronRight, 
+import {
+  TrendingUp,
+  DollarSign,
+  Calendar,
+  Search,
+  Filter,
+  Download,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
   Activity,
   Percent
 } from "lucide-react";
@@ -114,15 +114,15 @@ export default function EarningsPage() {
     if (searchError) return [];
     return data.tripEarnings
       .filter((item) => {
-        const matchesSearch = 
+        const matchesSearch =
           item.tripNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
           item.driverName.toLowerCase().includes(searchTerm.toLowerCase()) ||
           item.vehiclePlate.toLowerCase().includes(searchTerm.toLowerCase()) ||
           item.startLocation.toLowerCase().includes(searchTerm.toLowerCase()) ||
           item.endLocation.toLowerCase().includes(searchTerm.toLowerCase());
-        
+
         const matchesStatus = statusFilter === "All" || item.status === statusFilter;
-        
+
         return matchesSearch && matchesStatus;
       })
       .sort((a, b) => {
@@ -197,14 +197,14 @@ export default function EarningsPage() {
       item.netEarnings
     ]);
 
-    const csvContent = 
-      "data:text/csv;charset=utf-8," + 
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
       [headers.join(","), ...rows.map(e => e.map(val => `"${val}"`).join(","))].join("\n");
-    
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `fleet_earnings_export_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute("download", `fleet_earnings_export_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -292,26 +292,24 @@ export default function EarningsPage() {
           <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">Earnings Dashboard</h1>
           <p className="text-[14px] text-[#64748B] mt-2">Track trip revenues, operational expenses, and profit margins in real-time.</p>
         </div>
-        
+
         {/* Tab Selector */}
         <div className="flex bg-[#F1F5F9] p-1.5 rounded-xl self-start md:self-auto shadow-inner border border-gray-200/50">
           <button
             onClick={() => setActiveTab("overview")}
-            className={`px-4 py-2 rounded-lg font-poppins text-xs font-bold transition-all ${
-              activeTab === "overview" 
-                ? "bg-white text-[#A14000] shadow-sm" 
+            className={`px-4 py-2 rounded-lg font-poppins text-xs font-bold transition-all ${activeTab === "overview"
+                ? "bg-white text-[#A14000] shadow-sm"
                 : "text-[#64748B] hover:text-[#475569]"
-            }`}
+              }`}
           >
             Overview & Stats
           </button>
           <button
             onClick={() => setActiveTab("details")}
-            className={`px-4 py-2 rounded-lg font-poppins text-xs font-bold transition-all ${
-              activeTab === "details" 
-                ? "bg-white text-[#A14000] shadow-sm" 
+            className={`px-4 py-2 rounded-lg font-poppins text-xs font-bold transition-all ${activeTab === "details"
+                ? "bg-white text-[#A14000] shadow-sm"
                 : "text-[#64748B] hover:text-[#475569]"
-            }`}
+              }`}
           >
             Detailed Listings
           </button>
@@ -334,7 +332,7 @@ export default function EarningsPage() {
             </h3>
             <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-1.5 truncate">
               <TrendingUp className="w-3.5 h-3.5 shrink-0" />
-              {dynamicStats.completedCount > 0 
+              {dynamicStats.completedCount > 0
                 ? `From ${dynamicStats.completedCount} completed trip${dynamicStats.completedCount === 1 ? '' : 's'}`
                 : "Gross freight & billing revenue"}
             </span>
@@ -393,11 +391,11 @@ export default function EarningsPage() {
               {dynamicStats.marginPercent}%
             </h3>
             <span className="text-[11px] text-blue-600 font-semibold flex items-center gap-1 mt-1.5 truncate">
-              {dynamicStats.marginPercent >= 75 
-                ? "Optimal operational efficiency" 
-                : dynamicStats.marginPercent >= 50 
-                ? "Healthy profitability index" 
-                : "Net margin performance"}
+              {dynamicStats.marginPercent >= 75
+                ? "Optimal operational efficiency"
+                : dynamicStats.marginPercent >= 50
+                  ? "Healthy profitability index"
+                  : "Net margin performance"}
             </span>
           </div>
         </div>
@@ -424,25 +422,25 @@ export default function EarningsPage() {
                   >
                     <defs>
                       <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor="#10B981" stopOpacity={0.01}/>
+                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="#10B981" stopOpacity={0.01} />
                       </linearGradient>
                       <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#EF4444" stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor="#EF4444" stopOpacity={0.01}/>
+                        <stop offset="5%" stopColor="#EF4444" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="#EF4444" stopOpacity={0.01} />
                       </linearGradient>
                       <linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor="#F59E0B" stopOpacity={0.01}/>
+                        <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="#F59E0B" stopOpacity={0.01} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                    <XAxis 
-                      dataKey="month" 
-                      tick={{ fill: '#64748B', fontSize: 11, fontFamily: 'Poppins' }} 
+                    <XAxis
+                      dataKey="month"
+                      tick={{ fill: '#64748B', fontSize: 11, fontFamily: 'Poppins' }}
                       stroke="#E2E8F0"
                     />
-                    <YAxis 
+                    <YAxis
                       tick={{ fill: '#64748B', fontSize: 11, fontFamily: 'Poppins' }}
                       stroke="#E2E8F0"
                       width={65}
@@ -454,7 +452,7 @@ export default function EarningsPage() {
                         return `${isNegative ? "-₹" : "₹"}${absK}k`;
                       }}
                     />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value, name) => [formatFullCurrency(value), name || ""]}
                       contentStyle={{ fontFamily: 'Poppins', fontSize: 12, borderRadius: '8px', border: '1px solid #E2E8F0' }}
                     />
@@ -488,11 +486,10 @@ export default function EarningsPage() {
                     placeholder="Search trips, drivers, routes..."
                     value={searchTerm}
                     onChange={handleSearchChange}
-                    className={`w-full pl-10 pr-4 py-2 bg-gray-50 border rounded-xl text-xs font-medium focus:bg-white outline-none transition-all ${
-                      searchError
+                    className={`w-full pl-10 pr-4 py-2 bg-gray-50 border rounded-xl text-xs font-medium focus:bg-white outline-none transition-all ${searchError
                         ? "border-red-500 focus:ring-1 focus:ring-red-500"
                         : "border-gray-200 focus:ring-1 focus:ring-amber-500/50"
-                    }`}
+                      }`}
                   />
                 </div>
                 {searchError && (
@@ -582,15 +579,14 @@ export default function EarningsPage() {
                         <div className="text-[10px] text-gray-400 mt-0.5">{item.distance} km</div>
                       </td>
                       <td className="py-4 px-5">
-                        <span className={`px-2 py-0.5 text-[9px] font-bold rounded-full uppercase border ${
-                          item.status === 'Completed' 
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
-                            : item.status === 'In Progress' 
-                            ? 'bg-blue-50 text-blue-700 border-blue-100' 
-                            : item.status === 'Cancelled' 
-                            ? 'bg-red-50 text-red-700 border-red-100' 
-                            : 'bg-amber-50 text-amber-700 border-amber-100'
-                        }`}>
+                        <span className={`px-2 py-0.5 text-[9px] font-bold rounded-full uppercase border ${item.status === 'Completed'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                            : item.status === 'In Progress'
+                              ? 'bg-blue-50 text-blue-700 border-blue-100'
+                              : item.status === 'Cancelled'
+                                ? 'bg-red-50 text-red-700 border-red-100'
+                                : 'bg-amber-50 text-amber-700 border-amber-100'
+                          }`}>
                           {item.status}
                         </span>
                       </td>
@@ -636,11 +632,10 @@ export default function EarningsPage() {
                   <button
                     key={i + 1}
                     onClick={() => setCurrentPage(i + 1)}
-                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                      currentPage === i + 1
+                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${currentPage === i + 1
                         ? "bg-[#A14000] text-white"
                         : "border border-gray-200 hover:bg-gray-50 text-gray-600"
-                    }`}
+                      }`}
                   >
                     {i + 1}
                   </button>
