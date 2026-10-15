@@ -12,7 +12,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Activity,
-  Percent
+  Percent,
+  Receipt,
+  Truck
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -31,7 +33,8 @@ import { validateSearchQuery } from "@/validations/common.schema.js";
 
 export default function EarningsPage() {
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview"); // overview or details
+  const [activeTab, setActiveTab] = useState("overview"); // "overview" or "details"
+  const [selectedTripId, setSelectedTripId] = useState("all");
   const [data, setData] = useState({
     stats: { totalRevenue: 0, totalExpenses: 0, totalNetEarnings: 0, tripCount: 0 },
     chartData: [],
@@ -109,6 +112,18 @@ export default function EarningsPage() {
     }
   };
 
+  // Selected trip helper
+  const selectedTrip = useMemo(() => {
+    if (selectedTripId === "all") return null;
+    return (
+      data.tripEarnings.find(
+        (t) =>
+          String(t.tripId) === String(selectedTripId) ||
+          String(t.tripNumber) === String(selectedTripId)
+      ) || null
+    );
+  }, [data.tripEarnings, selectedTripId]);
+
   // Sort and filter logic
   const filteredEarnings = useMemo(() => {
     if (searchError) return [];
@@ -123,7 +138,12 @@ export default function EarningsPage() {
 
         const matchesStatus = statusFilter === "All" || item.status === statusFilter;
 
-        return matchesSearch && matchesStatus;
+        const matchesTrip =
+          selectedTripId === "all" ||
+          String(item.tripId) === String(selectedTripId) ||
+          String(item.tripNumber) === String(selectedTripId);
+
+        return matchesSearch && matchesStatus && matchesTrip;
       })
       .sort((a, b) => {
         let valueA = a[sortField];
@@ -144,7 +164,7 @@ export default function EarningsPage() {
           ? valueA - valueB
           : valueB - valueA;
       });
-  }, [data.tripEarnings, searchTerm, searchError, statusFilter, sortField, sortDirection]);
+  }, [data.tripEarnings, searchTerm, searchError, statusFilter, selectedTripId, sortField, sortDirection]);
 
   // Paginated listings
   const paginatedEarnings = useMemo(() => {
@@ -184,7 +204,7 @@ export default function EarningsPage() {
       "Net Earnings (₹)"
     ];
 
-    const rows = filteredEarnings.map(item => [
+    const rows = filteredEarnings.map((item) => [
       item.tripNumber,
       item.vehiclePlate,
       item.driverName,
@@ -199,21 +219,28 @@ export default function EarningsPage() {
 
     const csvContent =
       "data:text/csv;charset=utf-8," +
-      [headers.join(","), ...rows.map(e => e.map(val => `"${val}"`).join(","))].join("\n");
+      [headers.join(","), ...rows.map((e) => e.map((val) => `"${val}"`).join(","))].join("\n");
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `fleet_earnings_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute(
+      "download",
+      `fleet_earnings_export_${new Date().toISOString().slice(0, 10)}.csv`
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success("CSV Export downloaded successfully");
+    toast.success("Earnings CSV Export downloaded successfully");
   };
 
   const dynamicStats = useMemo(() => {
     const serverStats = data.stats || {};
-    const isSearchingOrFiltering = Boolean(searchTerm.trim() || (statusFilter !== "All"));
+    const isSearchingOrFiltering = Boolean(
+      searchTerm.trim() ||
+      statusFilter !== "All" ||
+      selectedTripId !== "all"
+    );
 
     // If viewing unfiltered overall state, prioritize canonical server stats from backend single source of truth
     if (!isSearchingOrFiltering && serverStats.totalRevenue !== undefined && Number(serverStats.totalRevenue) > 0) {
@@ -239,7 +266,7 @@ export default function EarningsPage() {
       };
     }
 
-    // Dynamic aggregation for filtered view or fallback from trips list
+    // Dynamic aggregation for filtered view or selected trip
     let totalRevenue = 0;
     let totalExpenses = 0;
     let fuelExpenses = 0;
@@ -253,7 +280,7 @@ export default function EarningsPage() {
 
     const targetList = isSearchingOrFiltering ? filteredEarnings : data.tripEarnings;
 
-    targetList.forEach(item => {
+    targetList.forEach((item) => {
       const isComp = item.isCompleted ?? isCompletedStatus(item.status);
       if (isComp) completedCount++;
       const rev = Number(item.revenue) || 0;
@@ -280,7 +307,7 @@ export default function EarningsPage() {
       tripCount: targetList.length,
       isFiltered: isSearchingOrFiltering
     };
-  }, [data.stats, data.tripEarnings, filteredEarnings, searchTerm, statusFilter]);
+  }, [data.stats, data.tripEarnings, filteredEarnings, searchTerm, statusFilter, selectedTripId]);
 
   return (
     <div className="w-full px-6 md:px-8 py-8 overflow-x-hidden">
@@ -297,19 +324,21 @@ export default function EarningsPage() {
         <div className="flex bg-[#F1F5F9] p-1.5 rounded-xl self-start md:self-auto shadow-inner border border-gray-200/50">
           <button
             onClick={() => setActiveTab("overview")}
-            className={`px-4 py-2 rounded-lg font-poppins text-xs font-bold transition-all ${activeTab === "overview"
+            className={`px-4 py-2 rounded-lg font-poppins text-xs font-bold transition-all ${
+              activeTab === "overview"
                 ? "bg-white text-[#A14000] shadow-sm"
                 : "text-[#64748B] hover:text-[#475569]"
-              }`}
+            }`}
           >
             Overview & Stats
           </button>
           <button
             onClick={() => setActiveTab("details")}
-            className={`px-4 py-2 rounded-lg font-poppins text-xs font-bold transition-all ${activeTab === "details"
+            className={`px-4 py-2 rounded-lg font-poppins text-xs font-bold transition-all ${
+              activeTab === "details"
                 ? "bg-white text-[#A14000] shadow-sm"
                 : "text-[#64748B] hover:text-[#475569]"
-              }`}
+            }`}
           >
             Detailed Listings
           </button>
@@ -339,7 +368,7 @@ export default function EarningsPage() {
           </div>
         </div>
 
-        {/* Operational Costs Card */}
+        {/* Operational Costs / Expenses Card */}
         <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-5 hover:-translate-y-0.5 transition-transform duration-300">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider font-poppins">Operational Costs</span>
@@ -471,13 +500,88 @@ export default function EarningsPage() {
           </div>
         </div>
       ) : (
-        /* Detailed Listings Tab */
+        /* Detailed Listings Section */
         <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-6 flex flex-col">
+          {/* Active Trip Expense Highlight Card */}
+          {selectedTrip && selectedTripId !== "all" && (
+            <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-red-50/70 via-orange-50/40 to-white border border-red-100 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm animate-fadeIn">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-red-100/70 text-red-600 rounded-xl">
+                  <Receipt className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-poppins font-bold text-sm text-[#1E293B]">
+                      {selectedTrip.tripNumber}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 text-[9px] font-bold rounded-full uppercase border ${
+                        selectedTrip.status === "Completed"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                          : selectedTrip.status === "In Progress"
+                          ? "bg-blue-50 text-blue-700 border-blue-100"
+                          : selectedTrip.status === "Cancelled"
+                          ? "bg-red-50 text-red-700 border-red-100"
+                          : "bg-amber-50 text-amber-700 border-amber-100"
+                      }`}
+                    >
+                      {selectedTrip.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#64748B] mt-0.5">
+                    {selectedTrip.vehiclePlate} ({selectedTrip.vehicleName}) • {selectedTrip.driverName} • {selectedTrip.startLocation} &rarr; {selectedTrip.endLocation} ({selectedTrip.distance} km)
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-4 bg-white/80 backdrop-blur-sm px-4 py-2.5 rounded-xl border border-red-100">
+                <div className="text-right">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-red-500 font-poppins block">
+                    Trip Expenses
+                  </span>
+                  <span className="text-lg font-bold text-red-600 font-poppins pr-2">
+                    {formatFullCurrency(selectedTrip.expenses)}
+                  </span>
+                </div>
+                <div className="h-8 w-px bg-gray-200 hidden sm:block" />
+                <div className="flex items-center gap-3 text-xs">
+                  <div>
+                    <span className="text-[10px] text-gray-400 block font-medium">Fuel</span>
+                    <span className="font-semibold text-gray-700">
+                      {formatFullCurrency(selectedTrip.fuelExpense || 0)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-gray-400 block font-medium">Tolls</span>
+                    <span className="font-semibold text-gray-700">
+                      {formatFullCurrency(selectedTrip.tollExpense || 0)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-gray-400 block font-medium">Allowance</span>
+                    <span className="font-semibold text-gray-700">
+                      {formatFullCurrency(selectedTrip.driverAllowance || 0)}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setSelectedTripId("all");
+                    setCurrentPage(1);
+                  }}
+                  className="text-xs text-[#A14000] hover:text-[#7d3200] font-semibold underline underline-offset-2 ml-2 cursor-pointer"
+                >
+                  View All Trips
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Table Toolbar / Filters */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
               {/* Search */}
-              <div className="flex flex-col w-full sm:w-[260px]">
+              <div className="flex flex-col w-full sm:w-[240px]">
                 <div className="relative">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
@@ -486,10 +590,11 @@ export default function EarningsPage() {
                     placeholder="Search trips, drivers, routes..."
                     value={searchTerm}
                     onChange={handleSearchChange}
-                    className={`w-full pl-10 pr-4 py-2 bg-gray-50 border rounded-xl text-xs font-medium focus:bg-white outline-none transition-all ${searchError
+                    className={`w-full pl-10 pr-4 py-2 bg-gray-50 border rounded-xl text-xs font-medium focus:bg-white outline-none transition-all ${
+                      searchError
                         ? "border-red-500 focus:ring-1 focus:ring-red-500"
                         : "border-gray-200 focus:ring-1 focus:ring-amber-500/50"
-                      }`}
+                    }`}
                   />
                 </div>
                 {searchError && (
@@ -502,7 +607,10 @@ export default function EarningsPage() {
                 <Filter className="w-3.5 h-3.5 text-gray-400" />
                 <select
                   value={statusFilter}
-                  onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium focus:bg-white outline-none transition-all cursor-pointer"
                 >
                   <option value="All">All Trip Statuses</option>
@@ -510,6 +618,28 @@ export default function EarningsPage() {
                   <option value="In Progress">In Progress</option>
                   <option value="Scheduled">Scheduled</option>
                   <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+
+              {/* Trip Selection Dropdown */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-gray-500 font-poppins whitespace-nowrap">
+                  Trip Selection:
+                </span>
+                <select
+                  value={selectedTripId}
+                  onChange={(e) => {
+                    setSelectedTripId(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium focus:bg-white focus:border-[#A14000] outline-none transition-all cursor-pointer max-w-[240px] truncate"
+                >
+                  <option value="all">All Trips ({data.tripEarnings.length})</option>
+                  {data.tripEarnings.map((trip) => (
+                    <option key={trip.tripId} value={trip.tripId}>
+                      {trip.tripNumber} ({formatFullCurrency(trip.expenses)})
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -529,30 +659,45 @@ export default function EarningsPage() {
             <table className="w-full text-left border-collapse text-xs font-nunito">
               <thead>
                 <tr className="bg-[#F5F7FB] border-b border-[#E7EAF0] text-[#64748B] font-poppins font-semibold uppercase text-[10px] tracking-wider select-none whitespace-nowrap">
-                  <th className="py-4 px-5 cursor-pointer hover:bg-gray-100/50 transition-colors" onClick={() => handleSort("tripNumber")}>
+                  <th
+                    className="py-4 px-5 cursor-pointer hover:bg-gray-100/50 transition-colors"
+                    onClick={() => handleSort("tripNumber")}
+                  >
                     <div className="flex items-center gap-1">
                       Trip Details
                       <ArrowUpDown className="w-3 h-3 text-[#CBD5E1]" />
                     </div>
                   </th>
-                  <th className="py-4 px-5 cursor-pointer hover:bg-gray-100/50 transition-colors" onClick={() => handleSort("vehicleName")}>
+                  <th
+                    className="py-4 px-5 cursor-pointer hover:bg-gray-100/50 transition-colors"
+                    onClick={() => handleSort("vehicleName")}
+                  >
                     Vehicle & Driver
                   </th>
                   <th className="py-4 px-5">Route</th>
                   <th className="py-4 px-5">Status</th>
-                  <th className="py-4 px-5 cursor-pointer hover:bg-gray-100/50 transition-colors" onClick={() => handleSort("revenue")}>
+                  <th
+                    className="py-4 px-5 cursor-pointer hover:bg-gray-100/50 transition-colors"
+                    onClick={() => handleSort("revenue")}
+                  >
                     <div className="flex items-center gap-1 justify-end">
                       Revenue
                       <ArrowUpDown className="w-3 h-3 text-[#CBD5E1]" />
                     </div>
                   </th>
-                  <th className="py-4 px-5 cursor-pointer hover:bg-gray-100/50 transition-colors" onClick={() => handleSort("expenses")}>
-                    <div className="flex items-center gap-1 justify-end">
+                  <th
+                    className="py-4 px-5 cursor-pointer hover:bg-gray-100/50 transition-colors"
+                    onClick={() => handleSort("expenses")}
+                  >
+                    <div className="flex items-center gap-1 justify-end text-red-600 font-bold">
                       Expenses
-                      <ArrowUpDown className="w-3 h-3 text-[#CBD5E1]" />
+                      <ArrowUpDown className="w-3 h-3 text-red-300" />
                     </div>
                   </th>
-                  <th className="py-4 px-5 cursor-pointer hover:bg-gray-100/50 transition-colors" onClick={() => handleSort("netEarnings")}>
+                  <th
+                    className="py-4 px-5 cursor-pointer hover:bg-gray-100/50 transition-colors"
+                    onClick={() => handleSort("netEarnings")}
+                  >
                     <div className="flex items-center gap-1 justify-end">
                       Net Profit
                       <ArrowUpDown className="w-3 h-3 text-[#CBD5E1]" />
@@ -562,49 +707,86 @@ export default function EarningsPage() {
               </thead>
               <tbody className="divide-y divide-[#E7EAF0] font-medium text-[#475569]">
                 {paginatedEarnings.length > 0 ? (
-                  paginatedEarnings.map((item) => (
-                    <tr key={item.tripId} className="hover:bg-gray-50/50 transition-colors whitespace-nowrap">
-                      <td className="py-4 px-5">
-                        <div className="font-bold text-[#1E293B] font-poppins">{item.tripNumber}</div>
-                        <div className="text-[10px] text-gray-400 mt-0.5">
-                          {new Date(item.date).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </div>
-                      </td>
-                      <td className="py-4 px-5">
-                        <div>{item.vehiclePlate} ({item.vehicleName})</div>
-                        <div className="text-[10px] text-gray-400 mt-0.5">{item.driverName}</div>
-                      </td>
-                      <td className="py-4 px-5">
-                        <div className="font-semibold">{item.startLocation} &rarr; {item.endLocation}</div>
-                        <div className="text-[10px] text-gray-400 mt-0.5">{item.distance} km</div>
-                      </td>
-                      <td className="py-4 px-5">
-                        <span className={`px-2 py-0.5 text-[9px] font-bold rounded-full uppercase border ${item.status === 'Completed'
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                            : item.status === 'In Progress'
-                              ? 'bg-blue-50 text-blue-700 border-blue-100'
-                              : item.status === 'Cancelled'
-                                ? 'bg-red-50 text-red-700 border-red-100'
-                                : 'bg-amber-50 text-amber-700 border-amber-100'
-                          }`}>
-                          {item.status}
-                        </span>
-                      </td>
-                      <td className="py-4 px-5 text-right font-bold text-emerald-600 font-poppins">
-                        {formatCurrency(item.revenue)}
-                      </td>
-                      <td className="py-4 px-5 text-right font-bold text-red-500 font-poppins">
-                        {formatCurrency(item.expenses)}
-                      </td>
-                      <td className="py-4 px-5 text-right font-bold text-[#1E293B] font-poppins">
-                        {formatCurrency(item.netEarnings)}
-                      </td>
-                    </tr>
-                  ))
+                  paginatedEarnings.map((item) => {
+                    const isRowSelected = selectedTripId === item.tripId;
+                    return (
+                      <tr
+                        key={item.tripId}
+                        onClick={() => {
+                          if (selectedTripId === item.tripId) {
+                            setSelectedTripId("all");
+                          } else {
+                            setSelectedTripId(item.tripId);
+                          }
+                        }}
+                        className={`transition-colors whitespace-nowrap cursor-pointer ${
+                          isRowSelected
+                            ? "bg-amber-50/60 ring-1 ring-[#A14000]/40"
+                            : "hover:bg-gray-50/70"
+                        }`}
+                        title="Click to select this trip and view Expenses"
+                      >
+                        <td className="py-4 px-5">
+                          <div className="font-bold text-[#1E293B] font-poppins flex items-center gap-1.5">
+                            {item.tripNumber}
+                            {isRowSelected && (
+                              <span className="inline-block w-2 h-2 rounded-full bg-[#A14000]" />
+                            )}
+                          </div>
+                          <div className="text-[10px] text-gray-400 mt-0.5">
+                            {new Date(item.date).toLocaleDateString("en-IN", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric"
+                            })}
+                          </div>
+                        </td>
+                        <td className="py-4 px-5">
+                          <div>
+                            {item.vehiclePlate} ({item.vehicleName})
+                          </div>
+                          <div className="text-[10px] text-gray-400 mt-0.5">{item.driverName}</div>
+                        </td>
+                        <td className="py-4 px-5">
+                          <div className="font-semibold">
+                            {item.startLocation} &rarr; {item.endLocation}
+                          </div>
+                          <div className="text-[10px] text-gray-400 mt-0.5">{item.distance} km</div>
+                        </td>
+                        <td className="py-4 px-5">
+                          <span
+                            className={`px-2 py-0.5 text-[9px] font-bold rounded-full uppercase border ${
+                              item.status === "Completed"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                                : item.status === "In Progress"
+                                ? "bg-blue-50 text-blue-700 border-blue-100"
+                                : item.status === "Cancelled"
+                                ? "bg-red-50 text-red-700 border-red-100"
+                                : "bg-amber-50 text-amber-700 border-amber-100"
+                            }`}
+                          >
+                            {item.status}
+                          </span>
+                        </td>
+                        <td className="py-4 px-5 text-right font-bold text-emerald-600 font-poppins">
+                          {formatFullCurrency(item.revenue)}
+                        </td>
+                        <td className="py-4 px-5 text-right font-bold text-red-600 font-poppins text-sm pr-8 whitespace-nowrap">
+                          {formatFullCurrency(item.expenses)}
+                        </td>
+                        <td className="py-4 px-5 text-right font-bold text-[#1E293B] font-poppins">
+                          {formatFullCurrency(item.netEarnings)}
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
-                    <td colSpan="7" className="py-8 text-center text-gray-400 font-semibold">
-                      No earnings history found matching the filters.
+                    <td
+                      colSpan={7}
+                      className="py-8 text-center text-gray-400 font-semibold"
+                    >
+                      No earnings or expenses history found matching the filters.
                     </td>
                   </tr>
                 )}
@@ -622,7 +804,7 @@ export default function EarningsPage() {
 
               <div className="flex items-center gap-1.5">
                 <button
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
                   className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 transition-all cursor-pointer"
                 >
@@ -632,16 +814,17 @@ export default function EarningsPage() {
                   <button
                     key={i + 1}
                     onClick={() => setCurrentPage(i + 1)}
-                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${currentPage === i + 1
+                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      currentPage === i + 1
                         ? "bg-[#A14000] text-white"
                         : "border border-gray-200 hover:bg-gray-50 text-gray-600"
-                      }`}
+                    }`}
                   >
                     {i + 1}
                   </button>
                 ))}
                 <button
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                   disabled={currentPage === totalPages}
                   className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 transition-all cursor-pointer"
                 >
