@@ -190,29 +190,33 @@ export function AdminProvider({ children }) {
         setNotifications(prev => prev.filter(n => n.id !== data.id));
       });
 
-      socket.on("organization:updated", () => {
+      const handleRefresh = () => {
         fetchOrganizations();
         fetchFleetManagers();
-      });
+      };
 
-      socket.on("manager:updated", () => {
-        fetchFleetManagers();
-        fetchOrganizations();
-      });
+      socket.on("organization:created", handleRefresh);
+      socket.on("organization:updated", handleRefresh);
+      socket.on("organization:deleted", handleRefresh);
 
-      socket.on("dashboard:refresh", () => {
-        fetchOrganizations();
-        fetchFleetManagers();
-      });
+      socket.on("manager:created", handleRefresh);
+      socket.on("manager:updated", handleRefresh);
+      socket.on("manager:deleted", handleRefresh);
+
+      socket.on("dashboard:refresh", handleRefresh);
 
       return () => {
         socket.off("notification:new");
         socket.off("notification:read");
         socket.off("notification:update");
         socket.off("notification:delete");
-        socket.off("organization:updated");
-        socket.off("manager:updated");
-        socket.off("dashboard:refresh");
+        socket.off("organization:created", handleRefresh);
+        socket.off("organization:updated", handleRefresh);
+        socket.off("organization:deleted", handleRefresh);
+        socket.off("manager:created", handleRefresh);
+        socket.off("manager:updated", handleRefresh);
+        socket.off("manager:deleted", handleRefresh);
+        socket.off("dashboard:refresh", handleRefresh);
       };
     } else {
       // Disconnect if not authenticated

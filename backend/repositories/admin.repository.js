@@ -11,7 +11,10 @@ import { calculateDistance } from '../utils/distanceCalculator.js';
 import { calculateTripFinance } from '../utils/earningsCalculator.js';
 
 export const getAllManagers = async () => {
-  return User.find({ role: { $in: ['FLEET_MANAGER', 'fleet_manager'] } }).populate('organization', 'name status _id').select('-password');
+  return User.find({
+    role: { $in: ['FLEET_MANAGER', 'fleet_manager'] },
+    organization: { $exists: true, $ne: null }
+  }).populate('organization', 'name status _id').select('-password');
 };
 
 export const createManager = async (managerData) => {
@@ -80,17 +83,29 @@ export const SETTLED_TRIP_CONDITION = {
   ]
 };
 
+const TRIP_FINANCE_SELECT = '_id tripInvoice actualDistance estimatedDistance startLocation endLocation cargoWeight weighbridgeSlip totalFuelAmount totalTollsAmount driverAllowance allowance operationalAllowance totalAmount billingAmount revenue fare amount serviceFee serviceType loadingCharges unloadingCharges freightCharges subtotal gstTax actualEndTime endedAt completedAt updatedAt createdAt';
+const INVOICE_FINANCE_SELECT = '_id trip invoiceNumber totalAmount charges taxAmount';
+
+let revenueCache = null;
+let revenueCacheTime = 0;
+export const invalidateRevenueCache = () => {
+  revenueCache = null;
+  revenueCacheTime = 0;
+};
+
 export const fetchInvoicesMap = async (trips = []) => {
   if (!trips || trips.length === 0) return new Map();
   const tripIds = trips.map(t => t._id).filter(Boolean);
   const invoiceNumbers = trips.map(t => t.tripInvoice?.invoiceNumber).filter(Boolean);
 
-  const invoices = await Invoice.find({
-    $or: [
-      { trip: { $in: tripIds } },
-      { invoiceNumber: { $in: invoiceNumbers } }
-    ]
-  }).lean();
+  const queryOr = [];
+  if (tripIds.length > 0) queryOr.push({ trip: { $in: tripIds } });
+  if (invoiceNumbers.length > 0) queryOr.push({ invoiceNumber: { $in: invoiceNumbers } });
+  if (queryOr.length === 0) return new Map();
+
+  const invoices = await Invoice.find({ $or: queryOr })
+    .select(INVOICE_FINANCE_SELECT)
+    .lean();
 
   const invoiceMap = new Map();
   invoices.forEach(inv => {
@@ -120,7 +135,9 @@ export const getSettledRevenueForOrganization = async (orgId) => {
         },
         VALID_TRIP_CONDITION
       ]
-    }).lean();
+    })
+    .select(TRIP_FINANCE_SELECT)
+    .lean();
 
     if (!trips || trips.length === 0) return 0;
 
@@ -153,7 +170,9 @@ export const getSettledRevenueForManager = async (managerId, orgId = null) => {
             },
             VALID_TRIP_CONDITION
           ]
-        }).lean();
+        })
+        .select(TRIP_FINANCE_SELECT)
+        .lean();
       } else {
         trips = await Trip.find({
           $and: [
@@ -165,7 +184,9 @@ export const getSettledRevenueForManager = async (managerId, orgId = null) => {
             },
             VALID_TRIP_CONDITION
           ]
-        }).lean();
+        })
+        .select(TRIP_FINANCE_SELECT)
+        .lean();
       }
     } else {
       trips = await Trip.find({
@@ -173,7 +194,9 @@ export const getSettledRevenueForManager = async (managerId, orgId = null) => {
           { assignedManager: managerId },
           VALID_TRIP_CONDITION
         ]
-      }).lean();
+      })
+      .select(TRIP_FINANCE_SELECT)
+      .lean();
     }
 
     if (!trips || trips.length === 0) return 0;
@@ -193,16 +216,31 @@ export const getSettledRevenueForManager = async (managerId, orgId = null) => {
 
 export const getRevenueAggregate = async () => {
   try {
-    const trips = await Trip.find(VALID_TRIP_CONDITION).lean();
-    if (!trips || trips.length === 0) return 0;
+    const now = Date.now();
+    if (revenueCache !== null && (now - revenueCacheTime) < 15000) {
+      return revenueCache;
+    }
+
+    const trips = await Trip.find(VALID_TRIP_CONDITION)
+      .select(TRIP_FINANCE_SELECT)
+      .lean();
+    if (!trips || trips.length === 0) {
+      revenueCache = 0;
+      revenueCacheTime = now;
+      return 0;
+    }
 
     const invoiceMap = await fetchInvoicesMap(trips);
 
-    return trips.reduce((sum, t) => {
+    const total = trips.reduce((sum, t) => {
       const inv = invoiceMap.get(t._id?.toString()) || (t.tripInvoice?.invoiceNumber ? invoiceMap.get(t.tripInvoice.invoiceNumber) : null);
       const fin = calculateTripFinance(t, inv);
       return sum + fin.revenue;
     }, 0);
+
+    revenueCache = total;
+    revenueCacheTime = now;
+    return total;
   } catch (error) {
     console.error('Error in getRevenueAggregate:', error);
     return 0;
@@ -228,7 +266,9 @@ export const getTodayRevenueAggregate = async () => {
           ]
         }
       ]
-    }).lean();
+    })
+    .select(TRIP_FINANCE_SELECT)
+    .lean();
 
     if (!trips || trips.length === 0) return 0;
 
@@ -261,7 +301,9 @@ export const getAnalyticsSummary = async () => {
 
 export const getRevenueChartData = async () => {
   try {
-    const trips = await Trip.find(VALID_TRIP_CONDITION).lean();
+    const trips = await Trip.find(VALID_TRIP_CONDITION)
+      .select(TRIP_FINANCE_SELECT)
+      .lean();
     const monthlyMap = {};
     for (let i = 1; i <= 12; i++) {
       monthlyMap[i] = 0;

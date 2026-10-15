@@ -181,17 +181,30 @@ export default function DriverFuelPage() {
     }
   };
 
-  const vehObj = assignedVehicle?.vehicle || assignedVehicle;
+  const vehObj = assignedVehicle?.vehicle || (assignedVehicle?.assigned ? assignedVehicle : null);
   const isPermanentVehicleAssigned = Boolean(
-    (assignedVehicle?.assigned && vehObj) ||
-      (vehObj &&
-        (vehObj._id || vehObj.id || vehObj.vehicleNumber) &&
-        vehObj.vehicleNumber !== "Unassigned" &&
-        vehObj.vehicleNumber !== "No Vehicle Assigned")
+    assignedVehicle?.assigned === true &&
+    vehObj &&
+    (vehObj._id || vehObj.id || vehObj.vehicleNumber) &&
+    vehObj.vehicleNumber !== "Unassigned" &&
+    vehObj.vehicleNumber !== "No Vehicle Assigned"
   );
+  const activeStatuses = [
+    'pending driver acceptance',
+    'assigned',
+    'scheduled',
+    'in progress',
+    'accepted',
+    'on transit',
+    'enroute',
+    'reach pickup',
+    'pickup completed',
+    'ready to dispatch',
+    'start trip'
+  ];
   const isTripAvailable = Boolean(
     activeTrip &&
-      !["cancelled", "rejected"].includes((activeTrip.status || "").toLowerCase())
+      activeStatuses.includes((activeTrip.status || "").toLowerCase().trim())
   );
   const isFuelLogEnabled = isPermanentVehicleAssigned || isTripAvailable;
 
@@ -265,29 +278,43 @@ export default function DriverFuelPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            if (!isFuelLogEnabled) {
-              toast.error("🔒 Fuel logging requires an assigned vehicle or an active trip!");
-              return;
+        <div className="relative group inline-block">
+          <button
+            type="button"
+            onClick={() => {
+              if (!isFuelLogEnabled) {
+                toast.error("🔒 Fuel logging is locked. An assigned vehicle or an active trip is required.");
+                return;
+              }
+              setShowModal(true);
+            }}
+            disabled={!isFuelLogEnabled}
+            title={
+              !isFuelLogEnabled
+                ? "Fuel logging locked: Requires an active trip or an assigned vehicle."
+                : "Log fuel refill for your trip or vehicle"
             }
-            setShowModal(true);
-          }}
-          disabled={!isFuelLogEnabled}
-          title={
-            !isFuelLogEnabled
-              ? "Fuel logging disabled. Please ensure a vehicle is assigned or you have an active trip."
-              : "Log fuel refill for your trip or vehicle"
-          }
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold font-poppins flex items-center justify-center gap-2 transition shadow-sm ${
-            isFuelLogEnabled
-              ? "bg-[#A14000] hover:bg-[#853400] text-white cursor-pointer"
-              : "bg-slate-200 text-slate-500 border border-slate-300 cursor-not-allowed"
-          }`}
-        >
-          {isFuelLogEnabled ? <Plus className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-          <span>{isFuelLogEnabled ? "Log New Fuel Refill" : "Fuel Log Locked"}</span>
-        </button>
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold font-poppins flex items-center justify-center gap-2 transition shadow-sm select-none ${
+              isFuelLogEnabled
+                ? "bg-[#A14000] hover:bg-[#853400] text-white cursor-pointer hover:shadow-md active:scale-95"
+                : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-80"
+            }`}
+          >
+            {isFuelLogEnabled ? (
+              <Plus className="w-4 h-4" />
+            ) : (
+              <Lock className="w-4 h-4 text-slate-400" />
+            )}
+            <span>{isFuelLogEnabled ? "Log New Fuel Refill" : "Fuel Log Locked"}</span>
+          </button>
+          {!isFuelLogEnabled && (
+            <div className="absolute right-0 top-full mt-2 hidden group-hover:flex flex-col items-end z-20 pointer-events-none">
+              <div className="bg-slate-900 text-white text-[11px] font-medium py-1.5 px-3 rounded-lg shadow-lg whitespace-nowrap border border-slate-700">
+                🔒 Requires an active trip or assigned vehicle
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Lock Notice Banner if Fuel Log Disabled */}
@@ -298,9 +325,9 @@ export default function DriverFuelPage() {
               <Lock className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="text-xs font-bold font-poppins text-slate-900">🔒 Fuel Refill Logging Disabled</h4>
+              <h4 className="text-xs font-bold font-poppins text-slate-900">🔒 Fuel Refill Logging Locked</h4>
               <p className="text-xs text-amber-800 mt-0.5">
-                Fuel refill logs are locked because no vehicle is currently assigned to you AND you have no active trip. Fuel logging requires an assigned vehicle or an active trip.
+                Fuel logging is locked because you have no active trip and no vehicle is currently assigned to you. A vehicle or active trip must be assigned by your manager to log fuel refills.
               </p>
             </div>
           </div>
@@ -322,7 +349,11 @@ export default function DriverFuelPage() {
         <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-sm">
           <Fuel className="w-12 h-12 text-slate-400 mx-auto mb-3" />
           <h3 className="text-slate-800 font-semibold font-poppins text-base">No Fuel Entries Logged Yet</h3>
-          <p className="text-slate-500 text-xs mt-1">Click "Log New Fuel Refill" above to add your first receipt.</p>
+          <p className="text-slate-500 text-xs mt-1">
+            {isFuelLogEnabled
+              ? 'Click "Log New Fuel Refill" above to add your first receipt.'
+              : 'Fuel logging will be unlocked once a vehicle or active trip is assigned to you.'}
+          </p>
         </div>
       )}
 

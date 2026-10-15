@@ -35,41 +35,23 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true);
   const [analyticsData, setAnalyticsData] = useState({
     kpis: {
-      totalOrganizations: 20,
-      activeOrganizations: 20,
-      fleetManagers: 28,
-      activeFleetManagers: 23,
-      inactiveFleetManagers: 5,
+      totalOrganizations: 0,
+      activeOrganizations: 0,
+      fleetManagers: 0,
+      activeFleetManagers: 0,
+      inactiveFleetManagers: 0,
       vehicles: 0,
       drivers: 0,
       activeTrips: 0,
-      completedTrips: 156,
+      completedTrips: 0,
       revenue: 0,
       maintenanceCount: 0,
       fuelUsage: 0
     },
     charts: {
-      orgGrowthData: [
-        { name: 'May', value: 6 },
-        { name: 'Jun', value: 8 },
-        { name: 'Jul', value: 11 },
-        { name: 'Aug', value: 14 },
-        { name: 'Sep', value: 16 },
-        { name: 'Oct', value: 18 }
-      ],
-      managerGrowthData: [
-        { name: 'May', value: 12, total: 12, active: 10, inactive: 2 },
-        { name: 'Jun', value: 15, total: 15, active: 12, inactive: 3 },
-        { name: 'Jul', value: 18, total: 18, active: 15, inactive: 3 },
-        { name: 'Aug', value: 22, total: 22, active: 18, inactive: 4 },
-        { name: 'Sep', value: 25, total: 25, active: 21, inactive: 4 },
-        { name: 'Oct', value: 28, total: 28, active: 23, inactive: 5 }
-      ],
-      subscriptionData: [
-        { name: 'Basic', value: 10, color: '#2563eb' },
-        { name: 'Enterprise', value: 5, color: '#0f172a' },
-        { name: 'Professional', value: 5, color: '#b45309' }
-      ],
+      orgGrowthData: [],
+      managerGrowthData: [],
+      subscriptionData: [],
       loginActivityData: []
     }
   });
@@ -145,7 +127,7 @@ export default function Analytics() {
 
     const intervalId = setInterval(() => {
       fetchAnalytics(true);
-    }, 15000);
+    }, 30000);
 
     return () => {
       clearInterval(intervalId);
@@ -154,7 +136,7 @@ export default function Analytics() {
   }, [fetchAnalytics]);
 
   const { kpis, charts } = analyticsData;
-  const totalManagers = kpis?.managers?.total ?? kpis?.fleetManagers ?? 28;
+  const totalManagers = kpis?.managers?.total ?? kpis?.fleetManagers ?? 0;
 
   const dynamicManagerGrowthData = useMemo(() => {
     const rawData = charts?.managerGrowthData;
@@ -166,7 +148,7 @@ export default function Analytics() {
     if (!Array.isArray(rawData) || rawData.length === 0) {
       return monthNames.map((name, i) => ({
         name,
-        value: i === 5 ? total : Math.max(1, Math.round(total * ratios[i]))
+        value: i === 5 ? total : Math.max(0, Math.round(total * ratios[i]))
       }));
     }
 
@@ -178,7 +160,7 @@ export default function Analytics() {
       const isLast = idx === lastIdx;
       return {
         name: item.name,
-        value: isLast ? total : Math.max(1, Math.round((item.value || 0) * scale))
+        value: isLast ? total : Math.max(0, Math.round((item.value || 0) * scale))
       };
     });
   }, [charts?.managerGrowthData, totalManagers]);
@@ -200,9 +182,9 @@ export default function Analytics() {
       });
     }
 
-    const finalBasic = counts.Basic || 10;
-    const finalEnterprise = counts.Enterprise || 5;
-    const finalProfessional = counts.Professional || 5;
+    const finalBasic = counts.Basic || 0;
+    const finalEnterprise = counts.Enterprise || 0;
+    const finalProfessional = counts.Professional || 0;
 
     return [
       { name: 'Basic', value: finalBasic, color: '#2563eb' },
@@ -244,9 +226,9 @@ export default function Analytics() {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-8">
-            <KPICard title="Organizations" value={kpis?.organizations?.total ?? kpis?.totalOrganizations ?? 20} icon={Building2} />
-            <KPICard title="Fleet Managers" value={kpis?.managers?.total ?? kpis?.fleetManagers ?? 28} icon={Users} />
-            <KPICard title="Completed Trips" value={kpis?.completedTrips ?? 156} icon={CheckCircle2} />
+            <KPICard title="Organizations" value={kpis?.organizations?.total ?? kpis?.totalOrganizations ?? 0} icon={Building2} />
+            <KPICard title="Fleet Managers" value={kpis?.managers?.total ?? kpis?.fleetManagers ?? 0} icon={Users} />
+            <KPICard title="Completed Trips" value={kpis?.completedTrips ?? 0} icon={CheckCircle2} />
             <KPICard
               title="Total Revenue"
               value={formatCurrency(kpis?.revenue ?? 0)}
