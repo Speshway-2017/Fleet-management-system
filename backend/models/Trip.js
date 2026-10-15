@@ -142,4 +142,10 @@ const tripSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+tripSchema.index({ assignedManager: 1, status: 1 });
+tripSchema.index({ organization: 1, status: 1 });
+tripSchema.index({ driver: 1, status: 1 });
+tripSchema.index({ vehicle: 1, status: 1 });
+tripSchema.index({ createdAt: -1 });
+
 export default mongoose.model('Trip', tripSchema);

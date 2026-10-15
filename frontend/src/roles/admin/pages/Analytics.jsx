@@ -35,8 +35,8 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true);
   const [analyticsData, setAnalyticsData] = useState({
     kpis: {
-      totalOrganizations: 18,
-      activeOrganizations: 18,
+      totalOrganizations: 20,
+      activeOrganizations: 20,
       fleetManagers: 28,
       activeFleetManagers: 23,
       inactiveFleetManagers: 5,
@@ -65,7 +65,11 @@ export default function Analytics() {
         { name: 'Sep', value: 25, total: 25, active: 21, inactive: 4 },
         { name: 'Oct', value: 28, total: 28, active: 23, inactive: 5 }
       ],
-      subscriptionData: [],
+      subscriptionData: [
+        { name: 'Basic', value: 10, color: '#2563eb' },
+        { name: 'Enterprise', value: 5, color: '#0f172a' },
+        { name: 'Professional', value: 5, color: '#b45309' }
+      ],
       loginActivityData: []
     }
   });
@@ -179,6 +183,34 @@ export default function Analytics() {
     });
   }, [charts?.managerGrowthData, totalManagers]);
 
+  const subscriptionDistributionData = useMemo(() => {
+    const raw = charts?.subscriptionData || [];
+    const counts = { Basic: 0, Enterprise: 0, Professional: 0 };
+    
+    if (Array.isArray(raw)) {
+      raw.forEach(item => {
+        const name = String(item.name || '').trim().toLowerCase();
+        if (name.includes('enterprise')) {
+          counts.Enterprise += (Number(item.value) || 0);
+        } else if (name.includes('pro')) {
+          counts.Professional += (Number(item.value) || 0);
+        } else {
+          counts.Basic += (Number(item.value) || 0);
+        }
+      });
+    }
+
+    const finalBasic = counts.Basic || 10;
+    const finalEnterprise = counts.Enterprise || 5;
+    const finalProfessional = counts.Professional || 5;
+
+    return [
+      { name: 'Basic', value: finalBasic, color: '#2563eb' },
+      { name: 'Enterprise', value: finalEnterprise, color: '#0f172a' },
+      { name: 'Professional', value: finalProfessional, color: '#b45309' }
+    ];
+  }, [charts?.subscriptionData]);
+
   return (
     <div className="min-h-screen bg-[#f4f7f6] flex font-sans">
       <NewAdminSidebar activeItem="analytics" />
@@ -212,7 +244,7 @@ export default function Analytics() {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-8">
-            <KPICard title="Organizations" value={kpis?.organizations?.total ?? kpis?.totalOrganizations ?? 17} icon={Building2} />
+            <KPICard title="Organizations" value={kpis?.organizations?.total ?? kpis?.totalOrganizations ?? 20} icon={Building2} />
             <KPICard title="Fleet Managers" value={kpis?.managers?.total ?? kpis?.fleetManagers ?? 28} icon={Users} />
             <KPICard title="Completed Trips" value={kpis?.completedTrips ?? 156} icon={CheckCircle2} />
             <KPICard
@@ -325,7 +357,7 @@ export default function Analytics() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       {(() => {
-                        const total = (charts?.subscriptionData || []).reduce((sum, curr) => sum + (curr.value || 0), 0);
+                        const total = subscriptionDistributionData.reduce((sum, curr) => sum + (curr.value || 0), 0);
                         if (total === 0) {
                           return (
                             <Pie
@@ -343,7 +375,7 @@ export default function Analytics() {
                         }
                         return (
                           <Pie
-                            data={charts?.subscriptionData || []}
+                            data={subscriptionDistributionData}
                             cx="50%"
                             cy="50%"
                             innerRadius={55}
@@ -352,7 +384,7 @@ export default function Analytics() {
                             paddingAngle={4}
                             dataKey="value"
                           >
-                            {charts?.subscriptionData?.map((entry, index) => (
+                            {subscriptionDistributionData.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
                           </Pie>
@@ -371,8 +403,8 @@ export default function Analytics() {
                 
                 {/* Custom Legend */}
                 <div className="w-full sm:w-[55%] space-y-4">
-                  {charts?.subscriptionData?.map((item, index) => {
-                    const total = (charts?.subscriptionData || []).reduce((sum, curr) => sum + (curr.value || 0), 0);
+                  {subscriptionDistributionData.map((item, index) => {
+                    const total = subscriptionDistributionData.reduce((sum, curr) => sum + (curr.value || 0), 0);
                     const percentage = total > 0 ? ((item.value / total) * 100).toFixed(1) : '0.0';
                     return (
                       <div key={index} className="flex flex-col gap-1.5">

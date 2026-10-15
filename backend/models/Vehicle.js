@@ -169,4 +169,7 @@ vehicleSchema.pre('validate', function(next) {
   next();
 });
 
+vehicleSchema.index({ assignedManager: 1, currentStatus: 1 });
+vehicleSchema.index({ assignedDriver: 1 });
+
 export default mongoose.model('Vehicle', vehicleSchema);

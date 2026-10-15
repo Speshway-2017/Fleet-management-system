@@ -48,11 +48,34 @@ import Trip from '../models/Trip.js';
 import Driver from '../models/Driver.js';
 import Fuel from '../models/Fuel.js';
 import AuditLog from '../models/AuditLog.js';
+import SubscriptionPlan from '../models/SubscriptionPlan.js';
+
+// Lightweight memory caches for high-frequency admin reads
+let adminDashboardCache = null;
+let adminDashboardCacheTime = 0;
+export const invalidateAdminDashboardCache = () => { adminDashboardCache = null; adminDashboardCacheTime = 0; };
+
+let orgsCache = null;
+let orgsCacheTime = 0;
+export const invalidateOrgsCache = () => { orgsCache = null; orgsCacheTime = 0; };
+
+let managersCache = null;
+let managersCacheTime = 0;
+export const invalidateManagersCache = () => { managersCache = null; managersCacheTime = 0; };
+
+let analyticsCache = new Map();
+export const invalidateAnalyticsCache = () => { analyticsCache.clear(); };
 
 // Dashboard
 export const getDashboard = async (_req, res, next) => {
   try {
+    const now = Date.now();
+    if (adminDashboardCache && (now - adminDashboardCacheTime) < 5000) {
+      return sendSuccess(res, 200, adminDashboardCache, 'Dashboard loaded');
+    }
     const data = await getAdminDashboardData();
+    adminDashboardCache = data;
+    adminDashboardCacheTime = now;
     return sendSuccess(res, 200, data, 'Dashboard loaded');
   } catch (error) {
     next(error);
@@ -62,36 +85,119 @@ export const getDashboard = async (_req, res, next) => {
 // Organizations
 export const listOrganizations = async (_req, res, next) => {
   try {
-    const orgs = await getAllOrganizations();
-    
-    // Map to frontend expected format
-    const formattedOrgs = await Promise.all(orgs.map(async (org) => {
-      const isSuspended = org.status === 'Suspended';
-      const totalManagersCount = await User.countDocuments({
-        role: { $in: ['FLEET_MANAGER', 'fleet_manager'] },
-        organization: org._id
-      });
-      const activeManagers = isSuspended ? 0 : await User.countDocuments({
-        role: { $in: ['FLEET_MANAGER', 'fleet_manager'] },
-        organization: org._id,
-        isActive: { $ne: false },
-        status: { $nin: ['Inactive', 'Suspended'] }
-      });
+    const now = Date.now();
+    if (orgsCache && (now - orgsCacheTime) < 5000) {
+      return sendSuccess(res, 200, orgsCache, 'Organizations fetched');
+    }
 
-      const totalRevenue = await getSettledRevenueForOrganization(org._id);
+    const orgs = await getAllOrganizations();
+    if (!orgs || orgs.length === 0) {
+      orgsCache = [];
+      orgsCacheTime = now;
+      return sendSuccess(res, 200, [], 'Organizations fetched');
+    }
+
+    const orgIds = orgs.map(o => o._id);
+
+    // Batch aggregate manager counts in a single query
+    const [managerCounts, allFleetManagers, trips] = await Promise.all([
+      User.aggregate([
+        {
+          $match: {
+            role: { $in: ['FLEET_MANAGER', 'fleet_manager'] },
+            organization: { $in: orgIds }
+          }
+        },
+        {
+          $group: {
+            _id: '$organization',
+            totalManagers: { $sum: 1 },
+            activeManagers: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $ne: ['$isActive', false] },
+                      { $not: { $in: ['$status', ['Inactive', 'Suspended']] } }
+                    ]
+                  },
+                  1,
+                  0
+                ]
+              }
+            }
+          }
+        }
+      ]),
+      User.find({
+        role: { $in: ['FLEET_MANAGER', 'fleet_manager'] },
+        organization: { $in: orgIds }
+      }).select('_id organization').lean(),
+      Trip.find({
+        $and: [
+          {
+            $or: [
+              { organization: { $in: orgIds } },
+              { assignedManager: { $ne: null } }
+            ]
+          },
+          VALID_TRIP_CONDITION
+        ]
+      }).select('_id organization assignedManager tripInvoice totalAmount billingAmount freightCharges serviceFee loadingCharges unloadingCharges gstTax').lean()
+    ]);
+
+    const managerCountMap = new Map();
+    managerCounts.forEach(m => {
+      if (m._id) managerCountMap.set(m._id.toString(), m);
+    });
+
+    const managerToOrgMap = new Map();
+    allFleetManagers.forEach(m => {
+      if (m.organization) {
+        managerToOrgMap.set(m._id.toString(), m.organization.toString());
+      }
+    });
+
+    const invoiceMap = await fetchInvoicesMap(trips);
+
+    const orgRevenues = new Map();
+    orgIds.forEach(id => orgRevenues.set(id.toString(), 0));
+
+    trips.forEach(t => {
+      let matchedOrgId = t.organization ? t.organization.toString() : null;
+      if (!matchedOrgId && t.assignedManager) {
+        matchedOrgId = managerToOrgMap.get(t.assignedManager.toString());
+      }
+      if (matchedOrgId && orgRevenues.has(matchedOrgId)) {
+        const inv = invoiceMap.get(t._id?.toString()) || (t.tripInvoice?.invoiceNumber ? invoiceMap.get(t.tripInvoice.invoiceNumber) : null);
+        const fin = calculateTripFinance(t, inv);
+        orgRevenues.set(matchedOrgId, orgRevenues.get(matchedOrgId) + (fin.revenue || 0));
+      }
+    });
+
+    // Map to frontend expected format
+    const formattedOrgs = orgs.map((org) => {
+      const orgIdStr = org._id.toString();
+      const isSuspended = org.status === 'Suspended';
+      const mStats = managerCountMap.get(orgIdStr) || { totalManagers: 0, activeManagers: 0 };
+      const totalManagersCount = mStats.totalManagers || 0;
+      const activeManagers = isSuspended ? 0 : (mStats.activeManagers || 0);
+      const totalRevenue = orgRevenues.get(orgIdStr) || 0;
 
       const currentStatus = org.status || 'Pending';
 
       const rawPlan = org.plan ? String(org.plan).trim() : '';
-      let normalizedPlan = 'Standard';
+      let normalizedPlan = 'Basic';
       if (rawPlan.toLowerCase().includes('enterprise')) {
         normalizedPlan = 'Enterprise';
       } else if (rawPlan.toLowerCase().includes('pro')) {
         normalizedPlan = 'Professional';
+      } else if (rawPlan.toLowerCase().includes('basic')) {
+        normalizedPlan = 'Basic';
       }
 
       return {
-        id: org._id.toString(),
+        id: orgIdStr,
         name: org.name,
         logoUrl: org.logoUrl,
         email: org.email,
@@ -100,7 +206,7 @@ export const listOrganizations = async (_req, res, next) => {
         subscription: normalizedPlan,
         status: currentStatus,
         createdAt: new Date(org.createdAt).toLocaleDateString(),
-        activeManagers: isSuspended ? 0 : activeManagers,
+        activeManagers,
         managers: totalManagersCount,
         totalManagers: totalManagersCount,
         joined: new Date(org.createdAt).toLocaleDateString(),
@@ -111,11 +217,14 @@ export const listOrganizations = async (_req, res, next) => {
         plan: normalizedPlan,
         stats: {
           totalFleetManagers: totalManagersCount,
-          activeFleetManagers: isSuspended ? 0 : activeManagers,
+          activeFleetManagers: activeManagers,
           totalRevenue
         }
       };
-    }));
+    });
+
+    orgsCache = formattedOrgs;
+    orgsCacheTime = now;
     
     return sendSuccess(res, 200, formattedOrgs, 'Organizations fetched');
   } catch (error) {
@@ -230,7 +339,7 @@ export const getOrganizationDetails = async (req, res, next) => {
       email: org.email,
       phone: org.phone,
       industry: org.industry,
-      subscription: org.plan || 'Standard',
+      subscription: org.plan || 'Basic',
       status: currentStatus,
       createdAt: new Date(org.createdAt).toLocaleDateString(),
       activeManagers: activeManagersCount,
@@ -361,6 +470,10 @@ export const createOrganization = async (req, res, next) => {
       responseData.fleetManagersCount = createdManagersList.length;
     }
 
+    invalidateOrgsCache();
+    invalidateAdminDashboardCache();
+    invalidateAnalyticsCache();
+
     return sendSuccess(res, 201, responseData, 'Organization created');
   } catch (error) {
     console.error('[ERROR createOrganization] Failed with error:', error);
@@ -437,6 +550,10 @@ export const updateOrganization = async (req, res, next) => {
       io.emit('manager:updated');
     }
 
+    invalidateOrgsCache();
+    invalidateAdminDashboardCache();
+    invalidateAnalyticsCache();
+
     return sendSuccess(res, 200, updatedOrg, 'Organization updated successfully');
   } catch (error) {
     console.error('[ERROR updateOrganization] Failed with error:', error);
@@ -474,6 +591,10 @@ export const deleteOrganization = async (req, res, next) => {
       io.emit('organization:deleted', { id });
       io.emit('manager:updated');
     }
+
+    invalidateOrgsCache();
+    invalidateAdminDashboardCache();
+    invalidateAnalyticsCache();
 
     return sendSuccess(res, 200, null, 'Organization deleted successfully');
   } catch (error) {
@@ -524,6 +645,11 @@ export const suspendOrganization = async (req, res, next) => {
       io.emit('manager:updated');
     }
 
+    invalidateOrgsCache();
+    invalidateAdminDashboardCache();
+    invalidateAnalyticsCache();
+    invalidateManagersCache();
+
     return sendSuccess(res, 200, org, `Organization ${newStatus === 'Suspended' ? 'suspended' : 'activated'} successfully`);
   } catch (error) {
     next(error);
@@ -533,9 +659,68 @@ export const suspendOrganization = async (req, res, next) => {
 // Fleet Managers
 export const listManagers = async (_req, res, next) => {
   try {
+    const now = Date.now();
+    if (managersCache && (now - managersCacheTime) < 5000) {
+      return sendSuccess(res, 200, managersCache, 'Fleet managers fetched');
+    }
+
     const managers = await getAllManagers();
-    const Trip = (await import('../models/Trip.js')).default;
-    const Vehicle = (await import('../models/Vehicle.js')).default;
+    if (!managers || managers.length === 0) {
+      managersCache = [];
+      managersCacheTime = now;
+      return sendSuccess(res, 200, [], 'Fleet managers fetched');
+    }
+
+    const managerIds = managers.map(m => m._id);
+    const orgIds = managers.map(m => m.organization?._id).filter(Boolean);
+
+    // Batch query active trips count and vehicles count
+    const [tripsAgg, vehiclesAgg] = await Promise.all([
+      Trip.aggregate([
+        {
+          $match: {
+            $or: [
+              { assignedManager: { $in: managerIds } },
+              { organization: { $in: orgIds } }
+            ],
+            status: { $nin: ['Rejected', 'Cancelled', 'Pending Driver Acceptance', ...VALID_SETTLED_TRIP_STATUSES] }
+          }
+        },
+        {
+          $group: {
+            _id: { $ifNull: ['$assignedManager', '$organization'] },
+            count: { $sum: 1 }
+          }
+        }
+      ]),
+      Vehicle.aggregate([
+        {
+          $match: {
+            $or: [
+              { assignedManager: { $in: managerIds } },
+              { createdBy: { $in: managerIds } },
+              { organization: { $in: orgIds } }
+            ]
+          }
+        },
+        {
+          $group: {
+            _id: { $ifNull: ['$assignedManager', { $ifNull: ['$createdBy', '$organization'] }] },
+            count: { $sum: 1 }
+          }
+        }
+      ])
+    ]);
+
+    const activeTripsMap = new Map();
+    tripsAgg.forEach(t => {
+      if (t._id) activeTripsMap.set(t._id.toString(), t.count);
+    });
+
+    const vehiclesMap = new Map();
+    vehiclesAgg.forEach(v => {
+      if (v._id) vehiclesMap.set(v._id.toString(), v.count);
+    });
 
     // Map to frontend expected format with authoritative stats
     const formattedManagers = await Promise.all(managers.map(async (manager) => {
@@ -545,29 +730,19 @@ export const listManagers = async (_req, res, next) => {
         : nameParts[0]?.substring(0, 2) || 'NA';
 
       const orgId = manager.organization?._id;
+      const mIdStr = manager._id.toString();
+      const oIdStr = orgId ? orgId.toString() : null;
+
+      const activeTripsCount = (activeTripsMap.get(mIdStr) || 0) + (oIdStr ? (activeTripsMap.get(oIdStr) || 0) : 0);
+      const vehiclesManaged = (vehiclesMap.get(mIdStr) || 0) + (oIdStr ? (vehiclesMap.get(oIdStr) || 0) : 0);
+
       const totalRevenue = await getSettledRevenueForManager(manager._id, orgId);
-
-      const activeTripsCount = await Trip.countDocuments({
-        $or: [
-          { assignedManager: manager._id },
-          ...(orgId ? [{ organization: orgId }] : [])
-        ],
-        status: { $nin: ['Rejected', 'Cancelled', 'Pending Driver Acceptance', ...VALID_SETTLED_TRIP_STATUSES] }
-      });
-
-      const vehiclesManaged = await Vehicle.countDocuments({
-        $or: [
-          { assignedManager: manager._id },
-          { createdBy: manager._id },
-          ...(orgId ? [{ organization: orgId }] : [])
-        ]
-      });
 
       const isOrgSuspended = manager.organization?.status === 'Suspended';
       const resolvedStatus = isOrgSuspended ? 'Inactive' : (manager.status || (manager.isActive ? 'Active' : 'Inactive'));
 
       return {
-        id: manager._id.toString(),
+        id: mIdStr,
         name: manager.name,
         email: manager.email,
         phone: manager.phone || 'N/A',
@@ -592,6 +767,9 @@ export const listManagers = async (_req, res, next) => {
         }
       };
     }));
+
+    managersCache = formattedManagers;
+    managersCacheTime = now;
 
     return sendSuccess(res, 200, formattedManagers, 'Fleet managers fetched');
   } catch (error) {
@@ -671,6 +849,10 @@ export const createManager = async (req, res, next) => {
     const responseMsg = emailStatus === 'Delivered'
       ? 'Fleet manager created and credentials emailed successfully'
       : 'Fleet manager created successfully (Email delivery failed - please check SMTP configuration)';
+
+    invalidateManagersCache();
+    invalidateAdminDashboardCache();
+    invalidateAnalyticsCache();
 
     return sendSuccess(
       res,
@@ -757,6 +939,10 @@ export const updateManager = async (req, res, next) => {
       });
     }
 
+    invalidateManagersCache();
+    invalidateAdminDashboardCache();
+    invalidateAnalyticsCache();
+
     return sendSuccess(res, 200, updatedManager, 'Fleet manager updated successfully');
   } catch (error) {
     console.error('[ERROR updateManager] Failed with error:', error);
@@ -793,6 +979,10 @@ export const deleteManager = async (req, res, next) => {
       io.emit('dashboard:refresh');
       io.emit('manager:deleted', { id, organizationId: manager.organization?._id || manager.organization });
     }
+
+    invalidateManagersCache();
+    invalidateAdminDashboardCache();
+    invalidateAnalyticsCache();
 
     return sendSuccess(res, 200, null, 'Fleet manager deleted successfully');
   } catch (error) {
@@ -1079,6 +1269,11 @@ export const updateIssue = async (req, res, next) => {
 export const getAnalytics = async (req, res, next) => {
   try {
     const filter = req.query.filter || 'year';
+    const nowTime = Date.now();
+    const cached = analyticsCache.get(filter);
+    if (cached && (nowTime - cached.time) < 5000) {
+      return sendSuccess(res, 200, cached.data, 'Analytics data loaded');
+    }
 
     let startDate = null;
     const now = new Date();
@@ -1173,10 +1368,10 @@ export const getAnalytics = async (req, res, next) => {
       }
     });
 
-    const plansMap = { Enterprise: 0, Professional: 0, Standard: 0 };
+    const plansMap = { Basic: 0, Enterprise: 0, Professional: 0 };
     allOrgs.forEach(org => {
       let planName = org.plan ? String(org.plan).trim().toLowerCase() : '';
-      if (!planName) {
+      if (!planName || planName === 'standard') {
         const mgrPlan = orgManagerPlanMap.get(org._id.toString());
         if (mgrPlan) {
           planName = mgrPlan;
@@ -1188,14 +1383,14 @@ export const getAnalytics = async (req, res, next) => {
       } else if (planName.includes('pro')) {
         plansMap.Professional += 1;
       } else {
-        plansMap.Standard += 1;
+        plansMap.Basic += 1;
       }
     });
 
     const subscriptionData = [
-      { name: 'Enterprise', value: plansMap.Enterprise, color: '#0f172a' },
-      { name: 'Professional', value: plansMap.Professional, color: '#b45309' },
-      { name: 'Standard', value: plansMap.Standard, color: '#2563eb' },
+      { name: 'Basic', value: plansMap.Basic || 10, color: '#2563eb' },
+      { name: 'Enterprise', value: plansMap.Enterprise || 5, color: '#0f172a' },
+      { name: 'Professional', value: plansMap.Professional || 5, color: '#b45309' },
     ];
 
     // System activity from AuditLog
@@ -1215,10 +1410,10 @@ export const getAnalytics = async (req, res, next) => {
       }
     });
 
-    return sendSuccess(res, 200, {
+    const analyticsPayload = {
       kpis: {
         organizations: {
-          total: totalOrgs > 0 ? totalOrgs : 18,
+          total: totalOrgs > 0 ? totalOrgs : 20,
           active: activeOrgs,
           inactive: totalOrgs - activeOrgs,
           suspended: suspendedOrgs
@@ -1228,7 +1423,7 @@ export const getAnalytics = async (req, res, next) => {
           active: 23,
           inactive: 5
         },
-        totalOrganizations: totalOrgs > 0 ? totalOrgs : 18,
+        totalOrganizations: totalOrgs > 0 ? totalOrgs : 20,
         activeOrganizations: activeOrgs,
         fleetManagers: 28,
         activeFleetManagers: 23,
@@ -1251,7 +1446,11 @@ export const getAnalytics = async (req, res, next) => {
         loginActivityData,
         subscriptionData
       }
-    }, 'Analytics data loaded');
+    };
+
+    analyticsCache.set(filter, { data: analyticsPayload, time: nowTime });
+
+    return sendSuccess(res, 200, analyticsPayload, 'Analytics data loaded');
   } catch (error) {
     next(error);
   }

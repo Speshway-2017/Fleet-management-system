@@ -13,7 +13,7 @@ export default function AddOrganization() {
   const { fetchOrganizations, fetchNotifications } = useAdmin();
   const [form, setForm] = useState({
     name: "", industry: "", email: "", phone: "", address: "",
-    city: "", state: "", country: "", plan: "Standard", status: "Active"
+    city: "", state: "", country: "", plan: "Basic", status: "Active"
   });
   const [managers, setManagers] = useState([
     { name: "", email: "", phone: "", password: "", confirmPassword: "", showPassword: false, showConfirmPassword: false }
@@ -506,13 +506,13 @@ export default function AddOrganization() {
                     </label>
                     <select
                       name="plan"
-                      value={form.plan || "Standard"}
+                      value={form.plan || "Basic"}
                       onChange={handleChange}
                       className="w-full px-4 py-2.5 rounded-lg border text-sm text-slate-800 focus:outline-none focus:ring-2 transition-all bg-slate-50/50 border-slate-200 focus:ring-[#A14000]/20 focus:border-[#A14000]"
                     >
-                      <option value="Standard">Standard</option>
-                      <option value="Professional">Professional</option>
+                      <option value="Basic">Basic</option>
                       <option value="Enterprise">Enterprise</option>
+                      <option value="Professional">Professional</option>
                     </select>
                   </div>
                 </div>
