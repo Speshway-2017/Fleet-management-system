@@ -243,10 +243,10 @@ export default function EarningsPage() {
     );
 
     // If viewing unfiltered overall state, prioritize canonical server stats from backend single source of truth
-    if (!isSearchingOrFiltering && serverStats.totalRevenue !== undefined && Number(serverStats.totalRevenue) > 0) {
+    if (!isSearchingOrFiltering && serverStats.totalRevenue !== undefined) {
       const totalRevenue = Number(serverStats.totalRevenue) || 0;
       const totalExpenses = Number(serverStats.totalExpenses) || 0;
-      const totalNetEarnings = Number(serverStats.totalNetEarnings) || (totalRevenue - totalExpenses);
+      const totalNetEarnings = Number(serverStats.totalNetEarnings) ?? (totalRevenue - totalExpenses);
       const marginPercent = Number(serverStats.marginPercent) ?? (totalRevenue > 0 ? Math.round((totalNetEarnings / totalRevenue) * 100) : 0);
       const fuelExpenses = Number(serverStats.totalFuelExpenses) || 0;
       const tollExpenses = Number(serverStats.totalTollExpenses) || 0;
@@ -266,7 +266,7 @@ export default function EarningsPage() {
       };
     }
 
-    // Dynamic aggregation for filtered view or selected trip
+    // Dynamic aggregation for filtered view or selected trip (strictly completed trips only)
     let totalRevenue = 0;
     let totalExpenses = 0;
     let fuelExpenses = 0;
@@ -282,13 +282,15 @@ export default function EarningsPage() {
 
     targetList.forEach((item) => {
       const isComp = item.isCompleted ?? isCompletedStatus(item.status);
-      if (isComp) completedCount++;
-      const rev = Number(item.revenue) || 0;
-      const exp = Number(item.expenses) || 0;
-      totalRevenue += rev;
-      totalExpenses += exp;
-      fuelExpenses += Number(item.fuelExpense) || 0;
-      tollExpenses += Number(item.tollExpense) || 0;
+      if (isComp) {
+        completedCount++;
+        const rev = Number(item.revenue) || 0;
+        const exp = Number(item.expenses) || 0;
+        totalRevenue += rev;
+        totalExpenses += exp;
+        fuelExpenses += Number(item.fuelExpense) || 0;
+        tollExpenses += Number(item.tollExpense) || 0;
+      }
     });
 
     const totalNetEarnings = totalRevenue - totalExpenses;
@@ -520,7 +522,7 @@ export default function EarningsPage() {
                           ? "bg-emerald-50 text-emerald-700 border-emerald-100"
                           : selectedTrip.status === "In Progress"
                           ? "bg-blue-50 text-blue-700 border-blue-100"
-                          : selectedTrip.status === "Cancelled"
+                          : selectedTrip.status === "Cancelled" || selectedTrip.status === "Rejected"
                           ? "bg-red-50 text-red-700 border-red-100"
                           : "bg-amber-50 text-amber-700 border-amber-100"
                       }`}
@@ -618,6 +620,7 @@ export default function EarningsPage() {
                   <option value="In Progress">In Progress</option>
                   <option value="Scheduled">Scheduled</option>
                   <option value="Cancelled">Cancelled</option>
+                  <option value="Rejected">Rejected</option>
                 </select>
               </div>
 
@@ -760,7 +763,7 @@ export default function EarningsPage() {
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-100"
                                 : item.status === "In Progress"
                                 ? "bg-blue-50 text-blue-700 border-blue-100"
-                                : item.status === "Cancelled"
+                                : item.status === "Cancelled" || item.status === "Rejected"
                                 ? "bg-red-50 text-red-700 border-red-100"
                                 : "bg-amber-50 text-amber-700 border-amber-100"
                             }`}

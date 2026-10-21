@@ -8,6 +8,30 @@ import { calculateDistance } from './distanceCalculator.js';
  * Driver Allowance expenses. Excludes GST/taxes, base freight, service fees, and loading/unloading charges.
  */
 export const calculateTripFinance = (trip, invoice = null, fuelRecords = [], tollRecords = []) => {
+  const statusLower = String(trip?.status || '').trim().toLowerCase();
+  const isCancelledOrRejected = ['rejected', 'cancelled', 'canceled'].includes(statusLower);
+
+  if (isCancelledOrRejected) {
+    return {
+      revenue: 0,
+      expenses: 0,
+      netEarnings: 0,
+      marginPercent: 0,
+      distance: 0,
+      weight: 0,
+      serviceFee: 0,
+      loadingCharges: 0,
+      unloadingCharges: 0,
+      baseFreight: 0,
+      subtotal: 0,
+      gstTax: 0,
+      totalAmount: 0,
+      actualFuelAmount: 0,
+      actualTollAmount: 0,
+      driverAllowance: 0
+    };
+  }
+
   let distance = Number(trip?.actualDistance) || Number(trip?.estimatedDistance) || 0;
   if (!Number.isFinite(distance) || distance < 0 || distance > 50000) {
     if (trip?.startLocation && trip?.endLocation) {

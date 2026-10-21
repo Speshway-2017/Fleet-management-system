@@ -1,6 +1,6 @@
 import React, { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
-import PublicLayout from "@/components/layout/PublicLayout";
+import PublicLayout from "@/components/layout/PublicLayout.jsx";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { AdminProvider } from "@/roles/admin/context/AdminContext";
