@@ -1,0 +1,2 @@
+import React from 'react';
+window.addEventListener('error', (e) => console.error('GLOBAL_ERROR:', e.error));

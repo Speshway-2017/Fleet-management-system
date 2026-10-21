@@ -1,0 +1,404 @@
+import { useState, useEffect, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  ArrowLeft,
+  Truck,
+  Search,
+  ChevronDown,
+  RefreshCw,
+  AlertCircle,
+  MapPin,
+  Fuel,
+  CheckCircle2,
+  Loader
+} from "lucide-react";
+import toast from "react-hot-toast";
+import Breadcrumb from "@/components/common/Breadcrumb";
+import { driverApi } from "@/api/driverApi";
+import { vehicleApi } from "@/api/vehicleApi";
+import { validateSearchQuery } from "@/validations/common.schema.js";
+
+export default function AssignVehiclePage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [driver, setDriver] = useState(null);
+  const [vehicles, setVehicles] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [searchError, setSearchError] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All Statuses");
+  const [typeFilter, setTypeFilter] = useState("All Types");
+  const [assigningVehicleId, setAssigningVehicleId] = useState(null);
+
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearch(val);
+    const err = validateSearchQuery(val, 50);
+    setSearchError(err);
+  };
+
+  const normaliseVehicle = (v) => {
+    let mappedStatus = {
+      Available:       'Available',
+      Assigned:        'Assigned',
+      'On Trip':       'On Trip',
+      'Under Maintenance': 'Maintenance',
+      'Out of Service': 'Out of Service',
+    }[v.currentStatus] ?? v.currentStatus ?? 'Available';
+
+    return {
+      ...v,
+      id:           v._id,
+      name:         `${v.brand} ${v.model}`,
+      manufacturer: v.brand,
+      plateNumber:  v.vehicleNumber,
+      type:         v.type         || 'Truck',
+      driver:       v.driver       || 'Unassigned',
+      fuelLevel:    v.fuelLevel    ?? 50,
+      fastagBalance:v.fastagBalance ?? 0,
+      branch:       v.branch       || '',
+      dateAdded:    v.createdAt ? v.createdAt.split('T')[0] : '',
+      status:       mappedStatus,
+    };
+  };
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      // 1. Fetch driver
+      const drvRes = await driverApi.getById(id);
+      const foundDriver = drvRes.data?.data;
+      if (!foundDriver) {
+        toast.error("Driver not found");
+        navigate("/manager/drivers");
+        return;
+      }
+      setDriver(foundDriver);
+
+      // 2. Fetch vehicles
+      const vehRes = await vehicleApi.list();
+      const rawVehicles = vehRes.data?.data ?? [];
+      setVehicles(rawVehicles.map(normaliseVehicle));
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to load page context.");
+      navigate("/manager/drivers");
+    } finally {
+      setLoading(false);
+    }
+  }, [id, navigate]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleAssign = async (vehicle) => {
+    if (!driver || !vehicle) return;
+
+    const expiryDate = driver.licenseExpiry ? new Date(driver.licenseExpiry) : null;
+    const today = new Date();
+    const isLicenseExpired = !expiryDate || expiryDate < today;
+
+    if (isLicenseExpired) {
+      toast.error("Cannot assign vehicle: Driver's driving license has expired!");
+      return;
+    }
+
+    // A. Verify if the vehicle is already assigned to someone else
+    if (vehicle.driver && vehicle.driver !== "Unassigned") {
+      const confirmOverride = window.confirm(
+        `This vehicle is already assigned to ${vehicle.driver}. Do you want to reassign it to ${driver.fullName}?`
+      );
+      if (!confirmOverride) return;
+
+      // Find the driver currently assigned to this vehicle (if any) and clear their assignedVehicle.
+      try {
+        const driversListRes = await driverApi.list();
+        const allDrivers = driversListRes.data?.data ?? [];
+        const prevDriver = allDrivers.find(d => d.assignedVehicle === vehicle.plateNumber);
+        if (prevDriver) {
+          await driverApi.update(prevDriver._id, { assignedVehicle: "Unassigned", driverStatus: "AVAILABLE" });
+        }
+      } catch (err) {
+        console.error("Failed to unassign previous driver:", err);
+      }
+    }
+
+    // B. If this driver had a vehicle previously, clear that vehicle's driver field
+    if (driver.assignedVehicle && driver.assignedVehicle !== "Unassigned") {
+      const prevVeh = vehicles.find(v => v.plateNumber === driver.assignedVehicle);
+      if (prevVeh) {
+        try {
+          await vehicleApi.update(prevVeh.id, { driver: "Unassigned" });
+        } catch (err) {
+          console.error("Failed to clear previous vehicle driver:", err);
+        }
+      }
+    }
+
+    setAssigningVehicleId(vehicle.id);
+    try {
+      // C. Update driver's assignedVehicle in DB
+      await driverApi.update(driver._id, { assignedVehicle: vehicle.plateNumber });
+
+      // D. Update vehicle's assigned driver in DB
+      await vehicleApi.update(vehicle.id, { driver: driver.fullName });
+
+      toast.success(`Vehicle ${vehicle.name} successfully assigned to ${driver.fullName}!`);
+      navigate(`/manager/driver-profile/${driver._id}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to assign vehicle.");
+    } finally {
+      setAssigningVehicleId(null);
+    }
+  };
+
+  const handleResetFilters = () => {
+    setSearch("");
+    setSearchError("");
+    setStatusFilter("All Statuses");
+    setTypeFilter("All Types");
+  };
+
+  // Filter vehicles
+  const filteredVehicles = vehicles.filter(v => {
+    if (searchError) return false;
+    const query = search.toLowerCase();
+    const matchesSearch =
+      v.name.toLowerCase().includes(query) ||
+      v.plateNumber.toLowerCase().includes(query) ||
+      (v.manufacturer && v.manufacturer.toLowerCase().includes(query));
+
+    const matchesStatus = statusFilter === "All Statuses" || v.status === statusFilter;
+    const matchesType = typeFilter === "All Types" || v.type === typeFilter;
+
+    return matchesSearch && matchesStatus && matchesType;
+  });
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case "Available":
+        return "bg-emerald-50 text-[#22C55E] border border-emerald-100";
+      case "On Trip":
+        return "bg-amber-50 text-[#A14000] border border-amber-100";
+      case "Idle":
+        return "bg-slate-50 text-[#64748B] border border-slate-100";
+      case "Maintenance":
+        return "bg-red-50 text-[#EF4444] border border-red-100";
+      default:
+        return "bg-gray-100 text-gray-500";
+    }
+  };
+
+
+
+  if (!driver) return null;
+
+  const expiryDate = driver.licenseExpiry ? new Date(driver.licenseExpiry) : null;
+  const today = new Date();
+  const isLicenseExpired = !expiryDate || expiryDate < today;
+
+  return (
+    <div className="p-6 lg:p-8 bg-[#F5F7FB] font-nunito text-[#1E293B] min-h-screen">
+      <Breadcrumb />
+      {/* --- HEADER --- */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E7EAF0] pb-6">
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="font-poppins font-bold text-[32px] text-[#1E293B] leading-none">Assign Vehicle</h1>
+            <p className="text-[18px] text-[#64748B] mt-[12px] font-medium">
+              Select a fleet vehicle to assign to <strong className="text-[#1E293B]">{driver.fullName}</strong>.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {isLicenseExpired && (
+        <div className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 text-red-700 text-xs font-semibold mt-6">
+          <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-bold text-red-800">Vehicle Assignment Blocked</p>
+            <p className="mt-0.5 text-red-600">This driver's license has expired. Fleet compliance rules restrict assignment of vehicles to operators without a valid active license.</p>
+          </div>
+        </div>
+      )}
+
+      {/* --- DRIVER QUICK RESUME INFO CARD --- */}
+      <div className="p-5 bg-white border border-[#E7EAF0] rounded-2xl flex items-center justify-between shadow-sm select-none mt-6">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 bg-[#FDF3EC] text-[#A14000] rounded-xl flex items-center justify-center font-bold text-sm font-poppins">
+            {driver.fullName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+          </div>
+          <div>
+            <p className="font-bold text-[#1E293B] text-sm">{driver.fullName}</p>
+            <span className="text-[11px] text-[#64748B] font-semibold mt-0.5 block">DL No: {driver.licenseNumber}</span>
+          </div>
+        </div>
+        <div className="text-right">
+          <span className="text-[10px] font-bold text-gray-400 block uppercase">Current Assignment</span>
+          <span className={`text-sm font-extrabold mt-0.5 block ${driver.assignedVehicle === "Unassigned" ? "text-[#EF4444]" : "text-indigo-600"}`}>
+            {driver.assignedVehicle}
+          </span>
+        </div>
+      </div>
+
+      {/* --- VEHICLES SEARCH AND FILTERS --- */}
+      <div className="bg-white rounded-2xl border border-[#E7EAF0] shadow-sm p-6 space-y-4 mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          {/* Search Vehicles */}
+          <div className="md:col-span-2 flex flex-col">
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#94A3B8]">
+                <Search className="w-4.5 h-4.5" />
+              </span>
+              <input
+                type="text"
+                maxLength={50}
+                placeholder="Search vehicles by model, plate number, or manufacturer..."
+                value={search}
+                onChange={handleSearchChange}
+                className={`w-full pl-10 pr-4 py-2.5 h-[44px] bg-white border rounded-xl text-sm text-[#1E293B] focus:outline-none transition-colors ${
+                  searchError
+                    ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                    : "border-[#E7EAF0] focus:border-[#A14000]"
+                }`}
+              />
+            </div>
+            {searchError && (
+              <p className="text-xs text-red-500 mt-1 font-medium font-poppins">{searchError}</p>
+            )}
+          </div>
+
+          {/* Status Filter */}
+          <div className="relative">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none"
+            >
+              <option value="All Statuses">All Statuses</option>
+              <option value="Available">Available</option>
+              <option value="On Trip">On Trip</option>
+              <option value="Idle">Idle</option>
+              <option value="Maintenance">Maintenance</option>
+            </select>
+            <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#64748B]">
+              <ChevronDown className="w-4 h-4" />
+            </span>
+          </div>
+
+          {/* Type Filter */}
+          <div className="relative">
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="w-full px-3.5 py-2 h-[44px] bg-white border border-[#E7EAF0] rounded-xl text-sm text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none"
+            >
+              <option value="All Types">All Types</option>
+              <option value="Truck">Truck</option>
+              <option value="Van">Van</option>
+              <option value="Tipper">Tipper</option>
+              <option value="Trailer">Trailer</option>
+              <option value="Bus">Bus</option>
+            </select>
+            <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#64748B]">
+              <ChevronDown className="w-4 h-4" />
+            </span>
+          </div>
+
+        </div>
+
+        <div className="flex items-center justify-between border-t border-[#E7EAF0]/60 pt-4">
+          <div className="flex items-center gap-3">
+            {(search || statusFilter !== "All Statuses" || typeFilter !== "All Types") && (
+              <button
+                onClick={handleResetFilters}
+                className="text-xs text-[#EF4444] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <RefreshCw className="w-3 h-3" />
+                <span>Reset Filters</span>
+              </button>
+            )}
+          </div>
+          <div className="text-xs text-[#64748B] font-medium font-poppins">
+            Showing <span className="font-bold text-[#1E293B]">{filteredVehicles.length}</span> candidate vehicles
+          </div>
+        </div>
+      </div>
+
+      {/* --- VEHICLES SELECTION GRID --- */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        {filteredVehicles.length === 0 ? (
+          <div className="col-span-2 py-12 text-center text-gray-400 font-medium">
+            No vehicles matching the criteria.
+          </div>
+        ) : (
+          filteredVehicles.map((v) => (
+            <div key={v._id} className="bg-white rounded-2xl border border-[#E7EAF0] p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-[#FDF3EC] text-[#A14000] p-2.5 rounded-xl border border-[#FDF3EC]/50 shrink-0">
+                      <Truck className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h4 className="font-poppins font-bold text-sm text-[#1E293B]">{v.name}</h4>
+                      <span className="text-[11px] text-[#64748B] font-semibold mt-0.5 block">{v.manufacturer} • {v.type}</span>
+                    </div>
+                  </div>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${getStatusBadge(v.status)}`}>
+                    {v.status}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 bg-gray-50/50 p-3 rounded-xl border border-gray-100 text-xs font-semibold text-gray-500 select-none">
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-[#64748B]" />
+                    <span>Branch: {v.branch}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Fuel className="w-3.5 h-3.5 text-[#64748B]" />
+                    <span>Fuel Type: {v.fuelType}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <span className="text-gray-500 font-medium">Plate Number:</span>
+                  <span className="font-bold text-[#1E293B] uppercase tracking-wider">{v.plateNumber || v.vehicleNumber}</span>
+                </div>
+
+                <div className="flex items-center justify-between text-xs border-t border-[#E7EAF0]/60 pt-3">
+                  <span className="text-gray-500 font-medium">Current Driver:</span>
+                  {v.driver && v.driver !== "Unassigned" ? (
+                    <span className="font-bold text-[#1E293B]">{v.driver}</span>
+                  ) : (
+                    <span className="font-bold text-[#EF4444]">Unassigned</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-[#E7EAF0]/60">
+                <button
+                  onClick={() => handleAssign(v)}
+                  className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    v.status === "Maintenance" || v.status === "Out of Service" || assigningVehicleId === v.id || isLicenseExpired
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
+                      : "bg-white hover:bg-[#A14000] hover:text-white text-[#A14000] border border-[#A14000] shadow-sm hover:shadow-md"
+                  }`}
+                  disabled={v.status === "Maintenance" || v.status === "Out of Service" || assigningVehicleId !== null || isLicenseExpired}
+                >
+                  {assigningVehicleId === v.id ? (
+                    <Loader className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4" />
+                  )}
+                  <span>{assigningVehicleId === v.id ? "Assigning..." : isLicenseExpired ? "License Expired" : "Select and Assign Vehicle"}</span>
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
