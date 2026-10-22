@@ -238,6 +238,14 @@ class _UpcomingTripsScreenState extends State<UpcomingTripsScreen> {
     final startEnabled = _isStartEnabled(trip['departureTime']);
 
     return CustomCard(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TripDetailsScreen(tripId: tripId.toString(), tripData: trip),
+          ),
+        ).then((_) => _fetchTripData());
+      },
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -433,7 +441,7 @@ class _UpcomingTripsScreenState extends State<UpcomingTripsScreen> {
                         MaterialPageRoute(
                           builder: (context) => TripDetailsScreen(tripId: tripId.toString(), tripData: trip),
                         ),
-                      );
+                      ).then((_) => _fetchTripData());
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,

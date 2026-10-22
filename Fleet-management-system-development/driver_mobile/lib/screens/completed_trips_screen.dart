@@ -153,6 +153,17 @@ class _CompletedTripsScreenState extends State<CompletedTripsScreen> {
         : '30 L';
 
     return CustomCard(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CompletedTripDetailsScreen(
+              tripId: displayId,
+              tripData: trip,
+            ),
+          ),
+        );
+      },
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

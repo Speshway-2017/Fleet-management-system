@@ -260,16 +260,45 @@ class _TripsScreenState extends State<TripsScreen> {
                       if (hasRecentTrip)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
+                          child: Material(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
                               borderRadius: BorderRadius.circular(AppRadius.md),
-                              border: Border.all(color: AppColors.divider),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
+                              onTap: () {
+                                final statusStr = _currentTrip?['status']?.toString() ?? '';
+                                if (statusStr == 'Completed') {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => CompletedTripDetailsScreen(
+                                        tripId: recentTripNumber.toString(),
+                                        tripData: _currentTrip,
+                                      ),
+                                    ),
+                                  ).then((_) => _loadTripsData());
+                                } else {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => TripDetailsScreen(
+                                        tripId: recentTripNumber.toString(),
+                                        tripData: _currentTrip,
+                                      ),
+                                    ),
+                                  ).then((_) => _loadTripsData());
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(AppRadius.md),
+                                  border: Border.all(color: AppColors.divider),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
                                 // Header Row
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -428,7 +457,7 @@ class _TripsScreenState extends State<TripsScreen> {
                                             tripData: _currentTrip,
                                           ),
                                         ),
-                                      );
+                                      ).then((_) => _loadTripsData());
                                     } else {
                                       Navigator.push(
                                         context,
@@ -438,7 +467,7 @@ class _TripsScreenState extends State<TripsScreen> {
                                             tripData: _currentTrip,
                                           ),
                                         ),
-                                      );
+                                      ).then((_) => _loadTripsData());
                                     }
                                   },
                                   style: ElevatedButton.styleFrom(
@@ -461,7 +490,9 @@ class _TripsScreenState extends State<TripsScreen> {
                               ],
                             ),
                           ),
-                        )
+                        ),
+                      ),
+                    )
                       else
                         _buildEmptyRecentTripCard(context),
 
