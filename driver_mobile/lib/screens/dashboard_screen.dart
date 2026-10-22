@@ -246,9 +246,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         const SizedBox(height: 20),
 
-                        // 1. Active Trip Card (Hidden when there is no active trip)
+                        // 1. Active Trip Card or Standby Status
                         if (_hasActiveTrip) ...[
                           _buildActiveTripCard(context),
+                          const SizedBox(height: 20),
+                        ] else ...[
+                          _buildNoActiveTripBanner(context),
                           const SizedBox(height: 20),
                         ],
 
@@ -1069,14 +1072,72 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Text(
                 label,
                 style: GoogleFonts.poppins(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1B2430),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF0F172A),
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // Standby Banner when no trip is active
+  Widget _buildNoActiveTripBanner(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.route_outlined, color: Color(0xFF2563EB), size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'No Active Trip In Progress',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'You are currently on standby. View scheduled trips or check vehicle logs below.',
+                  style: GoogleFonts.nunito(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

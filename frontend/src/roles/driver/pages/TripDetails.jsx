@@ -1248,12 +1248,28 @@ export default function DriverTripDetailsPage() {
             {(() => {
               const statusLower = trip?.status?.toLowerCase() || "";
               const isActiveTrip = statusLower !== "completed" && statusLower !== "cancelled" && statusLower !== "rejected";
-              return isActiveTrip && (
+              if (isActiveTrip) {
+                return (
+                  <button
+                    onClick={handleOpenAddFuelModal}
+                    className="mt-2 w-full py-2 bg-[#059669] hover:bg-[#047857] text-white border border-transparent font-bold font-poppins rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Fuel className="w-3.5 h-3.5" /> Add Fuel Log
+                  </button>
+                );
+              }
+              return (
                 <button
-                  onClick={handleOpenAddFuelModal}
-                  className="mt-2 w-full py-2 bg-[#059669] hover:bg-[#047857] text-white border border-transparent font-bold font-poppins rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  type="button"
+                  onClick={() => toast.info(`Fuel logging is locked for ${trip?.status || "this"} trip. Fuel entries can only be added during active trips.`)}
+                  className="mt-2 w-full py-2 bg-white hover:bg-amber-50/80 border-2 border-amber-400 text-slate-900 font-bold font-poppins rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
+                  title="Fuel logging is locked for this trip status"
                 >
-                  <Fuel className="w-3.5 h-3.5" /> Add Fuel Log
+                  <Lock className="w-3.5 h-3.5 text-[#A14000]" />
+                  <span>Add Fuel Log</span>
+                  <span className="ml-1 text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded font-black tracking-wider">
+                    LOCKED
+                  </span>
                 </button>
               );
             })()}

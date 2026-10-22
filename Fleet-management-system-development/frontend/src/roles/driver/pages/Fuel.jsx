@@ -288,24 +288,28 @@ export default function DriverFuelPage() {
               }
               setShowModal(true);
             }}
-            disabled={!isFuelLogEnabled}
             title={
               !isFuelLogEnabled
                 ? "Fuel logging locked: Requires an active trip or an assigned vehicle."
                 : "Log fuel refill for your trip or vehicle"
             }
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold font-poppins flex items-center justify-center gap-2 transition shadow-sm select-none ${
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold font-poppins flex items-center justify-center gap-2 transition shadow-sm select-none cursor-pointer ${
               isFuelLogEnabled
-                ? "bg-[#A14000] hover:bg-[#853400] text-white cursor-pointer hover:shadow-md active:scale-95"
-                : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-80"
+                ? "bg-[#A14000] hover:bg-[#853400] text-white hover:shadow-md active:scale-95"
+                : "bg-white hover:bg-amber-50/80 border-2 border-amber-400 text-slate-900 hover:text-amber-950 shadow-xs active:scale-95"
             }`}
           >
             {isFuelLogEnabled ? (
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 text-white" />
             ) : (
-              <Lock className="w-4 h-4 text-slate-400" />
+              <Lock className="w-4 h-4 text-[#A14000]" />
             )}
-            <span>{isFuelLogEnabled ? "Log New Fuel Refill" : "Fuel Log Locked"}</span>
+            <span className="font-bold tracking-wide">Log New Fuel Refill</span>
+            {!isFuelLogEnabled && (
+              <span className="text-[10px] uppercase font-extrabold bg-amber-100 text-[#A14000] px-1.5 py-0.5 rounded-md border border-amber-300">
+                Locked
+              </span>
+            )}
           </button>
           {!isFuelLogEnabled && (
             <div className="absolute right-0 top-full mt-2 hidden group-hover:flex flex-col items-end z-20 pointer-events-none">

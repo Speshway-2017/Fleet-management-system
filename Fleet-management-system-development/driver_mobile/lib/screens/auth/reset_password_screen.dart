@@ -145,10 +145,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> with SingleTi
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Color(0xFFE8EFF8),
-                    Color(0xFFF3F7FC),
-                    Color(0xFF0D1B36),
-                    Color(0xFF071228),
+                    Color(0xFFE4EDF7),
+                    Color(0xFFF0F5FB),
+                    Color(0xFF0F1E38),
+                    Color(0xFF060F22),
                   ],
                   stops: [0.0, 0.35, 0.70, 1.0],
                 ),
@@ -156,85 +156,139 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> with SingleTi
             ),
           ),
 
-          SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Top Branding Bar
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Official Fleet Management Logo
-                        Image.asset(
-                          'assets/images/logo.png',
-                          height: 36,
-                          fit: BoxFit.contain,
-                          errorBuilder: (ctx, err, st) => Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(
-                                  Icons.local_shipping_rounded,
-                                  color: Color(0xFFF97316),
-                                  size: 24,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'FLEET',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                  color: const Color(0xFF0B1B3D),
-                                  letterSpacing: 1.2,
-                                  height: 1.0,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+          // Top Subtle Radial Ambient Glow
+          Positioned(
+            top: 20,
+            right: -60,
+            width: 240,
+            height: 240,
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    const Color(0xFFF97316).withValues(alpha: 0.18),
+                    const Color(0xFFFFA26B).withValues(alpha: 0.06),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.45, 1.0],
+                ),
+              ),
+            ),
+          ),
 
-                        // Back Button
-                        InkWell(
-                          onTap: () => Navigator.pop(context),
-                          borderRadius: BorderRadius.circular(20),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.arrow_back_rounded, size: 14, color: Color(0xFF0B1B3D)),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Back',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF0B1B3D),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+          // Top Left Floating Back Button
+          Positioned(
+            top: 12,
+            left: 16,
+            child: SafeArea(
+              child: InkWell(
+                onTap: () => Navigator.pop(context),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF0B1B3D).withValues(alpha: 0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.arrow_back_rounded, size: 15, color: Color(0xFF0B1B3D)),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Back',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF0B1B3D),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
 
-                  const SizedBox(height: 16),
+          // Main Foreground Content Centered in Middle of Screen
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(vertical: 24.0),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: (constraints.maxHeight - 48.0) > 0 ? (constraints.maxHeight - 48.0) : 0,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Top Branding Bar: Official Fleet Management Logo Centered
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+                          child: Center(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.center,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Image.asset(
+                                    'assets/images/auth_logo.png',
+                                    height: 54,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (ctx, err, st) => Image.asset(
+                                      'assets/images/logo.png',
+                                      height: 54,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (ctx2, err2, st2) => Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(7),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(alpha: 0.15),
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                            child: const Icon(
+                                              Icons.local_shipping_rounded,
+                                              color: Color(0xFFF97316),
+                                              size: 26,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'FLEET MANAGEMENT',
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w900,
+                                              color: const Color(0xFF0B1B3D),
+                                              letterSpacing: 1.0,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
 
                   // Hero Text
                   Padding(
@@ -613,7 +667,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> with SingleTi
                 ],
               ),
             ),
-          ),
+          );
+        },
+      ),
+    ),
         ],
       ),
     );

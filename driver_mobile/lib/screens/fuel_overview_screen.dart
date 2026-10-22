@@ -479,52 +479,74 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
 
     return GestureDetector(
       onTap: onTap,
-      child: Opacity(
-        opacity: isDisabled ? 0.6 : 1.0,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 8.0),
-          decoration: BoxDecoration(
-            color: isDisabled ? const Color(0xFFF8FAFC) : Colors.white,
-            borderRadius: BorderRadius.circular(16.0),
-            border: Border.all(color: borderGray, width: 1.0),
-            boxShadow: [
-              if (!isDisabled)
-                BoxShadow(
-                  color: Colors.black.withAlpha(6),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-            ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 8.0),
+        decoration: BoxDecoration(
+          color: isDisabled ? const Color(0xFFFFFBEB) : Colors.white,
+          borderRadius: BorderRadius.circular(16.0),
+          border: Border.all(
+            color: isDisabled ? const Color(0xFFFCD34D) : borderGray,
+            width: isDisabled ? 1.5 : 1.0,
           ),
-          child: Column(
-            children: [
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(isDisabled ? 4 : 6),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: isDisabled ? const Color(0xFFFEF3C7) : const Color(0xFFF8FAFC),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isDisabled ? const Color(0xFFFCD34D) : borderGray,
+                  width: 1.0,
+                ),
+              ),
+              child: Icon(
+                isDisabled ? Icons.lock_outline_rounded : icon,
+                color: isDisabled ? const Color(0xFFD97706) : textPrimary,
+                size: 22,
+              ),
+            ),
+            const SizedBox(height: 10.0),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: textPrimary,
+                height: 1.2,
+              ),
+            ),
+            if (isDisabled) ...[
+              const SizedBox(height: 4.0),
               Container(
-                width: 44,
-                height: 44,
+                padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
                 decoration: BoxDecoration(
-                  color: isDisabled ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: borderGray, width: 1.0),
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(4.0),
+                  border: Border.all(color: const Color(0xFFF59E0B), width: 0.8),
                 ),
-                child: Icon(
-                  isDisabled ? Icons.lock_outline_rounded : icon,
-                  color: isDisabled ? const Color(0xFF94A3B8) : textPrimary,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(height: 10.0),
-              Text(
-                isDisabled ? 'Fuel Log\nLocked' : label,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: isDisabled ? const Color(0xFF94A3B8) : textPrimary,
-                  height: 1.2,
+                child: Text(
+                  'LOCKED',
+                  style: GoogleFonts.poppins(
+                    fontSize: 9.0,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFFB45309),
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
             ],
-          ),
+          ],
         ),
       ),
     );

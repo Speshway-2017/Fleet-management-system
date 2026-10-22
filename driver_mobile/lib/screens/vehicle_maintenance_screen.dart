@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import 'contact_fleet_manager_screen.dart';
+import 'fuel_overview_screen.dart';
+import 'support_history_screen.dart';
 
 /// Vehicle Maintenance Alert Data Item representation.
 class MaintenanceAlertItem {
@@ -255,6 +257,25 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
                 ),
               ),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const SupportHistoryScreen()),
+          );
+        },
+        backgroundColor: const Color(0xFF0F172A),
+        elevation: 3,
+        icon: const Icon(Icons.report_problem_rounded, color: Color(0xFFF59E0B), size: 20),
+        label: Text(
+          'Vehicle Issues',
+          style: GoogleFonts.poppins(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+      ),
     );
   }
 
@@ -264,11 +285,19 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.build_circle_outlined, size: 64, color: textSecondary),
+            Container(
+              width: 76,
+              height: 76,
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFF7ED),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.build_circle_outlined, size: 44, color: Color(0xFFF97316)),
+            ),
             const SizedBox(height: 16),
             Text(
               'No Vehicle Assigned',
@@ -280,9 +309,172 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'No vehicle has been assigned yet. Vehicle-related features will become available once your manager assigns a vehicle.',
+              'No vehicle has been assigned yet. You can inspect previous vehicle issues and fuel records, or contact your fleet manager for vehicle allocation.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.nunito(fontSize: 14, color: textSecondary),
+              style: GoogleFonts.nunito(fontSize: 13.5, color: textSecondary, height: 1.4),
+            ),
+            const SizedBox(height: 24),
+            // High-Contrast Quick Action Cards for Vehicle Issue & Fuel
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SupportHistoryScreen()),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEE2E2),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 22),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Vehicle Issues',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF3C7),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'VIEW TICKETS',
+                              style: GoogleFonts.poppins(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                                color: const Color(0xFFB45309),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const FuelOverviewScreen()),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF3C7),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.local_gas_station_rounded, color: Color(0xFFD97706), size: 22),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Fuel Logs',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF3C7),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'VIEW LOGS',
+                              style: GoogleFonts.poppins(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                                color: const Color(0xFFB45309),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ContactFleetManagerScreen()),
+                  );
+                },
+                icon: const Icon(Icons.support_agent_rounded, size: 18, color: Color(0xFF0F172A)),
+                label: Text(
+                  'Contact Fleet Manager',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF0F172A),
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF94A3B8), width: 1.5),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
             ),
           ],
         ),

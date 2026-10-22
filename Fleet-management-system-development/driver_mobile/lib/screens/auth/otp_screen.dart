@@ -164,7 +164,7 @@ class _OTPScreenState extends State<OTPScreen> with SingleTickerProviderStateMix
       backgroundColor: const Color(0xFF071228),
       body: Stack(
         children: [
-          // Background Gradient
+          // Seamless Unified Background Gradient
           Positioned.fill(
             child: Container(
               decoration: const BoxDecoration(
@@ -172,141 +172,199 @@ class _OTPScreenState extends State<OTPScreen> with SingleTickerProviderStateMix
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Color(0xFFE8EFF8),
-                    Color(0xFFF3F7FC),
-                    Color(0xFF0D1B36),
-                    Color(0xFF071228),
+                    Color(0xFFE4EDF7),
+                    Color(0xFFF0F5FB),
+                    Color(0xFF0F1E38),
+                    Color(0xFF060F22),
                   ],
-                  stops: [0.0, 0.35, 0.70, 1.0],
+                  stops: [0.0, 0.30, 0.65, 1.0],
                 ),
               ),
             ),
           ),
 
+          // Soft Ambient Warm Glow
+          Positioned(
+            top: 20,
+            right: -60,
+            width: 320,
+            height: 320,
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    const Color(0xFFF97316).withValues(alpha: 0.18),
+                    const Color(0xFFFFA26B).withValues(alpha: 0.06),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.45, 1.0],
+                ),
+              ),
+            ),
+          ),
+
+          // Top Left Floating Back Button
+          Positioned(
+            top: 12,
+            left: 16,
+            child: SafeArea(
+              child: InkWell(
+                onTap: () => Navigator.pop(context),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF0B1B3D).withValues(alpha: 0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.arrow_back_rounded, size: 15, color: Color(0xFF0B1B3D)),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Back',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF0B1B3D),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Main Foreground Content Centered in Middle of Screen
           SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Top Branding Bar
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(vertical: 24.0),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: (constraints.maxHeight - 48.0) > 0 ? (constraints.maxHeight - 48.0) : 0,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Official Fleet Management Logo
-                        Image.asset(
-                          'assets/images/logo.png',
-                          height: 36,
-                          fit: BoxFit.contain,
-                          errorBuilder: (ctx, err, st) => Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(
-                                  Icons.local_shipping_rounded,
-                                  color: Color(0xFFF97316),
-                                  size: 24,
-                                ),
+                        // Top Branding Bar: Official Fleet Management Logo Centered
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+                          child: Center(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.center,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Image.asset(
+                                    'assets/images/auth_logo.png',
+                                    height: 54,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (ctx, err, st) => Image.asset(
+                                      'assets/images/logo.png',
+                                      height: 54,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (ctx2, err2, st2) => Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(alpha: 0.15),
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                            child: const Icon(
+                                              Icons.local_shipping_rounded,
+                                              color: Color(0xFFF97316),
+                                              size: 26,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'FLEET MANAGEMENT',
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w900,
+                                              color: const Color(0xFF0B1B3D),
+                                              letterSpacing: 1.0,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'FLEET',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                  color: const Color(0xFF0B1B3D),
-                                  letterSpacing: 1.2,
-                                  height: 1.0,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
 
-                        // Back Button
-                        InkWell(
-                          onTap: () => Navigator.pop(context),
-                          borderRadius: BorderRadius.circular(20),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.arrow_back_rounded, size: 14, color: Color(0xFF0B1B3D)),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Back',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF0B1B3D),
+                        const SizedBox(height: 14),
+
+                        // Hero Text: "Verify OTP Code"
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: RichText(
+                                  text: TextSpan(
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.w800,
+                                      height: 1.15,
+                                    ),
+                                    children: const [
+                                      TextSpan(
+                                        text: 'Verify ',
+                                        style: TextStyle(color: Color(0xFF0B1B3D)),
+                                      ),
+                                      TextSpan(
+                                        text: 'OTP Code',
+                                        style: TextStyle(color: Color(0xFFF97316)),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Hero Text
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        RichText(
-                          text: TextSpan(
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 30,
-                              fontWeight: FontWeight.w800,
-                              height: 1.2,
-                            ),
-                            children: const [
-                              TextSpan(
-                                text: 'Verify ',
-                                style: TextStyle(color: Color(0xFF0B1B3D)),
                               ),
-                              TextSpan(
-                                text: 'OTP Code',
-                                style: TextStyle(color: Color(0xFFF97316)),
+                              const SizedBox(height: 6),
+                              Text(
+                                widget.contactInfo != null && widget.contactInfo!.isNotEmpty
+                                    ? 'Enter the 6-digit code sent to ${widget.contactInfo}'
+                                    : 'Enter the 6-digit verification code sent to your registered contact',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  color: const Color(0xFF475569),
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          widget.contactInfo != null && widget.contactInfo!.isNotEmpty
-                              ? 'Enter the 6-digit code sent to ${widget.contactInfo}'
-                              : 'Enter the 6-digit verification code sent to your registered contact',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13,
-                            color: const Color(0xFF475569),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
 
-                  const SizedBox(height: 12),
+                        const SizedBox(height: 16),
 
-                  // Glassmorphic Card Container
-                  SlideTransition(
+                        // Glassmorphic Card Container
+                        SlideTransition(
                     position: _slideAnimation,
                     child: FadeTransition(
                       opacity: _fadeAnimation,
@@ -584,7 +642,10 @@ class _OTPScreenState extends State<OTPScreen> with SingleTickerProviderStateMix
                 ],
               ),
             ),
-          ),
+          );
+        },
+      ),
+    ),
         ],
       ),
     );

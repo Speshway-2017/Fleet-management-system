@@ -2365,22 +2365,95 @@ export const updateFuelRecord = async (req, res, next) => {
     }
 
     // Automatically stamp approvedBy/rejectedBy and timestamps if status changes
-    if (req.body.approvalStatus) {
-      if (req.body.approvalStatus === 'Approved') {
+    if (req.body.approvalStatus || req.body.billStatus) {
+      const isApprove = req.body.approvalStatus === 'Approved' || req.body.billStatus === 'Approved';
+      const isReject = req.body.approvalStatus === 'Rejected' || req.body.billStatus === 'Rejected';
+
+      if (isApprove) {
+        req.body.approvalStatus = 'Approved';
+        req.body.billStatus = 'Approved';
         req.body.approvedBy = req.user.name || 'Fleet Manager';
         req.body.approvedAt = new Date();
-        req.body.billStatus = 'Approved';
         req.body.rejectionReason = '';
-      } else if (req.body.approvalStatus === 'Rejected') {
+      } else if (isReject) {
+        req.body.approvalStatus = 'Rejected';
+        req.body.billStatus = 'Rejected';
         req.body.rejectedBy = req.user.name || 'Fleet Manager';
         req.body.rejectedAt = new Date();
-        req.body.billStatus = 'Rejected';
       }
     }
 
     const record = await updateFuelRecordInRepo(req.params.id, req.body);
     if (!record) {
       return sendError(res, 404, 'Fuel record not found');
+    }
+
+    // Synchronize trip and invoice financials if fuel record is associated with a trip
+    if (record.tripId) {
+      try {
+        const cleanTripKey = record.tripId.toString().replace('#', '');
+        const trip = await Trip.findOne({
+          $or: [
+            ...(mongoose.Types.ObjectId.isValid(record.tripId) ? [{ _id: record.tripId }] : []),
+            { tripNumber: record.tripId },
+            { tripNumber: '#' + cleanTripKey },
+            { tripNumber: cleanTripKey }
+          ]
+        });
+
+        if (trip) {
+          const tripIdStr = trip._id.toString();
+          const cleanTripNum = trip.tripNumber?.replace('#', '');
+
+          const [tripFuels, tripTolls, invoice] = await Promise.all([
+            Fuel.find({
+              $or: [
+                { tripId: tripIdStr },
+                { tripId: trip.tripNumber },
+                { tripId: cleanTripNum },
+                { tripId: '#' + cleanTripNum }
+              ]
+            }),
+            TollTransaction.find({ trip: trip._id }),
+            Invoice.findOne({
+              $or: [
+                { trip: trip._id },
+                ...(trip.tripInvoice?.invoiceNumber ? [{ invoiceNumber: trip.tripInvoice.invoiceNumber }] : [])
+              ]
+            })
+          ]);
+
+          const finance = calculateTripFinance(trip, invoice, tripFuels, tripTolls);
+
+          // Update trip operational financials
+          trip.expenses = finance.expenses;
+          trip.revenue = finance.revenue;
+          trip.netEarnings = finance.netEarnings;
+          await trip.save().catch(() => {});
+
+          // If invoice exists, synchronize charges so rejected fuel is removed from invoice
+          if (invoice) {
+            invoice.charges = {
+              ...invoice.charges,
+              freightCharges: finance.baseFreight,
+              serviceFee: finance.serviceFee,
+              loadingCharges: finance.loadingCharges,
+              unloadingCharges: finance.unloadingCharges,
+              fuelCharges: finance.actualFuelAmount,
+              tollCharges: finance.actualTollAmount,
+              subtotal: finance.subtotal,
+              gstTax: finance.gstTax,
+              totalAmount: finance.totalAmount
+            };
+            invoice.subtotal = finance.subtotal;
+            invoice.taxAmount = finance.gstTax;
+            invoice.totalAmount = finance.totalAmount;
+            await invoice.save().catch(() => {});
+          }
+        }
+      } catch (syncErr) {
+        console.error('Error synchronizing trip finance after fuel update:', syncErr);
+      }
     }
 
     const io = req.app.locals.io || req.io;
@@ -3999,6 +4072,7 @@ export const getEarnings = async (req, res, next) => {
     const tripIds = trips.map(t => t._id);
     const tripNumbers = trips.map(t => t.tripNumber).filter(Boolean);
     const cleanTripNumbers = tripNumbers.map(tn => tn.replace('#', ''));
+    const hashTripNumbers = cleanTripNumbers.map(tn => '#' + tn);
 
     const [invoices, fuels, tolls] = await Promise.all([
       Invoice.find({
@@ -4011,7 +4085,9 @@ export const getEarnings = async (req, res, next) => {
         $or: [
           { tripId: { $in: tripIds.map(id => id.toString()) } },
           { tripId: { $in: tripNumbers } },
-          { tripId: { $in: cleanTripNumbers } }
+          { tripId: { $in: cleanTripNumbers } },
+          { tripId: { $in: hashTripNumbers } },
+          { trip: { $in: tripIds } }
         ]
       }),
       TollTransaction.find({ trip: { $in: tripIds } })
