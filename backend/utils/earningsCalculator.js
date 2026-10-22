@@ -1,6 +1,28 @@
 import { calculateDistance } from './distanceCalculator.js';
 
 /**
+ * Helper to check whether a fuel record is rejected or cancelled by Fleet Manager or system.
+ * Rejected fuel records must never be added to trip expenses or fleet operational costs.
+ */
+export const isRejectedFuelRecord = (record) => {
+  if (!record) return false;
+  if (record.isRejected === true) return true;
+
+  const approval = String(record.approvalStatus || '').trim().toUpperCase();
+  const bill = String(record.billStatus || '').trim().toUpperCase();
+  const status = String(record.status || '').trim().toUpperCase();
+
+  return (
+    approval.includes('REJECT') ||
+    approval.includes('CANCEL') ||
+    bill.includes('REJECT') ||
+    bill.includes('CANCEL') ||
+    status.includes('REJECT') ||
+    status.includes('CANCEL')
+  );
+};
+
+/**
  * Shared utility to calculate trip-level financial details (revenue, expenses, and net profit).
  * This serves as the single source of truth for earnings calculations across all modules.
  *
@@ -60,6 +82,9 @@ export const calculateTripFinance = (trip, invoice = null, fuelRecords = [], tol
   if (Array.isArray(fuelRecords) && fuelRecords.length > 0) {
     const seenFuelIds = new Set();
     actualFuelAmount = fuelRecords.reduce((sum, f) => {
+      // Strictly exclude fuel records rejected or cancelled by Fleet Manager
+      if (isRejectedFuelRecord(f)) return sum;
+
       const fId = (f?._id || f?.id)?.toString();
       if (fId && seenFuelIds.has(fId)) return sum;
       if (fId) seenFuelIds.add(fId);
@@ -81,6 +106,9 @@ export const calculateTripFinance = (trip, invoice = null, fuelRecords = [], tol
   if (Array.isArray(tollRecords) && tollRecords.length > 0) {
     const seenTollIds = new Set();
     actualTollAmount = tollRecords.reduce((sum, t) => {
+      const tStatus = String(t?.status || t?.receiptStatus || '').trim().toUpperCase();
+      if (tStatus.includes('REJECT') || tStatus.includes('CANCEL')) return sum;
+
       const tId = (t?._id || t?.id)?.toString();
       if (tId && seenTollIds.has(tId)) return sum;
       if (tId) seenTollIds.add(tId);
@@ -231,10 +259,16 @@ export const calculateFleetEarnings = (trips = [], invoices = [], fuels = [], to
       if (fId && seenFuelRecordIds.has(fId)) return;
       if (fId) seenFuelRecordIds.add(fId);
 
-      const key = f.tripId?.toString().replace('#', '');
-      if (key) {
-        if (!fuelsByTripId.has(key)) fuelsByTripId.set(key, []);
-        fuelsByTripId.get(key).push(f);
+      const rawKey = (f.tripId || f.trip)?.toString();
+      if (!rawKey) return;
+      const cleanKey = rawKey.replace('#', '');
+
+      if (!fuelsByTripId.has(cleanKey)) fuelsByTripId.set(cleanKey, []);
+      fuelsByTripId.get(cleanKey).push(f);
+
+      if (rawKey !== cleanKey) {
+        if (!fuelsByTripId.has(rawKey)) fuelsByTripId.set(rawKey, []);
+        fuelsByTripId.get(rawKey).push(f);
       }
     });
   }
@@ -279,7 +313,22 @@ export const calculateFleetEarnings = (trips = [], invoices = [], fuels = [], to
     const tripIdStr = (trip._id || trip.id)?.toString();
     const inv = (tripIdStr && invoiceByTripId.get(tripIdStr)) || (trip.tripInvoice?.invoiceNumber ? invoiceByTripId.get(trip.tripInvoice.invoiceNumber) : null);
     const cleanNum = trip.tripNumber?.replace('#', '');
-    const tripFuels = (tripIdStr && fuelsByTripId.get(tripIdStr)) || (cleanNum && fuelsByTripId.get(cleanNum)) || [];
+    const rawNum = trip.tripNumber;
+
+    const matchedFuels = [
+      ...(tripIdStr && fuelsByTripId.has(tripIdStr) ? fuelsByTripId.get(tripIdStr) : []),
+      ...(cleanNum && fuelsByTripId.has(cleanNum) ? fuelsByTripId.get(cleanNum) : []),
+      ...(rawNum && fuelsByTripId.has(rawNum) ? fuelsByTripId.get(rawNum) : [])
+    ];
+    const seenTripFuelIds = new Set();
+    const tripFuels = matchedFuels.filter(f => {
+      const fid = (f?._id || f?.id)?.toString();
+      if (!fid) return true;
+      if (seenTripFuelIds.has(fid)) return false;
+      seenTripFuelIds.add(fid);
+      return true;
+    });
+
     const tripTolls = (tripIdStr && tollsByTripId.get(tripIdStr)) || [];
 
     const isRejected = isCancelledOrRejected(trip.status);

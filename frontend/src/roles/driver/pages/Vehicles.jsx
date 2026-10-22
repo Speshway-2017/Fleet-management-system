@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import driverApi from "../api/driverApi";
 import { useDriverSocket } from "../hooks/useDriverSocket";
@@ -356,12 +356,28 @@ export default function DriverVehiclesPage() {
           <p className="text-slate-500 text-sm max-w-md mx-auto mb-6 leading-relaxed">
             You currently do not have a vehicle assigned to your driver profile. Please contact your Fleet Manager for vehicle allocation.
           </p>
-          <button
-            onClick={handleRefresh}
-            className="px-6 py-2.5 bg-[#101C2C] hover:bg-slate-800 text-white rounded-xl text-xs font-semibold font-poppins transition shadow-sm inline-flex items-center gap-2"
-          >
-            <RefreshCw className="w-3.5 h-3.5" /> Check Again
-          </button>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <button
+              onClick={handleRefresh}
+              className="px-5 py-2.5 bg-[#101C2C] hover:bg-slate-800 text-white rounded-xl text-xs font-bold font-poppins transition shadow-sm inline-flex items-center gap-2"
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> Check Again
+            </button>
+            <Link
+              to="/driver/maintenance"
+              className="px-5 py-2.5 bg-white hover:bg-rose-50 border-2 border-rose-300 text-slate-900 rounded-xl text-xs font-bold font-poppins transition shadow-sm inline-flex items-center gap-2"
+            >
+              <Wrench className="w-3.5 h-3.5 text-rose-600" />
+              <span>Vehicle Issues & Tickets</span>
+            </Link>
+            <Link
+              to="/driver/fuel"
+              className="px-5 py-2.5 bg-white hover:bg-amber-50 border-2 border-amber-300 text-slate-900 rounded-xl text-xs font-bold font-poppins transition shadow-sm inline-flex items-center gap-2"
+            >
+              <FuelIcon className="w-3.5 h-3.5 text-[#A14000]" />
+              <span>Fuel History</span>
+            </Link>
+          </div>
         </div>
       ) : (
         /* Dynamic Vehicle View */

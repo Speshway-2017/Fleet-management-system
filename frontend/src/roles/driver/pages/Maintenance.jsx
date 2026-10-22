@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import driverApi from "../api/driverApi";
 import IssueCard from "../components/IssueCard";
 import { toast } from "react-hot-toast";
-import { Wrench, Plus, X, RefreshCw, AlertTriangle } from "lucide-react";
+import { Wrench, Plus, X, RefreshCw, AlertTriangle, Lock } from "lucide-react";
 
 import { useDriverSocket } from "../hooks/useDriverSocket";
 
@@ -229,14 +229,28 @@ export default function DriverMaintenancePage() {
 
         <button
           onClick={handleOpenReportModal}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold font-poppins flex items-center justify-center gap-2 transition shadow-sm ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold font-poppins flex items-center justify-center gap-2 transition shadow-sm cursor-pointer select-none ${
             isMaintenanceEnabled
-              ? "bg-[#A14000] hover:bg-[#853400] text-white cursor-pointer"
-              : "bg-slate-300 text-slate-500 cursor-not-allowed"
+              ? "bg-[#A14000] hover:bg-[#853400] text-white hover:shadow-md active:scale-95"
+              : "bg-white hover:bg-rose-50/80 border-2 border-rose-300 text-slate-900 hover:text-rose-950 shadow-xs active:scale-95"
           }`}
+          title={
+            isMaintenanceEnabled
+              ? "Report vehicle issue or maintenance ticket"
+              : "Maintenance reporting locked: Requires an assigned vehicle or active trip"
+          }
         >
-          <Plus className="w-4 h-4" />
-          <span>Report New Vehicle Issue</span>
+          {isMaintenanceEnabled ? (
+            <Plus className="w-4 h-4 text-white" />
+          ) : (
+            <Lock className="w-4 h-4 text-rose-600" />
+          )}
+          <span className="font-bold tracking-wide">Report New Vehicle Issue</span>
+          {!isMaintenanceEnabled && (
+            <span className="text-[10px] uppercase font-extrabold bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded-md border border-rose-300">
+              Locked
+            </span>
+          )}
         </button>
       </div>
 

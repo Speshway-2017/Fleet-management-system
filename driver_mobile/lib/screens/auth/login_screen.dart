@@ -383,35 +383,40 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Image.asset(
-                                      'assets/images/logo.png',
-                                      height: 42,
+                                      'assets/images/auth_logo.png',
+                                      height: 54,
                                       fit: BoxFit.contain,
-                                      errorBuilder: (ctx, err, st) => Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.all(6),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              borderRadius: BorderRadius.circular(10),
+                                      errorBuilder: (ctx, err, st) => Image.asset(
+                                        'assets/images/logo.png',
+                                        height: 54,
+                                        fit: BoxFit.contain,
+                                        errorBuilder: (ctx2, err2, st2) => Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white.withValues(alpha: 0.15),
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                              child: const Icon(
+                                                Icons.local_shipping_rounded,
+                                                color: Color(0xFFF97316),
+                                                size: 26,
+                                              ),
                                             ),
-                                            child: const Icon(
-                                              Icons.local_shipping_rounded,
-                                              color: Color(0xFFF97316),
-                                              size: 24,
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'FLEET MANAGEMENT',
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w900,
+                                                color: const Color(0xFF0B1B3D),
+                                                letterSpacing: 1.0,
+                                              ),
                                             ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            'FLEET MANAGEMENT',
-                                            style: GoogleFonts.plusJakartaSans(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w900,
-                                              color: const Color(0xFF0B1B3D),
-                                              letterSpacing: 1.0,
-                                            ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ],
