@@ -377,6 +377,17 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
       children: [
         // 1. Trip Header & Map Card
         CustomCard(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TripDetailsScreen(
+                  tripId: tripId.toString(),
+                  tripData: _activeTrip,
+                ),
+              ),
+            ).then((_) => _fetchActiveTrip());
+          },
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -431,10 +442,12 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
 
               const SizedBox(height: 16),
 
-              LiveTrackingMapWidget(
-                height: 220,
-                pickupAddress: pickup,
-                destinationAddress: destination,
+              IgnorePointer(
+                child: LiveTrackingMapWidget(
+                  height: 220,
+                  pickupAddress: pickup,
+                  destinationAddress: destination,
+                ),
               ),
 
               const SizedBox(height: 16),
@@ -576,9 +589,12 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => TripDetailsScreen(tripId: tripId.toString()),
+                builder: (context) => TripDetailsScreen(
+                  tripId: tripId.toString(),
+                  tripData: _activeTrip,
+                ),
               ),
-            );
+            ).then((_) => _fetchActiveTrip());
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.secondary,

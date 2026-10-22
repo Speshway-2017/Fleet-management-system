@@ -24,60 +24,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   bool _isPasswordVisible = false;
   bool _isLoading = false;
   bool _rememberMe = false;
-  String _selectedLang = 'English (US)';
-
-  void _showLanguageSelector() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
-      ),
-      builder: (BuildContext context) {
-        final languages = ['English (US)', 'Spanish', 'French', 'German', 'Hindi'];
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
-                child: Text(
-                  'Select Language',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF0B1B3D),
-                  ),
-                ),
-              ),
-              const Divider(color: Color(0xFFE2E8F0), height: 1),
-              ...languages.map(
-                (lang) => ListTile(
-                  title: Text(
-                    lang,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 15,
-                      fontWeight: _selectedLang == lang ? FontWeight.bold : FontWeight.w500,
-                      color: _selectedLang == lang ? const Color(0xFFF97316) : const Color(0xFF0F172A),
-                    ),
-                  ),
-                  trailing: _selectedLang == lang
-                      ? const Icon(Icons.check_circle_rounded, color: Color(0xFFF97316), size: 20)
-                      : null,
-                  onTap: () {
-                    setState(() {
-                      _selectedLang = lang;
-                    });
-                    Navigator.pop(context);
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
 
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
@@ -409,109 +355,73 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
           // Main Foreground Content
           SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Top Branding Bar: Official Fleet Management Logo + Language Selector
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(vertical: 24.0),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: (constraints.maxHeight - 48.0) > 0 ? (constraints.maxHeight - 48.0) : 0,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Official Fleet Management Logo
-                        Flexible(
-                          child: InkWell(
-                            onLongPress: _showServerConfigDialog,
-                            borderRadius: BorderRadius.circular(12),
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Image.asset(
-                                    'assets/images/logo.png',
-                                    height: 36,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (ctx, err, st) => Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(6),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: BorderRadius.circular(10),
+                        // Top Branding Bar: Official Fleet Management Logo Centered
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+                          child: Center(
+                            child: InkWell(
+                              onLongPress: _showServerConfigDialog,
+                              borderRadius: BorderRadius.circular(12),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.center,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Image.asset(
+                                      'assets/images/logo.png',
+                                      height: 42,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (ctx, err, st) => Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                            child: const Icon(
+                                              Icons.local_shipping_rounded,
+                                              color: Color(0xFFF97316),
+                                              size: 24,
+                                            ),
                                           ),
-                                          child: const Icon(
-                                            Icons.local_shipping_rounded,
-                                            color: Color(0xFFF97316),
-                                            size: 24,
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'FLEET MANAGEMENT',
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w900,
+                                              color: const Color(0xFF0B1B3D),
+                                              letterSpacing: 1.0,
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'FLEET MANAGEMENT',
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w900,
-                                            color: const Color(0xFF0B1B3D),
-                                            letterSpacing: 1.0,
-                                          ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ),
 
-                        const SizedBox(width: 12),
-
-                        // Language Selector Pill Button
-                        InkWell(
-                          onTap: _showLanguageSelector,
-                          borderRadius: BorderRadius.circular(20),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.92),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: const Color(0xFFCBD5E1)),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.04),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.language_rounded, size: 14, color: Color(0xFF0F172A)),
-                                const SizedBox(width: 4),
-                                Text(
-                                  _selectedLang,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF0F172A),
-                                  ),
-                                ),
-                                const SizedBox(width: 2),
-                                const Icon(Icons.keyboard_arrow_down_rounded, size: 14, color: Color(0xFF0F172A)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
+                        const SizedBox(height: 14),
 
                   // Hero Titles: "Welcome Back!" (FittedBox to prevent any text overflow)
                   Padding(
@@ -834,11 +744,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
-          ),
+          );
+        },
+      ),
+    ),
         ],
       ),
     );

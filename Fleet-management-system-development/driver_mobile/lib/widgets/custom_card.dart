@@ -8,6 +8,7 @@ class CustomCard extends StatelessWidget {
   final Color? color;
   final double? borderRadius;
   final BorderSide? borderSide;
+  final VoidCallback? onTap;
 
   const CustomCard({
     super.key,
@@ -17,6 +18,7 @@ class CustomCard extends StatelessWidget {
     this.color,
     this.borderRadius,
     this.borderSide,
+    this.onTap,
   });
 
   @override
@@ -28,18 +30,40 @@ class CustomCard extends StatelessWidget {
           side: const BorderSide(color: Colors.transparent, width: 0),
         );
 
+    final double defaultRadius = AppRadius.lg;
+    double resolvedRadius = borderRadius ?? defaultRadius;
+    if (borderRadius == null && cardTheme.shape is RoundedRectangleBorder) {
+      final border = (cardTheme.shape as RoundedRectangleBorder).borderRadius;
+      if (border is BorderRadius) {
+        resolvedRadius = border.topLeft.x;
+      }
+    }
+
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(resolvedRadius),
+      side: borderSide ?? cardShape.side,
+    );
+
+    Widget content = Padding(
+      padding: padding ?? const EdgeInsets.all(16.0),
+      child: child,
+    );
+
+    if (onTap != null) {
+      content = InkWell(
+        borderRadius: BorderRadius.circular(resolvedRadius),
+        onTap: onTap,
+        child: content,
+      );
+    }
+
     return Card(
       color: color ?? cardTheme.color,
       elevation: cardTheme.elevation ?? 0.0,
+      clipBehavior: onTap != null ? Clip.antiAlias : Clip.none,
       margin: margin ?? cardTheme.margin ?? EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(borderRadius ?? (cardShape.borderRadius as BorderRadius).resolve(Directionality.of(context)).topLeft.x),
-        side: borderSide ?? cardShape.side,
-      ),
-      child: Padding(
-        padding: padding ?? const EdgeInsets.all(16.0),
-        child: child,
-      ),
+      shape: shape,
+      child: content,
     );
   }
 }

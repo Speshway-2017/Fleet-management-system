@@ -22,6 +22,7 @@ import { getClosestCity, calculateDistance } from '../utils/distanceCalculator.j
 import { syncDriverLocationFromLatestTrip, updateDriverAndVehicleOnCompletion } from '../utils/driverLocationHelper.js';
 import { calculateTripFinance } from '../utils/earningsCalculator.js';
 import { invalidateManagerDashboardCache } from './manager.controller.js';
+import { parseDateTimeIST } from '../utils/dateHelper.js';
 
 // Helper to resolve trip by ObjectId or Trip Number
 export async function resolveTripHelper(idOrNumber) {
@@ -206,7 +207,6 @@ export const getDriverProfile = async (req, res, next) => {
       licenseType: driver.licenseType,
       licenseExpiry: driver.licenseExpiry || null,
       vehicle: vehicleNumber,
-      driverStatus: driver.driverStatus,
       profileImage: driver.profileImage || '',
       address: driver.address || '',
       branch: driver.branch || '',
@@ -1211,24 +1211,31 @@ export const updateTripStatus = async (req, res, next) => {
 
     // Validate backend restrictions for starting trip
     if (targetStatus === 'In Progress') {
+      if (trip.status === 'In Progress') {
+        return sendSuccess(res, 200, trip, 'Trip is already in progress');
+      }
+
       const allowedStartStatuses = ['Scheduled', 'Accepted', 'Assigned'];
       if (!allowedStartStatuses.includes(trip.status)) {
         return sendError(res, 400, `Cannot start trip with status '${trip.status}'. Trip must be in Scheduled/Accepted status before starting.`);
       }
+
       if (trip.departureTime) {
         const departureTime = parseDateTimeIST(trip.departureTime);
         const now = new Date();
-        const fifteenMinBefore = new Date(departureTime.getTime() - 15 * 60 * 1000);
+        const depTimeMs = departureTime.getTime();
+        const isDepTimeValid = !isNaN(depTimeMs);
+        const fifteenMinBefore = isDepTimeValid ? new Date(depTimeMs - 15 * 60 * 1000) : null;
         
         console.log(`[Backend Trip Start Validation]`, {
           currentTimeUTC: now.toISOString(),
-          departureTimeUTC: departureTime.toISOString(),
+          departureTimeUTC: isDepTimeValid ? departureTime.toISOString() : null,
           timezoneOffset: "+05:30",
-          diffMinutes: (now.getTime() - departureTime.getTime()) / (60 * 1000),
-          isStartAllowed: now >= fifteenMinBefore
+          diffMinutes: isDepTimeValid ? (now.getTime() - depTimeMs) / (60 * 1000) : null,
+          isStartAllowed: isDepTimeValid ? now >= fifteenMinBefore : true
         });
 
-        if (now < fifteenMinBefore) {
+        if (isDepTimeValid && now < fifteenMinBefore) {
           return sendError(res, 400, 'Cannot start trip before the 15-minute departure window.');
         }
       }
@@ -1330,29 +1337,50 @@ export const updateTripStatus = async (req, res, next) => {
 
     await trip.save();
 
-    if (trip.assignedManager) {
-      invalidateManagerDashboardCache(trip.assignedManager?._id || trip.assignedManager);
+    try {
+      if (trip.assignedManager) {
+        invalidateManagerDashboardCache(trip.assignedManager?._id || trip.assignedManager);
+      }
+      invalidateManagerDashboardCache();
+    } catch (cacheErr) {
+      console.warn('[updateTripStatus] Cache invalidation warning:', cacheErr.message);
     }
-    invalidateManagerDashboardCache();
 
     // Update Driver and Vehicle status if applicable
     if (trip.status === 'In Progress') {
-      await Driver.findByIdAndUpdate(req.user._id, { driverStatus: 'ON_TRIP' });
-      if (trip.vehicle) {
-        await Vehicle.findByIdAndUpdate(trip.vehicle, { currentStatus: 'On Trip' });
+      try {
+        await Driver.findByIdAndUpdate(req.user._id, {
+          driverStatus: 'ON_TRIP',
+          isDuty: true,
+          activeTripId: trip._id,
+          currentTripId: trip._id
+        });
+        if (trip.vehicle) {
+          await Vehicle.findByIdAndUpdate(trip.vehicle._id || trip.vehicle, {
+            currentStatus: 'On Trip',
+            isAssigned: true,
+            activeTripId: trip._id,
+            currentTripId: trip._id
+          });
+        }
+      } catch (docErr) {
+        console.error('[updateTripStatus] Driver/Vehicle update error:', docErr);
       }
     }
 
     // Broadcast Socket.io event and notification to manager
     const io = req.app.get('socketio') || req.app.locals?.io;
-    const managerId = trip.assignedManager;
-    const driverDoc = await Driver.findById(req.user._id);
+    const managerId = trip.assignedManager?._id || trip.assignedManager;
+    let driverDoc = null;
+    try {
+      driverDoc = await Driver.findById(req.user._id);
+    } catch (_) {}
 
-    if (managerId || true) {
+    try {
       if (trip.status === 'In Progress') {
         await createAndEmitNotification({
           io,
-          recipient: managerId,
+          recipient: managerId || null,
           recipientRole: 'FLEET_MANAGER',
           type: 'trip_started',
           title: `Trip Started: ${trip.tripNumber}`,
@@ -1363,7 +1391,7 @@ export const updateTripStatus = async (req, res, next) => {
       } else if (trip.status === 'Waiting for Manager Approval') {
         await createAndEmitNotification({
           io,
-          recipient: managerId,
+          recipient: managerId || null,
           recipientRole: 'FLEET_MANAGER',
           type: 'trip_completion_requested',
           title: `Trip Completion Request`,
@@ -1373,12 +1401,14 @@ export const updateTripStatus = async (req, res, next) => {
         });
 
         if (io) {
-          io.to(`manager:${managerId}`).emit('trip:completion-requested', {
-            tripId: trip._id,
-            tripNumber: trip.tripNumber,
-            driverName: driverDoc?.fullName || 'Driver',
-            status: 'Waiting for Manager Approval'
-          });
+          if (managerId) {
+            io.to(`manager:${managerId}`).emit('trip:completion-requested', {
+              tripId: trip._id,
+              tripNumber: trip.tripNumber,
+              driverName: driverDoc?.fullName || 'Driver',
+              status: 'Waiting for Manager Approval'
+            });
+          }
           io.emit('trip:updated', trip);
         }
       } else {
@@ -1402,8 +1432,14 @@ export const updateTripStatus = async (req, res, next) => {
             driverId: req.user._id
           });
         }
+        io.to(`driver:${req.user._id}`).emit('trip:status-updated', {
+          tripId: trip._id,
+          status: trip.status
+        });
         io.emit('trip:updated', trip);
       }
+    } catch (notifErr) {
+      console.error('[updateTripStatus] Notification/Socket emission error (non-fatal):', notifErr);
     }
 
     return sendSuccess(res, 200, trip, 'Trip status updated successfully');
