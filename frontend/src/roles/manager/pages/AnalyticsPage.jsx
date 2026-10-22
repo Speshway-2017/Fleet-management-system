@@ -7,6 +7,7 @@ import { managerApi } from "../api/managerApi";
 import DashboardSkeletonLoader from "@/components/common/DashboardSkeletonLoader";
 import { isEligibleApprovedFuel } from "@/utils/fuelCalculations";
 import { formatCurrency, formatFullCurrency } from "@/utils/currencyFormatter";
+import { getSocket } from "@/api/socket";
 
 const normalizePlate = (str) => String(str || '').replace(/[\s\-_]/g, '').toUpperCase();
 
@@ -21,31 +22,51 @@ export default function AnalyticsPage() {
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [vRes, fRes, mRes, compRes, tRes, dRes] = await Promise.all([
+        managerApi.getVehicles().catch(() => ({ data: [] })),
+        managerApi.getFuelRecords().catch(() => ({ data: [] })),
+        managerApi.getMaintenance().catch(() => ({ data: [] })),
+        managerApi.getVehicleComplaints().catch(() => ({ data: [] })),
+        managerApi.getTrips().catch(() => ({ data: [] })),
+        managerApi.getDrivers().catch(() => ({ data: [] }))
+      ]);
+      setVehicles(vRes.data?.data || vRes.data || []);
+      setFuelRecords(fRes.data?.data || fRes.data || []);
+      setMaintenance(mRes.data?.data || mRes.data || []);
+      setComplaints(compRes.data?.data || compRes.data || []);
+      setTrips(tRes.data?.data || tRes.data || []);
+      setDrivers(dRes.data?.data || dRes.data || []);
+    } catch (err) {
+      console.error("Failed to load analytics data", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        const [vRes, fRes, mRes, compRes, tRes, dRes] = await Promise.all([
-          managerApi.getVehicles().catch(() => ({ data: [] })),
-          managerApi.getFuelRecords().catch(() => ({ data: [] })),
-          managerApi.getMaintenance().catch(() => ({ data: [] })),
-          managerApi.getVehicleComplaints().catch(() => ({ data: [] })),
-          managerApi.getTrips().catch(() => ({ data: [] })),
-          managerApi.getDrivers().catch(() => ({ data: [] }))
-        ]);
-        setVehicles(vRes.data?.data || vRes.data || []);
-        setFuelRecords(fRes.data?.data || fRes.data || []);
-        setMaintenance(mRes.data?.data || mRes.data || []);
-        setComplaints(compRes.data?.data || compRes.data || []);
-        setTrips(tRes.data?.data || tRes.data || []);
-        setDrivers(dRes.data?.data || dRes.data || []);
-      } catch (err) {
-        console.error("Failed to load analytics data", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     loadData();
+
+    const socket = getSocket();
+    const handleInstantRefresh = () => loadData();
+
+    socket.on("trip:rejected", handleInstantRefresh);
+    socket.on("trip:status-updated", handleInstantRefresh);
+    socket.on("trip:completed", handleInstantRefresh);
+    socket.on("trip:created", handleInstantRefresh);
+    socket.on("trip:updated", handleInstantRefresh);
+    socket.on("dashboard:refresh", handleInstantRefresh);
+
+    return () => {
+      socket.off("trip:rejected", handleInstantRefresh);
+      socket.off("trip:status-updated", handleInstantRefresh);
+      socket.off("trip:completed", handleInstantRefresh);
+      socket.off("trip:created", handleInstantRefresh);
+      socket.off("trip:updated", handleInstantRefresh);
+      socket.off("dashboard:refresh", handleInstantRefresh);
+    };
   }, []);
 
   const getOverallStats = () => {
@@ -66,8 +87,28 @@ export default function AnalyticsPage() {
       ? Math.round((activeTrucks / totalVehiclesCount) * 100) 
       : 33;
 
-    // All approved fuel records
-    const validFuelRecords = fuelRecords.filter(isEligibleApprovedFuel);
+    const isCancelledOrRejected = (status) => {
+      const s = String(status || '').trim().toLowerCase();
+      return s.includes('reject') || s.includes('cancel');
+    };
+
+    // Permanently exclude rejected and cancelled trips from all analytics computations
+    const validTrips = trips.filter(t => !isCancelledOrRejected(t.status));
+
+    const rejectedTripIds = new Set(
+      trips
+        .filter(t => isCancelledOrRejected(t.status))
+        .flatMap(t => [String(t._id || t.id || ''), String(t.tripNumber || '').replace('#', '')])
+        .filter(Boolean)
+    );
+
+    // All approved fuel records, strictly excluding any associated with rejected or cancelled trips
+    const validFuelRecords = fuelRecords
+      .filter(isEligibleApprovedFuel)
+      .filter(f => {
+        const tripKey = String(f.tripId || '').replace('#', '');
+        return !tripKey || !rejectedTripIds.has(tripKey);
+      });
 
     const fuelCostSum = validFuelRecords.reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
     
@@ -87,8 +128,45 @@ export default function AnalyticsPage() {
       const lit = Number(f.liters ?? f.quantity ?? f.fuelQuantity ?? 0) || 0;
       return sum + lit;
     }, 0);
-    
-    const totalKmSum = trips.reduce((sum, t) => sum + (Number(t.estimatedDistance || t.distanceKm || t.distance) || 0), 0);
+
+    const totalKmSum = validTrips.reduce((sum, t) => sum + (Number(t.estimatedDistance || t.distanceKm || t.distance) || 0), 0);
+    const validTripsCount = validTrips.length;
+
+    const baseHourSlots = [
+      { hour: "06:00", hStart: 5, hEnd: 7, count: 0, label: "6 AM" },
+      { hour: "08:00", hStart: 7, hEnd: 9, count: 0, label: "8 AM" },
+      { hour: "10:00", hStart: 9, hEnd: 11, count: 0, label: "10 AM" },
+      { hour: "12:00", hStart: 11, hEnd: 13, count: 0, label: "12 PM" },
+      { hour: "14:00", hStart: 13, hEnd: 15, count: 0, label: "2 PM" },
+      { hour: "16:00", hStart: 15, hEnd: 17, count: 0, label: "4 PM" },
+      { hour: "18:00", hStart: 17, hEnd: 19, count: 0, label: "6 PM" },
+      { hour: "20:00", hStart: 19, hEnd: 21, count: 0, label: "8 PM" },
+      { hour: "22:00", hStart: 21, hEnd: 24, count: 0, label: "10 PM" }
+    ];
+
+    validTrips.forEach(t => {
+      const dateVal = t.actualStartTime || t.departureTime || t.createdAt;
+      if (!dateVal) return;
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return;
+      const h = d.getHours();
+      const bucket = baseHourSlots.find(b => h >= b.hStart && h < b.hEnd);
+      if (bucket) bucket.count++;
+    });
+
+    const hourlyActivityData = validTrips.length > 0
+      ? baseHourSlots
+      : [
+          { hour: "06:00", count: 14, label: "6 AM" },
+          { hour: "08:00", count: 38, label: "8 AM" },
+          { hour: "10:00", count: 52, label: "10 AM" },
+          { hour: "12:00", count: 46, label: "12 PM" },
+          { hour: "14:00", count: 42, label: "2 PM" },
+          { hour: "16:00", count: 36, label: "4 PM" },
+          { hour: "18:00", count: 28, label: "6 PM" },
+          { hour: "20:00", count: 18, label: "8 PM" },
+          { hour: "22:00", count: 8, label: "10 PM" }
+        ];
 
     const efficiencyVal = Math.min(99, Math.max(85, 92 + (utilization * 0.08)));
     return {
@@ -103,7 +181,9 @@ export default function AnalyticsPage() {
       maintChange: "-3.2% total expenses",
       utilization,
       activeTrucks,
-      idleDepot
+      idleDepot,
+      validTripsCount,
+      hourlyActivity: hourlyActivityData
     };
   };
 
@@ -146,7 +226,7 @@ export default function AnalyticsPage() {
           title="Total Mileage"
           value={loading ? null : data.totalKm}
           loading={loading}
-          subtitle="total distance"
+          subtitle={loading ? "total distance" : `${data.validTripsCount || 0} valid dispatch${data.validTripsCount === 1 ? '' : 'es'}`}
           icon="mdi:speedometer"
           trendText="+5.1%"
           isTrendUp={true}
@@ -207,40 +287,33 @@ export default function AnalyticsPage() {
           {/* Visible Bar Graph */}
           <div className="pt-2 pb-2 px-1">
             <div className="flex items-end justify-between gap-2.5 sm:gap-4 h-56 border-b border-slate-200 pb-2">
-              {[
-                { hour: "06:00", count: 14, label: "6 AM" },
-                { hour: "08:00", count: 38, label: "8 AM" },
-                { hour: "10:00", count: 52, label: "10 AM" },
-                { hour: "12:00", count: 46, label: "12 PM" },
-                { hour: "14:00", count: 42, label: "2 PM" },
-                { hour: "16:00", count: 36, label: "4 PM" },
-                { hour: "18:00", count: 28, label: "6 PM" },
-                { hour: "20:00", count: 18, label: "8 PM" },
-                { hour: "22:00", count: 8, label: "10 PM" }
-              ].map((item, idx) => {
-                const maxVal = 60;
-                const pxHeight = Math.round((item.count / maxVal) * 150);
-                const isPeak = item.count >= 35;
-                return (
-                  <div key={idx} className="flex-1 flex flex-col items-center justify-end h-full group relative">
-                    {/* Tooltip on hover */}
-                    <div className="absolute -top-9 hidden group-hover:flex flex-col items-center bg-[#0D1B2A] text-white text-[11px] font-bold px-2.5 py-1 rounded-md shadow-lg z-20 whitespace-nowrap">
-                      <span>{item.hour}: {item.count} Dispatches</span>
+              {(() => {
+                const activityItems = data.hourlyActivity || [];
+                const maxVal = Math.max(10, ...activityItems.map(i => i.count || 0));
+                return activityItems.map((item, idx) => {
+                  const pxHeight = Math.round(((item.count || 0) / maxVal) * 150);
+                  const isPeak = (item.count || 0) >= Math.round(maxVal * 0.6);
+                  return (
+                    <div key={idx} className="flex-1 flex flex-col items-center justify-end h-full group relative">
+                      {/* Tooltip on hover */}
+                      <div className="absolute -top-9 hidden group-hover:flex flex-col items-center bg-[#0D1B2A] text-white text-[11px] font-bold px-2.5 py-1 rounded-md shadow-lg z-20 whitespace-nowrap">
+                        <span>{item.hour}: {item.count} Dispatches</span>
+                      </div>
+                      {/* Bar value label above */}
+                      <span className="text-xs font-black text-[#0D1B2A] mb-1.5">{item.count}</span>
+                      {/* Bar element */}
+                      <div
+                        className={`w-full max-w-[40px] rounded-t-xl transition-all duration-300 shadow-xs group-hover:scale-105 ${
+                          isPeak ? "bg-[#A14000]" : "bg-slate-300"
+                        }`}
+                        style={{ height: `${pxHeight}px` }}
+                      />
+                      {/* Hour label below */}
+                      <span className="text-xs font-bold text-slate-500 mt-2">{item.label}</span>
                     </div>
-                    {/* Bar value label above */}
-                    <span className="text-xs font-black text-[#0D1B2A] mb-1.5">{item.count}</span>
-                    {/* Bar element */}
-                    <div
-                      className={`w-full max-w-[40px] rounded-t-xl transition-all duration-300 shadow-xs group-hover:scale-105 ${
-                        isPeak ? "bg-[#A14000]" : "bg-slate-300"
-                      }`}
-                      style={{ height: `${pxHeight}px` }}
-                    />
-                    {/* Hour label below */}
-                    <span className="text-xs font-bold text-slate-500 mt-2">{item.label}</span>
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>

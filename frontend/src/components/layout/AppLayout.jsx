@@ -315,13 +315,13 @@ export default function AppLayout() {
                                 key={item.label}
                                 to={item.to}
                                 onClick={() => setMobileSidebarOpen(false)}
-                                className={`flex items-center gap-3 px-3.5 py-2 my-0.5 font-poppins text-[11px] font-semibold rounded-xl transition-all ${
+                                className={`flex items-center gap-2.5 pl-6 pr-3.5 py-1.5 my-0.5 font-poppins text-[11px] font-semibold rounded-xl transition-all ${
                                   isActive
                                     ? "bg-[#A14000] text-white font-bold shadow-md shadow-[#A14000]/25"
                                     : "text-slate-300 hover:text-white hover:bg-slate-800/60"
                                 }`}
                               >
-                                <Icon className="w-4 h-4 shrink-0" />
+                                <Icon className="w-3.5 h-3.5 shrink-0" />
                                 <span>{item.label}</span>
                               </NavLink>
                             );
@@ -364,13 +364,13 @@ export default function AppLayout() {
                                 key={item.label}
                                 to={item.to}
                                 onClick={() => setMobileSidebarOpen(false)}
-                                className={`flex items-center gap-3 px-3.5 py-2 my-0.5 font-poppins text-[11px] font-semibold rounded-xl transition-all ${
+                                className={`flex items-center gap-2.5 pl-6 pr-3.5 py-1.5 my-0.5 font-poppins text-[11px] font-semibold rounded-xl transition-all ${
                                   isActive
                                     ? "bg-[#A14000] text-white font-bold shadow-md shadow-[#A14000]/25"
                                     : "text-slate-300 hover:text-white hover:bg-slate-800/60"
                                 }`}
                               >
-                                <Icon className="w-4 h-4 shrink-0" />
+                                <Icon className="w-3.5 h-3.5 shrink-0" />
                                 <span>{item.label}</span>
                               </NavLink>
                             );
@@ -414,13 +414,13 @@ export default function AppLayout() {
                                 key={item.label}
                                 to={item.to}
                                 onClick={() => setMobileSidebarOpen(false)}
-                                className={`flex items-center gap-3 px-3.5 py-2 my-0.5 font-poppins text-[11px] font-semibold rounded-xl transition-all ${
+                                className={`flex items-center gap-2.5 pl-6 pr-3.5 py-1.5 my-0.5 font-poppins text-[11px] font-semibold rounded-xl transition-all ${
                                   isActive
                                     ? "bg-[#A14000] text-white font-bold shadow-md shadow-[#A14000]/25"
                                     : "text-slate-300 hover:text-white hover:bg-slate-800/60"
                                 }`}
                               >
-                                <Icon className="w-4 h-4 shrink-0" />
+                                <Icon className="w-3.5 h-3.5 shrink-0" />
                                 <span>{item.label}</span>
                               </NavLink>
                             );
@@ -464,13 +464,13 @@ export default function AppLayout() {
                                 key={item.label}
                                 to={item.to}
                                 onClick={() => setMobileSidebarOpen(false)}
-                                className={`flex items-center gap-3 px-3.5 py-2 my-0.5 font-poppins text-[11px] font-semibold rounded-xl transition-all ${
+                                className={`flex items-center gap-2.5 pl-6 pr-3.5 py-1.5 my-0.5 font-poppins text-[11px] font-semibold rounded-xl transition-all ${
                                   isActive
                                     ? "bg-[#A14000] text-white font-bold shadow-md shadow-[#A14000]/25"
                                     : "text-slate-300 hover:text-white hover:bg-slate-800/60"
                                 }`}
                               >
-                                <Icon className="w-4 h-4 shrink-0" />
+                                <Icon className="w-3.5 h-3.5 shrink-0" />
                                 <span>{item.label}</span>
                               </NavLink>
                             );
@@ -592,13 +592,13 @@ export default function AppLayout() {
                           <NavLink
                             key={item.label}
                             to={item.to}
-                            className={`flex items-center justify-center lg:justify-start gap-3 px-4 py-2 my-0.5 text-[11px] font-semibold font-poppins rounded-xl transition-all ${
+                            className={`flex items-center justify-center lg:justify-start gap-2.5 px-3 lg:pl-7 lg:pr-3 py-1.5 my-0.5 text-[11px] font-semibold font-poppins rounded-xl transition-all ${
                               isActive
                                 ? "bg-[#A14000] text-white font-bold shadow-md shadow-[#A14000]/20"
                                 : "text-slate-300 hover:text-white hover:bg-slate-800/60"
                             }`}
                           >
-                            <Icon className={`w-4.5 h-4.5 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
+                            <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
                             <span className="hidden lg:block">{item.label}</span>
                           </NavLink>
                         );
@@ -641,13 +641,13 @@ export default function AppLayout() {
                           <NavLink
                             key={item.label}
                             to={item.to}
-                            className={`flex items-center justify-center lg:justify-start gap-3 px-4 py-2 my-0.5 text-[11px] font-semibold font-poppins rounded-xl transition-all ${
+                            className={`flex items-center justify-center lg:justify-start gap-2.5 px-3 lg:pl-7 lg:pr-3 py-1.5 my-0.5 text-[11px] font-semibold font-poppins rounded-xl transition-all ${
                               isActive
                                 ? "bg-[#A14000] text-white font-bold shadow-md shadow-[#A14000]/20"
                                 : "text-slate-300 hover:text-white hover:bg-slate-800/60"
                             }`}
                           >
-                            <Icon className={`w-4.5 h-4.5 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
+                            <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
                             <span className="hidden lg:block">{item.label}</span>
                           </NavLink>
                         );
@@ -691,13 +691,13 @@ export default function AppLayout() {
                           <NavLink
                             key={item.label}
                             to={item.to}
-                            className={`flex items-center justify-center lg:justify-start gap-3 px-4 py-2 my-0.5 text-[11px] font-semibold font-poppins rounded-xl transition-all ${
+                            className={`flex items-center justify-center lg:justify-start gap-2.5 px-3 lg:pl-7 lg:pr-3 py-1.5 my-0.5 text-[11px] font-semibold font-poppins rounded-xl transition-all ${
                               isActive
                                 ? "bg-[#A14000] text-white font-bold shadow-md shadow-[#A14000]/20"
                                 : "text-slate-300 hover:text-white hover:bg-slate-800/60"
                             }`}
                           >
-                            <Icon className={`w-4.5 h-4.5 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
+                            <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
                             <span className="hidden lg:block">{item.label}</span>
                           </NavLink>
                         );
@@ -741,13 +741,13 @@ export default function AppLayout() {
                           <NavLink
                             key={item.label}
                             to={item.to}
-                            className={`flex items-center justify-center lg:justify-start gap-3 px-4 py-2 my-0.5 text-[11px] font-semibold font-poppins rounded-xl transition-all ${
+                            className={`flex items-center justify-center lg:justify-start gap-2.5 px-3 lg:pl-7 lg:pr-3 py-1.5 my-0.5 text-[11px] font-semibold font-poppins rounded-xl transition-all ${
                               isActive
                                 ? "bg-[#A14000] text-white font-bold shadow-md shadow-[#A14000]/20"
                                 : "text-slate-300 hover:text-white hover:bg-slate-800/60"
                             }`}
                           >
-                            <Icon className={`w-4.5 h-4.5 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
+                            <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
                             <span className="hidden lg:block">{item.label}</span>
                           </NavLink>
                         );

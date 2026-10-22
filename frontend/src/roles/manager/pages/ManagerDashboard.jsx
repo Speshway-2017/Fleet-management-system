@@ -169,6 +169,7 @@ export default function ManagerDashboard() {
 
     socket.on("trip:status-updated", handleInstantRefresh);
     socket.on("trip:completed", handleInstantRefresh);
+    socket.on("trip:rejected", handleInstantRefresh);
     socket.on("dashboard:refresh", handleInstantRefresh);
     socket.on("trip:created", handleInstantRefresh);
     socket.on("driver:status-updated", handleInstantRefresh);
@@ -184,6 +185,7 @@ export default function ManagerDashboard() {
       clearInterval(intervalId);
       socket.off("trip:status-updated", handleInstantRefresh);
       socket.off("trip:completed", handleInstantRefresh);
+      socket.off("trip:rejected", handleInstantRefresh);
       socket.off("dashboard:refresh", handleInstantRefresh);
       socket.off("trip:created", handleInstantRefresh);
       socket.off("driver:status-updated", handleInstantRefresh);
@@ -262,8 +264,15 @@ export default function ManagerDashboard() {
       filterEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     }
 
-    // Filter trips strictly within the selected timeframe
+    // Helper to identify cancelled or rejected trips
+    const isCancelledOrRejected = (status) => {
+      const s = String(status || '').trim().toLowerCase();
+      return s.includes('reject') || s.includes('cancel');
+    };
+
+    // Filter trips strictly within the selected timeframe, permanently excluding rejected and cancelled trips
     const filtered = trips.filter(t => {
+      if (isCancelledOrRejected(t.status)) return false;
       if (timeframe === "All Time") return true;
       const tripDate = getTripDate(t);
       if (!tripDate) return false;
@@ -391,6 +400,8 @@ export default function ManagerDashboard() {
     const assignedDriverIds = new Set();
 
     filtered.forEach(t => {
+      if (isCancelledOrRejected(t.status)) return; // Strictly ignore rejected trips
+
       const tripIdStr = String(t._id || t.id || '');
       const cleanNum = String(t.tripNumber || '').replace('#', '');
       const matchedEarning = tripEarningsMap.get(tripIdStr) || tripEarningsMap.get(cleanNum);
@@ -428,8 +439,8 @@ export default function ManagerDashboard() {
     });
 
     // When viewing All Time, synchronize directly with backend canonical total
-    if (timeframe === "All Time" && earningsData?.stats?.totalRevenue !== undefined && Number(earningsData.stats.totalRevenue) > 0) {
-      rev = Number(earningsData.stats.totalRevenue);
+    if (timeframe === "All Time" && earningsData?.stats?.totalRevenue !== undefined) {
+      rev = Number(earningsData.stats.totalRevenue) || 0;
     }
 
     return {
@@ -578,7 +589,7 @@ export default function ManagerDashboard() {
         />
         <KPICard
           title="Trips Scheduled"
-          value={loading ? null : (dbStats?.tripsToday ?? trips.length)}
+          value={loading ? null : (dbStats?.tripsToday ?? trips.filter(t => !/reject|cancel/i.test(String(t.status || ''))).length)}
           loading={loading}
           subtitle="VS last week"
           icon="material-symbols:route-outline"

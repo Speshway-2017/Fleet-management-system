@@ -8,6 +8,30 @@ import { calculateDistance } from './distanceCalculator.js';
  * Driver Allowance expenses. Excludes GST/taxes, base freight, service fees, and loading/unloading charges.
  */
 export const calculateTripFinance = (trip, invoice = null, fuelRecords = [], tollRecords = []) => {
+  const statusLower = String(trip?.status || '').trim().toLowerCase();
+  const isCancelledOrRejected = statusLower.includes('reject') || statusLower.includes('cancel');
+
+  if (isCancelledOrRejected) {
+    return {
+      revenue: 0,
+      expenses: 0,
+      netEarnings: 0,
+      marginPercent: 0,
+      distance: 0,
+      weight: 0,
+      serviceFee: 0,
+      loadingCharges: 0,
+      unloadingCharges: 0,
+      baseFreight: 0,
+      subtotal: 0,
+      gstTax: 0,
+      totalAmount: 0,
+      actualFuelAmount: 0,
+      actualTollAmount: 0,
+      driverAllowance: 0
+    };
+  }
+
   let distance = Number(trip?.actualDistance) || Number(trip?.estimatedDistance) || 0;
   if (!Number.isFinite(distance) || distance < 0 || distance > 50000) {
     if (trip?.startLocation && trip?.endLocation) {
@@ -244,6 +268,13 @@ export const calculateFleetEarnings = (trips = [], invoices = [], fuels = [], to
     return s === 'completed' || s === 'complete trip' || s === 'delivered';
   };
 
+  const isCancelledOrRejected = (status) => {
+    const s = String(status || '').trim().toLowerCase();
+    return s.includes('reject') || s.includes('cancel');
+  };
+
+  const validTrips = trips.filter(t => !isCancelledOrRejected(t.status));
+
   const tripEarnings = trips.map(trip => {
     const tripIdStr = (trip._id || trip.id)?.toString();
     const inv = (tripIdStr && invoiceByTripId.get(tripIdStr)) || (trip.tripInvoice?.invoiceNumber ? invoiceByTripId.get(trip.tripInvoice.invoiceNumber) : null);
@@ -251,9 +282,10 @@ export const calculateFleetEarnings = (trips = [], invoices = [], fuels = [], to
     const tripFuels = (tripIdStr && fuelsByTripId.get(tripIdStr)) || (cleanNum && fuelsByTripId.get(cleanNum)) || [];
     const tripTolls = (tripIdStr && tollsByTripId.get(tripIdStr)) || [];
 
+    const isRejected = isCancelledOrRejected(trip.status);
     const fin = calculateTripFinance(trip, inv, tripFuels, tripTolls);
 
-    const isCompleted = isCompletedStatus(trip.status);
+    const isCompleted = !isRejected && isCompletedStatus(trip.status);
 
     if (isCompleted) {
       totalRevenue += fin.revenue;
@@ -274,21 +306,21 @@ export const calculateFleetEarnings = (trips = [], invoices = [], fuels = [], to
       endLocation: trip.endLocation,
       status: trip.status,
       date: trip.createdAt,
-      distance: fin.distance,
-      cargoWeight: fin.weight,
-      revenue: fin.revenue,
-      expenses: fin.expenses,
-      fuelExpense: fin.actualFuelAmount,
-      tollExpense: fin.actualTollAmount,
-      driverAllowance: fin.driverAllowance,
-      netEarnings: fin.netEarnings,
-      marginPercent: fin.marginPercent,
+      distance: isRejected ? 0 : fin.distance,
+      cargoWeight: isRejected ? 0 : fin.weight,
+      revenue: isRejected ? 0 : fin.revenue,
+      expenses: isRejected ? 0 : fin.expenses,
+      fuelExpense: isRejected ? 0 : fin.actualFuelAmount,
+      tollExpense: isRejected ? 0 : fin.actualTollAmount,
+      driverAllowance: isRejected ? 0 : fin.driverAllowance,
+      netEarnings: isRejected ? 0 : fin.netEarnings,
+      marginPercent: isRejected ? 0 : fin.marginPercent,
       isCompleted,
-      finance: fin
+      finance: isRejected ? { ...fin, revenue: 0, expenses: 0, netEarnings: 0 } : fin
     };
   });
 
-  // Group earnings by month for chart data
+  // Group earnings by month for chart data (strictly completed & non-rejected)
   const monthlyStats = {};
   tripEarnings.forEach(te => {
     const date = new Date(te.date);
@@ -296,7 +328,7 @@ export const calculateFleetEarnings = (trips = [], invoices = [], fuels = [], to
     if (!monthlyStats[monthYear]) {
       monthlyStats[monthYear] = { month: monthYear, revenue: 0, expenses: 0, netEarnings: 0 };
     }
-    if (te.isCompleted) {
+    if (te.isCompleted && !isCancelledOrRejected(te.status)) {
       monthlyStats[monthYear].revenue += te.revenue;
       monthlyStats[monthYear].expenses += te.expenses;
       monthlyStats[monthYear].netEarnings += te.netEarnings;
@@ -316,8 +348,10 @@ export const calculateFleetEarnings = (trips = [], invoices = [], fuels = [], to
       totalExpenses,
       totalNetEarnings,
       marginPercent,
-      tripCount: trips.length,
-      completedTripCount: trips.filter(t => isCompletedStatus(t.status)).length,
+      tripCount: validTrips.length,
+      totalTripsCount: validTrips.length,
+      completedTripCount: validTrips.filter(t => isCompletedStatus(t.status)).length,
+      rejectedTripCount: trips.filter(t => isCancelledOrRejected(t.status)).length,
       formattedRevenue,
       formattedExpenses,
       formattedTotalExpenses: formattedExpenses,

@@ -20,8 +20,8 @@ import cloudinary from '../utils/cloudinary.js';
 import { createAndEmitNotification } from '../utils/notification.js';
 import { getClosestCity, calculateDistance } from '../utils/distanceCalculator.js';
 import { syncDriverLocationFromLatestTrip, updateDriverAndVehicleOnCompletion } from '../utils/driverLocationHelper.js';
-import { parseDateTimeIST } from '../utils/dateHelper.js';
 import { calculateTripFinance } from '../utils/earningsCalculator.js';
+import { invalidateManagerDashboardCache } from './manager.controller.js';
 
 // Helper to resolve trip by ObjectId or Trip Number
 export async function resolveTripHelper(idOrNumber) {
@@ -1039,7 +1039,52 @@ export const rejectTrip = async (req, res, next) => {
     trip.rejectedAt = new Date();
     trip.rejectionReason = cleanReason;
     trip.isActive = false;
+
+    // Permanently zero out all stored financial attributes, distances, and weights on rejected trip
+    trip.revenue = 0;
+    trip.totalAmount = 0;
+    trip.billingAmount = 0;
+    trip.subtotal = 0;
+    trip.freightCharges = 0;
+    trip.serviceFee = 0;
+    trip.loadingCharges = 0;
+    trip.unloadingCharges = 0;
+    trip.gstTax = 0;
+    trip.codAmount = 0;
+    trip.estimatedDistance = 0;
+    trip.actualDistance = 0;
+    trip.cargoWeight = 0;
+    trip.driverAllowance = 0;
+    trip.totalFuelAmount = 0;
+    trip.totalTollsAmount = 0;
     await trip.save();
+
+    // Cancel and zero out linked Invoice in MongoDB so no revenue or total amount can leak
+    await Invoice.updateMany(
+      {
+        $or: [
+          { trip: trip._id },
+          ...(trip.tripInvoice?.invoiceNumber ? [{ invoiceNumber: trip.tripInvoice.invoiceNumber }] : [])
+        ]
+      },
+      {
+        $set: {
+          status: 'Cancelled',
+          subtotal: 0,
+          taxAmount: 0,
+          totalAmount: 0,
+          'charges.freightCharges': 0,
+          'charges.serviceFee': 0,
+          'charges.loadingCharges': 0,
+          'charges.unloadingCharges': 0,
+          'charges.fuelCharges': 0,
+          'charges.tollCharges': 0,
+          'charges.subtotal': 0,
+          'charges.gstTax': 0,
+          'charges.totalAmount': 0
+        }
+      }
+    ).catch(() => {});
 
     const driverDoc = await Driver.findByIdAndUpdate(req.user._id, {
       driverStatus: 'AVAILABLE',
@@ -1060,7 +1105,13 @@ export const rejectTrip = async (req, res, next) => {
     }
 
     const io = req.io || req.app?.get?.('socketio') || req.app?.locals?.io;
-    const managerId = trip.assignedManager;
+    const managerId = trip.assignedManager?._id || trip.assignedManager;
+
+    // Invalidate manager cache immediately
+    if (managerId) {
+      invalidateManagerDashboardCache(managerId);
+    }
+    invalidateManagerDashboardCache(); // Clear global cache to guarantee instant refresh
 
     if (managerId) {
       await createAndEmitNotification({
@@ -1087,6 +1138,14 @@ export const rejectTrip = async (req, res, next) => {
           tripNumber: trip.tripNumber,
           status: 'Rejected',
           driverId: req.user._id
+        });
+        io.to(`manager:${managerId}`).emit('dashboard:refresh', {
+          tripId: trip._id,
+          status: 'Rejected'
+        });
+        io.emit('dashboard:refresh', {
+          tripId: trip._id,
+          status: 'Rejected'
         });
       }
     }
@@ -1219,11 +1278,62 @@ export const updateTripStatus = async (req, res, next) => {
       // Transition to Waiting for Manager Approval
       trip.status = 'Waiting for Manager Approval';
       trip.completionRequestedAt = new Date();
+    } else if (targetStatus === 'Rejected' || targetStatus === 'Cancelled') {
+      trip.status = targetStatus;
+      trip.isActive = false;
+      trip.revenue = 0;
+      trip.totalAmount = 0;
+      trip.billingAmount = 0;
+      trip.subtotal = 0;
+      trip.freightCharges = 0;
+      trip.serviceFee = 0;
+      trip.loadingCharges = 0;
+      trip.unloadingCharges = 0;
+      trip.gstTax = 0;
+      trip.codAmount = 0;
+      trip.estimatedDistance = 0;
+      trip.actualDistance = 0;
+      trip.cargoWeight = 0;
+      trip.driverAllowance = 0;
+      trip.totalFuelAmount = 0;
+      trip.totalTollsAmount = 0;
+      if (targetStatus === 'Rejected' && !trip.rejectedAt) trip.rejectedAt = new Date();
+
+      await Invoice.updateMany(
+        {
+          $or: [
+            { trip: trip._id },
+            ...(trip.tripInvoice?.invoiceNumber ? [{ invoiceNumber: trip.tripInvoice.invoiceNumber }] : [])
+          ]
+        },
+        {
+          $set: {
+            status: 'Cancelled',
+            subtotal: 0,
+            taxAmount: 0,
+            totalAmount: 0,
+            'charges.freightCharges': 0,
+            'charges.serviceFee': 0,
+            'charges.loadingCharges': 0,
+            'charges.unloadingCharges': 0,
+            'charges.fuelCharges': 0,
+            'charges.tollCharges': 0,
+            'charges.subtotal': 0,
+            'charges.gstTax': 0,
+            'charges.totalAmount': 0
+          }
+        }
+      ).catch(() => {});
     } else {
       trip.status = targetStatus;
     }
 
     await trip.save();
+
+    if (trip.assignedManager) {
+      invalidateManagerDashboardCache(trip.assignedManager?._id || trip.assignedManager);
+    }
+    invalidateManagerDashboardCache();
 
     // Update Driver and Vehicle status if applicable
     if (trip.status === 'In Progress') {

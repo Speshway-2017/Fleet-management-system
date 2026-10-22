@@ -96,6 +96,39 @@ export const getDashboard = async (req, res, next) => {
       return sendSuccess(res, 200, cached.data, 'Dashboard stats loaded');
     }
 
+    // Self-healing: ensure any rejected or cancelled trips in MongoDB have 0 revenue and 0 totalAmount
+    await Trip.updateMany(
+      {
+        status: { $regex: /reject|cancel/i },
+        $or: [
+          { revenue: { $gt: 0 } },
+          { totalAmount: { $gt: 0 } },
+          { billingAmount: { $gt: 0 } },
+          { subtotal: { $gt: 0 } }
+        ]
+      },
+      {
+        $set: {
+          revenue: 0,
+          totalAmount: 0,
+          billingAmount: 0,
+          subtotal: 0,
+          freightCharges: 0,
+          serviceFee: 0,
+          loadingCharges: 0,
+          unloadingCharges: 0,
+          gstTax: 0,
+          codAmount: 0,
+          estimatedDistance: 0,
+          actualDistance: 0,
+          cargoWeight: 0,
+          driverAllowance: 0,
+          totalFuelAmount: 0,
+          totalTollsAmount: 0
+        }
+      }
+    ).catch(() => {});
+
     // 1. Concurrent Batch 1: Primary counts and lookups
     const [
       totalVehicles,
@@ -114,7 +147,11 @@ export const getDashboard = async (req, res, next) => {
       }),
       Trip.countDocuments({
         assignedManager: managerId,
-        status: { $in: ['Scheduled', 'On Transit', 'Delayed', 'SCHEDULED', 'IN_TRANSIT', 'DISPATCHED'] }
+        status: {
+          $in: ['Scheduled', 'On Transit', 'Delayed', 'SCHEDULED', 'IN_TRANSIT', 'DISPATCHED', 'In Progress', 'In Transit', 'En Route', 'Assigned'],
+          $nin: ['Rejected', 'Cancelled', 'REJECTED', 'CANCELLED'],
+          $not: /reject|cancel/i
+        }
       }),
       Vehicle.find({ assignedManager: managerId }, '_id vehicleNumber').lean(),
       Vehicle.countDocuments({
@@ -1067,17 +1104,39 @@ export const listTrips = async (req, res, next) => {
       const tripTolls = tollsByTripId.get(tripObj._id.toString()) || [];
 
       const fin = calculateTripFinance(tripObj, inv, tripFuels, tripTolls);
-      tripObj.revenue = fin.revenue;
-      tripObj.expenses = fin.expenses;
-      tripObj.netEarnings = fin.netEarnings;
-      tripObj.totalAmount = fin.totalAmount;
-      tripObj.billingAmount = fin.totalAmount;
-      tripObj.freightCharges = fin.baseFreight;
-      tripObj.serviceFee = fin.serviceFee;
-      tripObj.loadingCharges = fin.loadingCharges;
-      tripObj.unloadingCharges = fin.unloadingCharges;
-      tripObj.subtotal = fin.subtotal;
-      tripObj.gstTax = fin.gstTax;
+      const isRejectedOrCancelled = /reject|cancel/i.test(String(tripObj.status || ''));
+
+      if (isRejectedOrCancelled) {
+        tripObj.revenue = 0;
+        tripObj.expenses = 0;
+        tripObj.netEarnings = 0;
+        tripObj.totalAmount = 0;
+        tripObj.billingAmount = 0;
+        tripObj.freightCharges = 0;
+        tripObj.serviceFee = 0;
+        tripObj.loadingCharges = 0;
+        tripObj.unloadingCharges = 0;
+        tripObj.subtotal = 0;
+        tripObj.gstTax = 0;
+        tripObj.codAmount = 0;
+        tripObj.distance = 0;
+        tripObj.totalDistance = 0;
+        tripObj.estimatedDistance = 0;
+        tripObj.actualDistance = 0;
+        tripObj.cargoWeight = 0;
+      } else {
+        tripObj.revenue = fin.revenue;
+        tripObj.expenses = fin.expenses;
+        tripObj.netEarnings = fin.netEarnings;
+        tripObj.totalAmount = fin.totalAmount;
+        tripObj.billingAmount = fin.totalAmount;
+        tripObj.freightCharges = fin.baseFreight;
+        tripObj.serviceFee = fin.serviceFee;
+        tripObj.loadingCharges = fin.loadingCharges;
+        tripObj.unloadingCharges = fin.unloadingCharges;
+        tripObj.subtotal = fin.subtotal;
+        tripObj.gstTax = fin.gstTax;
+      }
 
       return tripObj;
     });
@@ -1762,7 +1821,7 @@ export const updateTrip = async (req, res, next) => {
     const updatedTrip = await updateTripInRepo(tripId, req.body);
 
     if (newStatus) {
-      if (newStatus === 'Completed' || newStatus === 'Cancelled') {
+      if (newStatus === 'Completed' || newStatus === 'Cancelled' || newStatus === 'Rejected') {
         // Release vehicle
         if (updatedTrip.vehicle) {
           const vehicleUpdate = {
@@ -1786,6 +1845,58 @@ export const updateTrip = async (req, res, next) => {
             driverUpdate.currentLocation = updatedTrip.endLocation;
           }
           await Driver.findByIdAndUpdate(updatedTrip.driver, driverUpdate);
+        }
+
+        if (newStatus === 'Cancelled' || newStatus === 'Rejected') {
+          await Trip.findByIdAndUpdate(tripId, {
+            isActive: false,
+            revenue: 0,
+            totalAmount: 0,
+            billingAmount: 0,
+            subtotal: 0,
+            freightCharges: 0,
+            serviceFee: 0,
+            loadingCharges: 0,
+            unloadingCharges: 0,
+            gstTax: 0,
+            codAmount: 0,
+            estimatedDistance: 0,
+            actualDistance: 0,
+            cargoWeight: 0,
+            driverAllowance: 0,
+            totalFuelAmount: 0,
+            totalTollsAmount: 0,
+            ...(newStatus === 'Rejected' ? { rejectedAt: new Date() } : {})
+          });
+
+          await Invoice.updateMany(
+            {
+              $or: [
+                { trip: tripId },
+                ...(updatedTrip.tripInvoice?.invoiceNumber ? [{ invoiceNumber: updatedTrip.tripInvoice.invoiceNumber }] : [])
+              ]
+            },
+            {
+              $set: {
+                status: 'Cancelled',
+                subtotal: 0,
+                taxAmount: 0,
+                totalAmount: 0,
+                'charges.freightCharges': 0,
+                'charges.serviceFee': 0,
+                'charges.loadingCharges': 0,
+                'charges.unloadingCharges': 0,
+                'charges.fuelCharges': 0,
+                'charges.tollCharges': 0,
+                'charges.subtotal': 0,
+                'charges.gstTax': 0,
+                'charges.totalAmount': 0
+              }
+            }
+          ).catch(() => {});
+
+          invalidateManagerDashboardCache(req.user._id);
+          invalidateManagerDashboardCache();
         }
       } else if (newStatus === 'In Progress' || newStatus === 'Delayed' || newStatus === 'On Transit' || newStatus === 'In Transit') {
         // Set statuses to On Trip / ON_TRIP
@@ -3819,6 +3930,40 @@ export const maybeLater = async (req, res, next) => {
 export const getEarnings = async (req, res, next) => {
   try {
     const managerId = req.user._id;
+
+    // Self-healing: ensure any rejected or cancelled trips in MongoDB have 0 revenue and 0 totalAmount
+    await Trip.updateMany(
+      {
+        status: { $regex: /reject|cancel/i },
+        $or: [
+          { revenue: { $gt: 0 } },
+          { totalAmount: { $gt: 0 } },
+          { billingAmount: { $gt: 0 } },
+          { subtotal: { $gt: 0 } }
+        ]
+      },
+      {
+        $set: {
+          revenue: 0,
+          totalAmount: 0,
+          billingAmount: 0,
+          subtotal: 0,
+          freightCharges: 0,
+          serviceFee: 0,
+          loadingCharges: 0,
+          unloadingCharges: 0,
+          gstTax: 0,
+          codAmount: 0,
+          estimatedDistance: 0,
+          actualDistance: 0,
+          cargoWeight: 0,
+          driverAllowance: 0,
+          totalFuelAmount: 0,
+          totalTollsAmount: 0
+        }
+      }
+    ).catch(() => {});
+
     // Find all trips for this manager
     let trips = await Trip.find({
       $or: [
