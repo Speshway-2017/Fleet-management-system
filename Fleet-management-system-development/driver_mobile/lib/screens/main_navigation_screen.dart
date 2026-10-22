@@ -12,7 +12,7 @@ import '../services/socket_service.dart';
 import '../utils/date_formatter.dart';
 
 class MainNavigationScreen extends StatefulWidget {
-  static final ValueNotifier<int> selectedTabNotifier = ValueNotifier<int>(0);
+  static final ValueNotifier<int> selectedTabNotifier = ValueNotifier<int>(2);
 
   const MainNavigationScreen({super.key});
 
@@ -102,7 +102,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   void dispose() {
     MainNavigationScreen.selectedTabNotifier.removeListener(_onTabChanged);
-    MainNavigationScreen.selectedTabNotifier.value = 0;
+    MainNavigationScreen.selectedTabNotifier.value = 2;
     super.dispose();
   }
 
@@ -115,9 +115,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   final List<Widget> _screens = [
-    const DashboardScreen(),
-    const TripsScreen(),
     const SupportHistoryScreen(),
+    const TripsScreen(),
+    const DashboardScreen(),
     const NotificationsScreen(),
     const ProfileScreen(),
   ];
@@ -148,9 +148,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(0, Icons.home_outlined, Icons.home, 'Home'),
+              _buildNavItem(0, Icons.headset_mic_outlined, Icons.headset_mic, 'Support'),
               _buildNavItem(1, Icons.route_outlined, Icons.route, 'Trips'),
-              _buildNavItem(2, Icons.headset_mic_outlined, Icons.headset_mic, 'Support'),
+              _buildNavItem(2, Icons.home_outlined, Icons.home, 'Home'),
               _buildNavItem(3, Icons.notifications_none_rounded, Icons.notifications, 'Alerts'),
               _buildNavItem(4, Icons.account_circle_outlined, Icons.account_circle, 'Profile'),
             ],

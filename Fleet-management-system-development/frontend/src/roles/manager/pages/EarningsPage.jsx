@@ -67,6 +67,7 @@ export default function EarningsPage() {
     const handleInstantRefresh = () => fetchEarnings(false);
 
     socket.on("trip:status-updated", handleInstantRefresh);
+    socket.on("trip:rejected", handleInstantRefresh);
     socket.on("trip:completed", handleInstantRefresh);
     socket.on("dashboard:refresh", handleInstantRefresh);
     socket.on("trip:created", handleInstantRefresh);
@@ -83,6 +84,7 @@ export default function EarningsPage() {
 
     return () => {
       socket.off("trip:status-updated", handleInstantRefresh);
+      socket.off("trip:rejected", handleInstantRefresh);
       socket.off("trip:completed", handleInstantRefresh);
       socket.off("dashboard:refresh", handleInstantRefresh);
       socket.off("trip:created", handleInstantRefresh);
@@ -242,6 +244,16 @@ export default function EarningsPage() {
       selectedTripId !== "all"
     );
 
+    const isCancelledOrRejected = (st) => {
+      const s = String(st || '').trim().toLowerCase();
+      return s.includes('reject') || s.includes('cancel');
+    };
+
+    const isCompletedStatus = (st) => {
+      const s = String(st || '').trim().toLowerCase();
+      return s === 'completed' || s === 'complete trip' || s === 'delivered';
+    };
+
     // If viewing unfiltered overall state, prioritize canonical server stats from backend single source of truth
     if (!isSearchingOrFiltering && serverStats.totalRevenue !== undefined) {
       const totalRevenue = Number(serverStats.totalRevenue) || 0;
@@ -251,7 +263,7 @@ export default function EarningsPage() {
       const fuelExpenses = Number(serverStats.totalFuelExpenses) || 0;
       const tollExpenses = Number(serverStats.totalTollExpenses) || 0;
       const completedCount = Number(serverStats.completedTripCount) || 0;
-      const tripCount = Number(serverStats.tripCount) || data.tripEarnings.length;
+      const validTripCount = Number(serverStats.tripCount) ?? data.tripEarnings.filter(t => !isCancelledOrRejected(t.status)).length;
 
       return {
         totalRevenue,
@@ -261,26 +273,23 @@ export default function EarningsPage() {
         fuelExpenses,
         tollExpenses,
         completedCount,
-        tripCount,
+        tripCount: validTripCount,
         isFiltered: false
       };
     }
 
-    // Dynamic aggregation for filtered view or selected trip (strictly completed trips only)
+    // Dynamic aggregation for filtered view or selected trip (strictly completed & non-rejected trips only)
     let totalRevenue = 0;
     let totalExpenses = 0;
     let fuelExpenses = 0;
     let tollExpenses = 0;
     let completedCount = 0;
 
-    const isCompletedStatus = (st) => {
-      const s = String(st || '').trim().toLowerCase();
-      return s === 'completed' || s === 'complete trip' || s === 'delivered';
-    };
-
     const targetList = isSearchingOrFiltering ? filteredEarnings : data.tripEarnings;
 
     targetList.forEach((item) => {
+      if (isCancelledOrRejected(item.status)) return; // Strictly ignore rejected/cancelled trips in KPI financials
+
       const isComp = item.isCompleted ?? isCompletedStatus(item.status);
       if (isComp) {
         completedCount++;
@@ -298,6 +307,8 @@ export default function EarningsPage() {
       ? Math.round((totalNetEarnings / totalRevenue) * 100)
       : 0;
 
+    const validTripCount = targetList.filter(item => !isCancelledOrRejected(item.status)).length;
+
     return {
       totalRevenue,
       totalExpenses,
@@ -306,7 +317,7 @@ export default function EarningsPage() {
       fuelExpenses,
       tollExpenses,
       completedCount,
-      tripCount: targetList.length,
+      tripCount: validTripCount,
       isFiltered: isSearchingOrFiltering
     };
   }, [data.stats, data.tripEarnings, filteredEarnings, searchTerm, statusFilter, selectedTripId]);
@@ -637,12 +648,17 @@ export default function EarningsPage() {
                   }}
                   className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium focus:bg-white focus:border-[#A14000] outline-none transition-all cursor-pointer max-w-[240px] truncate"
                 >
-                  <option value="all">All Trips ({data.tripEarnings.length})</option>
-                  {data.tripEarnings.map((trip) => (
-                    <option key={trip.tripId} value={trip.tripId}>
-                      {trip.tripNumber} ({formatFullCurrency(trip.expenses)})
-                    </option>
-                  ))}
+                  <option value="all">
+                    All Trips ({data.tripEarnings.filter(t => !['rejected', 'cancelled', 'canceled'].includes(String(t.status || '').trim().toLowerCase())).length})
+                  </option>
+                  {data.tripEarnings.map((trip) => {
+                    const isRej = ['rejected', 'cancelled', 'canceled'].includes(String(trip.status || '').trim().toLowerCase());
+                    return (
+                      <option key={trip.tripId} value={trip.tripId}>
+                        {trip.tripNumber} ({isRej ? `${trip.status} - ₹0` : formatFullCurrency(trip.expenses)})
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
             </div>
@@ -772,13 +788,19 @@ export default function EarningsPage() {
                           </span>
                         </td>
                         <td className="py-4 px-5 text-right font-bold text-emerald-600 font-poppins">
-                          {formatFullCurrency(item.revenue)}
+                          {/reject|cancel/i.test(String(item.status || ''))
+                            ? "₹0"
+                            : formatFullCurrency(item.revenue)}
                         </td>
                         <td className="py-4 px-5 text-right font-bold text-red-600 font-poppins text-sm pr-8 whitespace-nowrap">
-                          {formatFullCurrency(item.expenses)}
+                          {/reject|cancel/i.test(String(item.status || ''))
+                            ? "₹0"
+                            : formatFullCurrency(item.expenses)}
                         </td>
                         <td className="py-4 px-5 text-right font-bold text-[#1E293B] font-poppins">
-                          {formatFullCurrency(item.netEarnings)}
+                          {/reject|cancel/i.test(String(item.status || ''))
+                            ? "₹0"
+                            : formatFullCurrency(item.netEarnings)}
                         </td>
                       </tr>
                     );

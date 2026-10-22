@@ -169,6 +169,8 @@ export default function ReportsPage() {
       .filter(v => matchVehicle(v._id) && matchBranch(v.branch || v.branchDepot))
       .map(v => {
         const vTrips = trips.filter(t => {
+          const s = String(t.status || '').trim().toLowerCase();
+          if (['rejected', 'cancelled', 'canceled'].includes(s)) return false;
           const vId = t.vehicle?._id || t.vehicle;
           const dId = t.driver?._id || t.driver;
           return String(vId) === String(v._id) && isWithinDate(t.actualStartTime || t.createdAt) && matchDriver(dId);
@@ -232,6 +234,8 @@ export default function ReportsPage() {
       .filter(d => matchDriver(d._id) && matchBranch(d.branch))
       .map(d => {
         const dTrips = trips.filter(t => {
+          const s = String(t.status || '').trim().toLowerCase();
+          if (['rejected', 'cancelled', 'canceled'].includes(s)) return false;
           const dId = t.driver?._id || t.driver;
           const vId = t.vehicle?._id || t.vehicle;
           return String(dId) === String(d._id) && isWithinDate(t.actualStartTime || t.createdAt) && matchVehicle(vId);
@@ -411,12 +415,13 @@ export default function ReportsPage() {
           status: t.status || "Completed",
           departure: t.actualStartTime ? new Date(t.actualStartTime).toISOString().split("T")[0] : (t.createdAt ? t.createdAt.split("T")[0] : "N/A"),
           arrival: t.actualEndTime ? new Date(t.actualEndTime).toISOString().split("T")[0] : "N/A",
-          distance: Number(t.actualDistance || t.estimatedDistance) || 0,
+          distance: ['rejected', 'cancelled', 'canceled'].includes(String(t.status || '').trim().toLowerCase()) ? 0 : (Number(t.actualDistance || t.estimatedDistance) || 0),
           duration: t.departureTime && t.eta ? `${t.departureTime} - ${t.eta}` : "N/A"
         };
       });
 
-    const totalTrips = rows.length;
+    const validRows = rows.filter(r => !['rejected', 'cancelled', 'canceled'].includes(String(r.status || '').trim().toLowerCase()));
+    const totalTrips = validRows.length;
     const completedTrips = rows.filter(r => r.status === "Completed").length;
     const ongoingTrips = rows.filter(r => ["Ongoing", "Active", "In Progress"].includes(r.status)).length;
     const totalDistance = rows.reduce((sum, r) => sum + r.distance, 0);
@@ -433,7 +438,7 @@ export default function ReportsPage() {
         status: {
           Completed: completedTrips,
           Ongoing: ongoingTrips,
-          Cancelled: rows.filter(r => r.status === "Cancelled").length
+          Cancelled: rows.filter(r => ['cancelled', 'canceled', 'rejected'].includes(String(r.status || '').trim().toLowerCase())).length
         }
       }
     };

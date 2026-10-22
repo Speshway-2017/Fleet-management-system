@@ -193,7 +193,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           onPressed: () {
-            MainNavigationScreen.selectedTabNotifier.value = 0;
+            MainNavigationScreen.selectedTabNotifier.value = 2;
           },
         ),
         title: Text(
