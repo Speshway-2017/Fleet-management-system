@@ -212,17 +212,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                                 children: [
                                   Image.asset(
                                     'assets/images/auth_logo.png',
-                                    height: 54,
+                                    height: 68,
                                     fit: BoxFit.contain,
                                     errorBuilder: (ctx, err, st) => Image.asset(
                                       'assets/images/logo.png',
-                                      height: 54,
+                                      height: 68,
                                       fit: BoxFit.contain,
                                       errorBuilder: (ctx2, err2, st2) => Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Container(
-                                            padding: const EdgeInsets.all(6),
+                                            padding: const EdgeInsets.all(7),
                                             decoration: BoxDecoration(
                                               color: Colors.white.withValues(alpha: 0.15),
                                               borderRadius: BorderRadius.circular(10),
@@ -230,14 +230,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                                             child: const Icon(
                                               Icons.local_shipping_rounded,
                                               color: Color(0xFFF97316),
-                                              size: 26,
+                                              size: 30,
                                             ),
                                           ),
                                           const SizedBox(width: 8),
                                           Text(
                                             'FLEET MANAGEMENT',
                                             style: GoogleFonts.plusJakartaSans(
-                                              fontSize: 15,
+                                              fontSize: 17,
                                               fontWeight: FontWeight.w900,
                                               color: const Color(0xFF0B1B3D),
                                               letterSpacing: 1.0,
