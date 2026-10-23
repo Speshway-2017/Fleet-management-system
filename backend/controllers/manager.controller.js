@@ -1826,19 +1826,31 @@ export const updateTrip = async (req, res, next) => {
         if (updatedTrip.vehicle) {
           const vehicleUpdate = {
             currentStatus: 'Available',
-            assignedDriver: null
+            assignedDriver: null,
+            isAssigned: false,
+            activeTripId: null,
+            currentTripId: null
           };
           if (newStatus === 'Completed') {
             vehicleUpdate.branch = updatedTrip.endLocation;
             vehicleUpdate.currentLocation = updatedTrip.endLocation;
           }
           await Vehicle.findByIdAndUpdate(updatedTrip.vehicle, vehicleUpdate);
+          if (updatedTrip.driver) {
+            await Vehicle.updateMany(
+              { assignedDriver: updatedTrip.driver },
+              { $set: { assignedDriver: null, currentStatus: 'Available', isAssigned: false, activeTripId: null, currentTripId: null } }
+            ).catch(() => {});
+          }
         }
         // Release driver
         if (updatedTrip.driver) {
           const driverUpdate = {
             driverStatus: 'AVAILABLE',
-            assignedVehicle: 'Unassigned'
+            assignedVehicle: 'Unassigned',
+            isAssigned: false,
+            activeTripId: null,
+            currentTripId: null
           };
           if (newStatus === 'Completed') {
             driverUpdate.driverLocation = updatedTrip.endLocation;
@@ -2150,15 +2162,25 @@ export const deleteTrip = async (req, res, next) => {
     if (trip.vehicle) {
       await Vehicle.findByIdAndUpdate(trip.vehicle, {
         currentStatus: 'Available',
-        assignedDriver: null
+        assignedDriver: null,
+        isAssigned: false,
+        activeTripId: null,
+        currentTripId: null
       });
     }
     // Release driver
     if (trip.driver) {
       await Driver.findByIdAndUpdate(trip.driver, {
         driverStatus: 'AVAILABLE',
-        assignedVehicle: 'Unassigned'
+        assignedVehicle: 'Unassigned',
+        isAssigned: false,
+        activeTripId: null,
+        currentTripId: null
       });
+      await Vehicle.updateMany(
+        { assignedDriver: trip.driver },
+        { $set: { assignedDriver: null, currentStatus: 'Available', isAssigned: false, activeTripId: null, currentTripId: null } }
+      ).catch(() => {});
     }
 
     await deleteTripInRepo(tripId);
@@ -2428,6 +2450,9 @@ export const updateFuelRecord = async (req, res, next) => {
           // Update trip operational financials
           trip.expenses = finance.expenses;
           trip.revenue = finance.revenue;
+          trip.totalFuelAmount = finance.actualFuelAmount;
+          trip.totalTollsAmount = finance.actualTollAmount;
+          trip.driverAllowance = finance.driverAllowance;
           trip.netEarnings = finance.netEarnings;
           await trip.save().catch(() => {});
 

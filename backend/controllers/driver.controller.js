@@ -301,14 +301,19 @@ export const getAvailableDrivers = async (req, res, next) => {
       if (!vehStr) {
         try {
           const TripModel = (await import('../models/Trip.js')).default;
-          const lastTrip = await TripModel.findOne({ driver: d._id }).sort({ createdAt: -1 });
-          if (lastTrip && (lastTrip.vehiclePlate || lastTrip.vehicleName)) {
-            vehStr = lastTrip.vehiclePlate || lastTrip.vehicleName;
+          const activeTrip = await TripModel.findOne({
+            driver: d._id,
+            status: { $nin: ['Completed', 'Cancelled', 'Rejected'] }
+          }).sort({ createdAt: -1 });
+          if (activeTrip && (activeTrip.vehiclePlate || activeTrip.vehicleName)) {
+            vehStr = activeTrip.vehiclePlate || activeTrip.vehicleName;
           }
         } catch (e) { }
       }
       if (vehStr) {
         d.assignedVehicle = vehStr;
+      } else {
+        d.assignedVehicle = 'Unassigned';
       }
     }
 

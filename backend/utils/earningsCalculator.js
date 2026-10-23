@@ -8,17 +8,40 @@ export const isRejectedFuelRecord = (record) => {
   if (!record) return false;
   if (record.isRejected === true) return true;
 
-  const approval = String(record.approvalStatus || '').trim().toUpperCase();
+  const approval = String(record.approvalStatus || record.billStatus || '').trim().toUpperCase();
   const bill = String(record.billStatus || '').trim().toUpperCase();
-  const status = String(record.status || '').trim().toUpperCase();
+  const status = String(record.status || '').trim().toLowerCase();
 
   return (
     approval.includes('REJECT') ||
     approval.includes('CANCEL') ||
     bill.includes('REJECT') ||
     bill.includes('CANCEL') ||
-    status.includes('REJECT') ||
-    status.includes('CANCEL')
+    status.includes('reject') ||
+    status.includes('cancel')
+  );
+};
+
+/**
+ * Helper to check whether a fuel record is approved / accepted by Fleet Manager.
+ * Only accepted / approved fuel logs count toward trip operational expenses.
+ */
+export const isAcceptedFuelRecord = (record) => {
+  if (!record) return false;
+  if (record.isRejected === true) return false;
+
+  const approval = String(record.approvalStatus || record.billStatus || '').trim().toUpperCase();
+  const status = String(record.status || '').trim().toLowerCase();
+
+  if (approval.includes('REJECT') || approval.includes('CANCEL')) return false;
+  if (status.includes('reject') || status.includes('cancel')) return false;
+
+  return (
+    approval === 'APPROVED' ||
+    approval === 'ACCEPTED' ||
+    approval === 'VERIFIED' ||
+    approval === 'APPROVE' ||
+    status === 'resolved'
   );
 };
 
@@ -50,7 +73,11 @@ export const calculateTripFinance = (trip, invoice = null, fuelRecords = [], tol
       totalAmount: 0,
       actualFuelAmount: 0,
       actualTollAmount: 0,
-      driverAllowance: 0
+      driverAllowance: 0,
+      fuelLogsCount: 0,
+      acceptedFuelCount: 0,
+      rejectedFuelCount: 0,
+      pendingFuelCount: 0
     };
   }
 
@@ -78,27 +105,44 @@ export const calculateTripFinance = (trip, invoice = null, fuelRecords = [], tol
   }
 
   // 1. Actual recorded operational expenses: Fuel (Single Source of Truth, prevent duplicates & rogue values)
+  // Strictly count only APPROVED/ACCEPTED fuel logs. Exclude rejected and unapproved pending logs.
   let actualFuelAmount = 0;
+  let acceptedFuelCount = 0;
+  let rejectedFuelCount = 0;
+  let pendingFuelCount = 0;
+
   if (Array.isArray(fuelRecords) && fuelRecords.length > 0) {
     const seenFuelIds = new Set();
     actualFuelAmount = fuelRecords.reduce((sum, f) => {
-      // Strictly exclude fuel records rejected or cancelled by Fleet Manager
-      if (isRejectedFuelRecord(f)) return sum;
-
       const fId = (f?._id || f?.id)?.toString();
       if (fId && seenFuelIds.has(fId)) return sum;
       if (fId) seenFuelIds.add(fId);
-      const amt = Number(f?.amount || f?.totalAmount) || 0;
-      // Sanitize: ensure fuel amount is finite, positive, and realistic (<= ₹5,00,000 per fill)
-      const validAmt = (Number.isFinite(amt) && amt > 0 && amt <= 500000) ? Math.round(amt) : 0;
-      return sum + validAmt;
+
+      if (isRejectedFuelRecord(f)) {
+        rejectedFuelCount++;
+        return sum; // Rejected logs strictly contribute ₹0 to expenses
+      }
+
+      if (isAcceptedFuelRecord(f)) {
+        acceptedFuelCount++;
+        const amt = Number(f?.amount || f?.totalAmount) || 0;
+        // Sanitize: ensure fuel amount is finite, positive, and realistic (<= ₹5,00,000 per fill)
+        const validAmt = (Number.isFinite(amt) && amt > 0 && amt <= 500000) ? Math.round(amt) : 0;
+        return sum + validAmt;
+      }
+
+      // Pending record (awaiting Fleet Manager review)
+      pendingFuelCount++;
+      return sum;
     }, 0);
   } else if (Number(invoice?.charges?.fuelCharges) > 0) {
     const amt = Number(invoice.charges.fuelCharges);
     actualFuelAmount = (Number.isFinite(amt) && amt > 0 && amt <= 500000) ? Math.round(amt) : 0;
+    if (actualFuelAmount > 0) acceptedFuelCount = 1;
   } else if (Number(trip?.totalFuelAmount) > 0) {
     const amt = Number(trip.totalFuelAmount);
     actualFuelAmount = (Number.isFinite(amt) && amt > 0 && amt <= 500000) ? Math.round(amt) : 0;
+    if (actualFuelAmount > 0) acceptedFuelCount = 1;
   }
 
   // 2. Actual recorded operational expenses: Tolls (Single Source of Truth, prevent duplicates & rogue values)
@@ -221,7 +265,11 @@ export const calculateTripFinance = (trip, invoice = null, fuelRecords = [], tol
     totalAmount: revenue,
     actualFuelAmount,
     actualTollAmount,
-    driverAllowance
+    driverAllowance,
+    fuelLogsCount: acceptedFuelCount + rejectedFuelCount + pendingFuelCount,
+    acceptedFuelCount,
+    rejectedFuelCount,
+    pendingFuelCount
   };
 };
 
@@ -362,6 +410,10 @@ export const calculateFleetEarnings = (trips = [], invoices = [], fuels = [], to
       fuelExpense: isRejected ? 0 : fin.actualFuelAmount,
       tollExpense: isRejected ? 0 : fin.actualTollAmount,
       driverAllowance: isRejected ? 0 : fin.driverAllowance,
+      fuelLogsCount: isRejected ? 0 : fin.fuelLogsCount,
+      acceptedFuelCount: isRejected ? 0 : fin.acceptedFuelCount,
+      rejectedFuelCount: isRejected ? 0 : fin.rejectedFuelCount,
+      pendingFuelCount: isRejected ? 0 : fin.pendingFuelCount,
       netEarnings: isRejected ? 0 : fin.netEarnings,
       marginPercent: isRejected ? 0 : fin.marginPercent,
       isCompleted,
@@ -391,6 +443,11 @@ export const calculateFleetEarnings = (trips = [], invoices = [], fuels = [], to
   const formattedNetEarnings = formatIndianCurrency(totalNetEarnings);
   const marginPercent = totalRevenue > 0 ? Math.round((totalNetEarnings / totalRevenue) * 100) : 0;
 
+  const totalAcceptedFuelLogs = tripEarnings.reduce((acc, t) => acc + (t.acceptedFuelCount || 0), 0);
+  const totalRejectedFuelLogs = tripEarnings.reduce((acc, t) => acc + (t.rejectedFuelCount || 0), 0);
+  const totalPendingFuelLogs = tripEarnings.reduce((acc, t) => acc + (t.pendingFuelCount || 0), 0);
+  const totalFuelLogs = tripEarnings.reduce((acc, t) => acc + (t.fuelLogsCount || 0), 0);
+
   return {
     stats: {
       totalRevenue,
@@ -408,7 +465,11 @@ export const calculateFleetEarnings = (trips = [], invoices = [], fuels = [], to
       operationalCosts: formattedExpenses,
       totalFuelExpenses,
       totalTollExpenses,
-      totalDriverAllowance
+      totalDriverAllowance,
+      totalAcceptedFuelLogs,
+      totalRejectedFuelLogs,
+      totalPendingFuelLogs,
+      totalFuelLogs
     },
     totalRevenue,
     totalExpenses,
@@ -417,6 +478,10 @@ export const calculateFleetEarnings = (trips = [], invoices = [], fuels = [], to
     formattedExpenses,
     formattedTotalExpenses: formattedExpenses,
     operationalCosts: formattedExpenses,
+    totalAcceptedFuelLogs,
+    totalRejectedFuelLogs,
+    totalPendingFuelLogs,
+    totalFuelLogs,
     chartData,
     tripEarnings,
     invoiceByTripId,
