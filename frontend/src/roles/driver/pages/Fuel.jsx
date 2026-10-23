@@ -206,12 +206,14 @@ export default function DriverFuelPage() {
     activeTrip &&
       activeStatuses.includes((activeTrip.status || "").toLowerCase().trim())
   );
-  const isFuelLogEnabled = isPermanentVehicleAssigned || isTripAvailable;
+  const isFuelLogEnabled = Boolean(
+    isTripAvailable && (activeTrip?.vehicle || isPermanentVehicleAssigned)
+  );
 
   const handleCreateFuelEntry = async (e) => {
     e.preventDefault();
     if (!isFuelLogEnabled) {
-      toast.error("🔒 Fuel logging requires an assigned vehicle or an assigned trip!");
+      toast.error("🔒 Fuel logging is locked. An active trip is required to submit fuel entries!");
       return;
     }
 

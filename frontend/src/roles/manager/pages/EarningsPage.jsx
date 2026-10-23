@@ -203,6 +203,10 @@ export default function EarningsPage() {
       "Distance (km)",
       "Revenue (₹)",
       "Expenses (₹)",
+      "Fuel Expense (₹)",
+      "Accepted Fuel Logs",
+      "Rejected Fuel Logs",
+      "Pending Fuel Logs",
       "Net Earnings (₹)"
     ];
 
@@ -216,6 +220,10 @@ export default function EarningsPage() {
       item.distance,
       item.revenue,
       item.expenses,
+      item.fuelExpense || 0,
+      item.acceptedFuelCount || 0,
+      item.rejectedFuelCount || 0,
+      item.pendingFuelCount || 0,
       item.netEarnings
     ]);
 
@@ -560,8 +568,11 @@ export default function EarningsPage() {
                 <div className="flex items-center gap-3 text-xs">
                   <div>
                     <span className="text-[10px] text-gray-400 block font-medium">Fuel</span>
-                    <span className="font-semibold text-gray-700">
+                    <span className="font-semibold text-gray-700 block">
                       {formatFullCurrency(selectedTrip.fuelExpense || 0)}
+                    </span>
+                    <span className="text-[9px] text-gray-500 font-medium block">
+                      {selectedTrip.acceptedFuelCount || 0} accepted{selectedTrip.rejectedFuelCount > 0 ? `, ${selectedTrip.rejectedFuelCount} rejected` : ''}
                     </span>
                   </div>
                   <div>
@@ -792,10 +803,47 @@ export default function EarningsPage() {
                             ? "₹0"
                             : formatFullCurrency(item.revenue)}
                         </td>
-                        <td className="py-4 px-5 text-right font-bold text-red-600 font-poppins text-sm pr-8 whitespace-nowrap">
-                          {/reject|cancel/i.test(String(item.status || ''))
-                            ? "₹0"
-                            : formatFullCurrency(item.expenses)}
+                        <td className="py-4 px-5 text-right font-bold text-red-600 font-poppins text-sm pr-6 whitespace-nowrap">
+                          {/reject|cancel/i.test(String(item.status || '')) ? (
+                            "₹0"
+                          ) : (
+                            <div className="flex flex-col items-end">
+                              <span>{formatFullCurrency(item.expenses)}</span>
+                              <div className="text-[10px] text-gray-500 font-normal mt-0.5 flex items-center gap-1 font-poppins">
+                                <span className="text-gray-400">Fuel: {formatFullCurrency(item.fuelExpense || 0)}</span>
+                                {(item.fuelLogsCount > 0 || item.acceptedFuelCount > 0 || item.rejectedFuelCount > 0 || item.pendingFuelCount > 0) ? (
+                                  <span className="inline-flex items-center gap-1 ml-1 font-medium">
+                                    {(item.acceptedFuelCount || 0) > 0 && (
+                                      <span
+                                        className="text-[9px] px-1.5 py-0.2 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 font-semibold"
+                                        title={`${item.acceptedFuelCount} accepted fuel log(s) added to expenses`}
+                                      >
+                                        ✓ {item.acceptedFuelCount} acc
+                                      </span>
+                                    )}
+                                    {(item.rejectedFuelCount || 0) > 0 && (
+                                      <span
+                                        className="text-[9px] px-1.5 py-0.2 bg-red-50 text-red-600 rounded border border-red-200 font-semibold"
+                                        title={`${item.rejectedFuelCount} rejected fuel log(s) excluded from expenses (₹0)`}
+                                      >
+                                        ✕ {item.rejectedFuelCount} rej
+                                      </span>
+                                    )}
+                                    {(item.pendingFuelCount || 0) > 0 && (
+                                      <span
+                                        className="text-[9px] px-1.5 py-0.2 bg-amber-50 text-amber-700 rounded border border-amber-200 font-semibold"
+                                        title={`${item.pendingFuelCount} pending fuel log(s) awaiting approval`}
+                                      >
+                                        ⏳ {item.pendingFuelCount} pend
+                                      </span>
+                                    )}
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] text-gray-400 ml-1">0 fuel logs</span>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </td>
                         <td className="py-4 px-5 text-right font-bold text-[#1E293B] font-poppins">
                           {/reject|cancel/i.test(String(item.status || ''))

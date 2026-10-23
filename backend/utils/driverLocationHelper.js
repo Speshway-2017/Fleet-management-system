@@ -43,33 +43,55 @@ export const syncDriverLocationFromLatestTrip = async (driver) => {
  * @param {string|ObjectId} vehicleId
  * @param {string} destinationLocation
  */
-export const updateDriverAndVehicleOnCompletion = async (driverId, vehicleId, destinationLocation) => {
-  if (!destinationLocation) return;
-  const cleanDest = destinationLocation.trim();
+export const updateDriverAndVehicleOnCompletion = async (driverId, vehicleId, destinationLocation = '') => {
+  const cleanDest = (destinationLocation || '').trim();
+  const dId = (driverId && typeof driverId === 'object') ? (driverId._id || driverId.id) : driverId;
+  const vId = (vehicleId && typeof vehicleId === 'object') ? (vehicleId._id || vehicleId.id) : vehicleId;
 
   try {
-    if (driverId) {
-      await Driver.findByIdAndUpdate(driverId, {
+    if (dId) {
+      const driverUpdate = {
         driverStatus: 'AVAILABLE',
-        currentLocation: cleanDest,
-        driverLocation: cleanDest,
         assignedVehicle: 'Unassigned',
         isAssigned: false,
         activeTripId: null,
         currentTripId: null
-      });
+      };
+      if (cleanDest) {
+        driverUpdate.currentLocation = cleanDest;
+        driverUpdate.driverLocation = cleanDest;
+      }
+      await Driver.findByIdAndUpdate(dId, driverUpdate);
+
+      // Unassign any vehicles pointing to this driver
+      await Vehicle.updateMany(
+        { assignedDriver: dId },
+        {
+          $set: {
+            assignedDriver: null,
+            currentStatus: 'Available',
+            isAssigned: false,
+            activeTripId: null,
+            currentTripId: null,
+            ...(cleanDest ? { branch: cleanDest, currentLocation: cleanDest } : {})
+          }
+        }
+      ).catch(() => {});
     }
 
-    if (vehicleId) {
-      await Vehicle.findByIdAndUpdate(vehicleId, {
+    if (vId) {
+      const vehicleUpdate = {
         currentStatus: 'Available',
-        branch: cleanDest,
-        currentLocation: cleanDest,
         assignedDriver: null,
         isAssigned: false,
         activeTripId: null,
         currentTripId: null
-      });
+      };
+      if (cleanDest) {
+        vehicleUpdate.branch = cleanDest;
+        vehicleUpdate.currentLocation = cleanDest;
+      }
+      await Vehicle.findByIdAndUpdate(vId, vehicleUpdate);
     }
   } catch (err) {
     console.error('Error updating driver/vehicle location on completion:', err);

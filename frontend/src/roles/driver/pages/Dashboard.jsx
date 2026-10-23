@@ -19,7 +19,8 @@ import {
   Clock,
   Headphones,
   Calendar,
-  RefreshCw
+  RefreshCw,
+  Lock
 } from "lucide-react";
 
 export default function DriverDashboard() {
@@ -70,13 +71,29 @@ export default function DriverDashboard() {
         setDashboardData(dashRes.value.data);
       }
 
-      if (vehRes.status === "fulfilled" && vehRes.value?.success) {
-        const rawVeh = vehRes.value.data;
-        setAssignedVehicle(rawVeh?.vehicle || (rawVeh?.registrationNumber ? rawVeh : null));
+      let activeTripData = null;
+      if (tripRes.status === "fulfilled" && tripRes.value?.success) {
+        activeTripData = tripRes.value.data;
+        setCurrentTrip(activeTripData);
+      } else {
+        setCurrentTrip(null);
       }
 
-      if (tripRes.status === "fulfilled" && tripRes.value?.success) {
-        setCurrentTrip(tripRes.value.data);
+      const activeTripStatuses = [
+        'pending driver acceptance', 'assigned', 'scheduled', 'in progress',
+        'accepted', 'on transit', 'enroute', 'reach pickup', 'pickup completed',
+        'waiting for manager approval', 'ready to dispatch', 'start trip'
+      ];
+      const hasTripActive = Boolean(
+        activeTripData &&
+        activeTripStatuses.includes((activeTripData.status || "").toLowerCase().trim())
+      );
+
+      if (hasTripActive && vehRes.status === "fulfilled" && vehRes.value?.success && vehRes.value.data?.assigned !== false) {
+        const rawVeh = vehRes.value.data;
+        setAssignedVehicle(rawVeh?.vehicle || (rawVeh?.registrationNumber ? rawVeh : null));
+      } else {
+        setAssignedVehicle(null);
       }
 
       if (notifRes.status === "fulfilled" && notifRes.value?.success) {
@@ -144,6 +161,16 @@ export default function DriverDashboard() {
         ? Number(stats.totalActiveTrips)
         : (activeCount + upcomingCount > 0 ? (activeCount + upcomingCount) : (currentTrip ? 1 : 0)));
 
+  const activeTripStatuses = [
+    'pending driver acceptance', 'assigned', 'scheduled', 'in progress',
+    'accepted', 'on transit', 'enroute', 'reach pickup', 'pickup completed',
+    'waiting for manager approval', 'ready to dispatch', 'start trip'
+  ];
+  const hasActiveTrip = Boolean(
+    currentTrip &&
+    activeTripStatuses.includes((currentTrip.status || "").toLowerCase().trim())
+  );
+
   return (
     <div className="space-y-8 font-nunito pb-12">
       {/* Top Banner Greeting & Quick Summary */}
@@ -166,20 +193,50 @@ export default function DriverDashboard() {
 
           {/* Quick Actions Buttons */}
           <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap shrink-0">
-            <Link
-              to="/driver/fuel"
-              className="px-4 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold font-poppins rounded-xl flex items-center gap-2 transition"
-            >
-              <Fuel className="w-4 h-4 text-amber-600" />
-              <span>Log Fuel</span>
-            </Link>
-            <Link
-              to="/driver/maintenance"
-              className="px-4 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold font-poppins rounded-xl flex items-center gap-2 transition"
-            >
-              <Wrench className="w-4 h-4 text-rose-600" />
-              <span>Raise Issue</span>
-            </Link>
+            {hasActiveTrip ? (
+              <Link
+                to="/driver/fuel"
+                className="px-4 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold font-poppins rounded-xl flex items-center gap-2 transition"
+                title="Log Fuel Refill for Active Trip"
+              >
+                <Fuel className="w-4 h-4 text-amber-600" />
+                <span>Log Fuel</span>
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => toast.error("🔒 Fuel logging is locked. Requires an active trip with an assigned vehicle.")}
+                className="px-4 py-2.5 bg-slate-50 border border-dashed border-slate-300 text-slate-400 text-xs font-semibold font-poppins rounded-xl flex items-center gap-2 cursor-not-allowed select-none shadow-none"
+                title="Fuel logging locked: Requires an active trip"
+              >
+                <Lock className="w-4 h-4 text-slate-400" />
+                <span>Log Fuel</span>
+                <span className="text-[9px] bg-amber-100 text-[#A14000] border border-amber-300 px-1.5 py-0.5 rounded font-black uppercase tracking-wider">Locked</span>
+              </button>
+            )}
+
+            {hasActiveTrip ? (
+              <Link
+                to="/driver/maintenance"
+                className="px-4 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold font-poppins rounded-xl flex items-center gap-2 transition"
+                title="Raise Vehicle Issue Ticket"
+              >
+                <Wrench className="w-4 h-4 text-rose-600" />
+                <span>Raise Issue</span>
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => toast.error("🔒 Vehicle issue reporting is locked. Requires an active trip with an assigned vehicle.")}
+                className="px-4 py-2.5 bg-slate-50 border border-dashed border-slate-300 text-slate-400 text-xs font-semibold font-poppins rounded-xl flex items-center gap-2 cursor-not-allowed select-none shadow-none"
+                title="Vehicle issues locked: Requires an active trip"
+              >
+                <Lock className="w-4 h-4 text-slate-400" />
+                <span>Raise Issue</span>
+                <span className="text-[9px] bg-rose-100 text-rose-700 border border-rose-300 px-1.5 py-0.5 rounded font-black uppercase tracking-wider">Locked</span>
+              </button>
+            )}
+
             <Link
               to="/driver/support"
               className="px-4 py-2.5 bg-[#A14000] hover:bg-[#853400] text-white text-xs font-bold font-poppins rounded-xl flex items-center gap-2 transition shadow-xs"
@@ -213,12 +270,12 @@ export default function DriverDashboard() {
         />
         <KPICard
           title="Assigned Vehicle"
-          value={loading ? null : (assignedVehicle?.registrationNumber || assignedVehicle?.vehicleNumber || "Unassigned")}
+          value={loading ? null : (hasActiveTrip && assignedVehicle ? (assignedVehicle?.registrationNumber || assignedVehicle?.vehicleNumber || "Unassigned") : "Unassigned")}
           loading={loading}
-          subtitle={[assignedVehicle?.brand || assignedVehicle?.make, assignedVehicle?.model].filter(Boolean).join(" ") || (assignedVehicle ? "Assigned Vehicle" : "No Vehicle")}
+          subtitle={hasActiveTrip && assignedVehicle ? ([assignedVehicle?.brand || assignedVehicle?.make, assignedVehicle?.model].filter(Boolean).join(" ") || "Assigned Vehicle") : "No Vehicle"}
           icon="material-symbols:local-shipping-outline"
           variant="blue"
-          filledBarsRatio={assignedVehicle ? 0.9 : 0}
+          filledBarsRatio={hasActiveTrip && assignedVehicle ? 0.9 : 0}
         />
         <KPICard
           title="Pending Notifications"
@@ -297,7 +354,7 @@ export default function DriverDashboard() {
             <Truck className="w-5 h-5 text-[#A14000]" />
             Assigned Vehicle
           </h2>
-          <VehicleCard vehicle={assignedVehicle} />
+          <VehicleCard vehicle={hasActiveTrip ? assignedVehicle : null} />
         </div>
       </div>
     </div>

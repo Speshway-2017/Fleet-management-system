@@ -114,11 +114,28 @@ export default function DriverVehiclesPage() {
   const fetchData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      // 1. Fetch assigned vehicle
-      const vehRes = await driverApi.getAssignedVehicle();
-      if (vehRes?.success && vehRes.data) {
-        setIsAssigned(vehRes.data.assigned ?? true);
-        setVehicle(vehRes.data.vehicle || (vehRes.data.assigned ? vehRes.data : null));
+      // 1. Fetch assigned vehicle and active trip
+      const [vehRes, currentTripRes] = await Promise.all([
+        driverApi.getAssignedVehicle().catch(() => null),
+        driverApi.getCurrentTrip().catch(() => null)
+      ]);
+
+      const activeTripStatuses = [
+        'pending driver acceptance', 'assigned', 'scheduled', 'in progress',
+        'accepted', 'on transit', 'enroute', 'reach pickup', 'pickup completed',
+        'waiting for manager approval', 'ready to dispatch', 'start trip'
+      ];
+
+      const currentTripData = currentTripRes?.data;
+      const hasActiveTrip = Boolean(
+        currentTripData &&
+        activeTripStatuses.includes((currentTripData.status || "").toLowerCase().trim())
+      );
+
+      // Permanently lock vehicle details if there is no active trip
+      if (hasActiveTrip && vehRes?.success && vehRes.data && vehRes.data.assigned !== false && vehRes.data.vehicle) {
+        setIsAssigned(true);
+        setVehicle(vehRes.data.vehicle);
       } else {
         setIsAssigned(false);
         setVehicle(null);
@@ -354,28 +371,28 @@ export default function DriverVehiclesPage() {
           </div>
           <h2 className="text-xl font-bold font-poppins text-slate-900 mb-2">No Vehicle Assigned</h2>
           <p className="text-slate-500 text-sm max-w-md mx-auto mb-6 leading-relaxed">
-            You currently do not have a vehicle assigned to your driver profile. Please contact your Fleet Manager for vehicle allocation.
+            You currently do not have an active trip or assigned vehicle. Vehicle details, telematics, and compliance documents will appear here once an active trip is assigned to your profile.
           </p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <button
               onClick={handleRefresh}
-              className="px-5 py-2.5 bg-[#101C2C] hover:bg-slate-800 text-white rounded-xl text-xs font-bold font-poppins transition shadow-sm inline-flex items-center gap-2"
+              className="px-5 py-2.5 bg-[#101C2C] hover:bg-slate-800 text-white rounded-xl text-xs font-bold font-poppins transition shadow-sm inline-flex items-center gap-2 cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" /> Check Again
             </button>
             <Link
               to="/driver/maintenance"
-              className="px-5 py-2.5 bg-white hover:bg-rose-50 border-2 border-rose-300 text-slate-900 rounded-xl text-xs font-bold font-poppins transition shadow-sm inline-flex items-center gap-2"
+              className="px-5 py-2.5 bg-white hover:bg-rose-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold font-poppins transition shadow-sm inline-flex items-center gap-2"
             >
               <Wrench className="w-3.5 h-3.5 text-rose-600" />
-              <span>Vehicle Issues & Tickets</span>
+              <span>View Past Tickets</span>
             </Link>
             <Link
               to="/driver/fuel"
-              className="px-5 py-2.5 bg-white hover:bg-amber-50 border-2 border-amber-300 text-slate-900 rounded-xl text-xs font-bold font-poppins transition shadow-sm inline-flex items-center gap-2"
+              className="px-5 py-2.5 bg-white hover:bg-amber-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold font-poppins transition shadow-sm inline-flex items-center gap-2"
             >
               <FuelIcon className="w-3.5 h-3.5 text-[#A14000]" />
-              <span>Fuel History</span>
+              <span>View Fuel History</span>
             </Link>
           </div>
         </div>

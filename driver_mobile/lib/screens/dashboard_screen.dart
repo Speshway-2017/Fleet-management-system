@@ -97,7 +97,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
           }
         }
 
-        if (!isAssigned && vehRes != null && vehRes['success'] == true) {
+        final rawTrip = currentTripRes?['data'];
+        Map<String, dynamic>? activeTrip;
+        if (rawTrip != null && rawTrip is Map<String, dynamic>) {
+          final rawStatus = (rawTrip['status']?.toString() ?? '').toLowerCase();
+          final nonActive = ['completed', 'cancelled', 'rejected'];
+          if (!nonActive.contains(rawStatus)) {
+            activeTrip = rawTrip;
+          }
+        }
+
+        if (activeTrip == null) {
+          isAssigned = false;
+          vehicleNum = null;
+        } else if (!isAssigned && vehRes != null && vehRes['success'] == true) {
           final data = vehRes['data'];
           if (data != null && data['assigned'] == true && data['vehicle'] != null) {
             isAssigned = true;
@@ -111,7 +124,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         setState(() {
           _driverProfile = profile;
-          _currentTrip = currentTripRes?['data'];
+          _currentTrip = activeTrip;
           _dashboardData = dashRes['data'];
           _isVehicleAssigned = isAssigned;
           _vehicleNumber = vehicleNum;
@@ -119,6 +132,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         if (_currentTrip != null && _currentTrip!['tripId'] != null) {
           LocationTrackingService.startTracking(tripId: _currentTrip!['tripId'].toString());
+        } else {
+          LocationTrackingService.stopTracking();
         }
       }
     } catch (e) {

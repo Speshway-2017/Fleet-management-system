@@ -107,22 +107,34 @@ export default function DriverMaintenancePage() {
     }
   };
 
-  const vehObj = assignedVehicleInfo?.vehicle || assignedVehicleInfo;
+  const vehObj = assignedVehicleInfo?.vehicle || (assignedVehicleInfo?.assigned ? assignedVehicleInfo : null);
   const isPermanentVehicleAssigned = Boolean(
-    (assignedVehicleInfo?.assigned && vehObj) ||
-      (vehObj &&
-        (vehObj._id || vehObj.id || vehObj.vehicleNumber) &&
-        vehObj.vehicleNumber !== "Unassigned" &&
-        vehObj.vehicleNumber !== "No Vehicle Assigned")
+    assignedVehicleInfo?.assigned === true &&
+    vehObj &&
+    (vehObj._id || vehObj.id || vehObj.vehicleNumber) &&
+    vehObj.vehicleNumber !== "Unassigned" &&
+    vehObj.vehicleNumber !== "No Vehicle Assigned"
   );
-  const isTripAccepted = Boolean(
+  const activeStatuses = [
+    'pending driver acceptance',
+    'assigned',
+    'scheduled',
+    'in progress',
+    'accepted',
+    'on transit',
+    'enroute',
+    'reach pickup',
+    'pickup completed',
+    'ready to dispatch',
+    'start trip'
+  ];
+  const isTripAvailable = Boolean(
     activeTrip &&
-      (activeTrip.status === "ACCEPTED" ||
-        activeTrip.status === "IN_PROGRESS" ||
-        activeTrip.status === "ON_TRIP" ||
-        activeTrip.acceptStatus === "ACCEPTED")
+      activeStatuses.includes((activeTrip.status || "").toLowerCase().trim())
   );
-  const isMaintenanceEnabled = isPermanentVehicleAssigned || isTripAccepted;
+  const isMaintenanceEnabled = Boolean(
+    isTripAvailable && (activeTrip?.vehicle || isPermanentVehicleAssigned)
+  );
 
   // Listen for real-time manager updates so page updates automatically without manual refresh
   useDriverSocket({
@@ -255,13 +267,13 @@ export default function DriverMaintenancePage() {
       </div>
 
       {/* Unassigned Vehicle Warning Banner */}
-      {!hasVehicle && (
+      {(!hasVehicle || !isMaintenanceEnabled) && (
         <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-3 text-amber-900 font-nunito">
           <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div>
-            <h4 className="font-bold text-sm font-poppins text-amber-900">No Vehicle Assigned</h4>
+            <h4 className="font-bold text-sm font-poppins text-amber-900">No Active Trip or Vehicle Assigned</h4>
             <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
-              You currently have no vehicle assigned to your driver account. Maintenance reporting and new issue tickets are only available when a vehicle is assigned. You can still view your previously reported issue tickets below.
+              You currently have no active trip or vehicle assigned to your driver account. Maintenance reporting and new issue tickets are only available during active trips. You can still inspect your previously reported issue tickets below.
             </p>
           </div>
         </div>

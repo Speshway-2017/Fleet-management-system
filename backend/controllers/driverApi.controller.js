@@ -643,7 +643,10 @@ export const getCurrentTrip = async (req, res, next) => {
       'On Transit',
       'Enroute',
       'Reach Pickup',
-      'Pickup Completed'
+      'Pickup Completed',
+      'Waiting for Manager Approval',
+      'Ready to Dispatch',
+      'Start Trip'
     ];
 
     let currentTrip = await Trip.findOne({
@@ -652,13 +655,7 @@ export const getCurrentTrip = async (req, res, next) => {
     }).populate('vehicle').populate('driver').sort({ createdAt: -1 });
 
     if (!currentTrip) {
-      currentTrip = await Trip.findOne({
-        driver: driverId
-      }).populate('vehicle').populate('driver').sort({ createdAt: -1 });
-    }
-
-    if (!currentTrip) {
-      return sendSuccess(res, 200, null, 'No trip assigned');
+      return sendSuccess(res, 200, null, 'No active trip assigned');
     }
 
     let managerInfo = null;
@@ -1365,6 +1362,13 @@ export const updateTripStatus = async (req, res, next) => {
         }
       } catch (docErr) {
         console.error('[updateTripStatus] Driver/Vehicle update error:', docErr);
+      }
+    } else if (['Completed', 'Cancelled', 'Rejected'].includes(trip.status)) {
+      try {
+        const destLoc = (trip.endLocation || trip.destination || '').trim();
+        await updateDriverAndVehicleOnCompletion(trip.driver, trip.vehicle, destLoc);
+      } catch (relErr) {
+        console.error('[updateTripStatus] Error releasing driver/vehicle on completion/cancellation:', relErr);
       }
     }
 
@@ -2370,19 +2374,50 @@ export const getAssignedVehicle = async (req, res, next) => {
       return sendError(res, 404, 'Driver profile not found');
     }
 
-    let vehicle = await Vehicle.findOne({ assignedDriver: driverId }).populate('assignedManager', 'name email phone');
-    if (!vehicle && driver.assignedVehicle && driver.assignedVehicle !== 'Unassigned' && driver.assignedVehicle !== '') {
-      vehicle = await Vehicle.findOne({ vehicleNumber: driver.assignedVehicle }).populate('assignedManager', 'name email phone');
-    }
-    if (!vehicle) {
-      const activeTrip = await Trip.findOne({ driver: driverId, status: { $nin: ['Completed', 'Cancelled'] } }).populate('vehicle');
-      if (activeTrip && activeTrip.vehicle && typeof activeTrip.vehicle === 'object') {
-        vehicle = activeTrip.vehicle;
-      }
+    const activeStatuses = [
+      'Pending Driver Acceptance', 'PENDING_DRIVER_ACCEPTANCE',
+      'Assigned', 'ASSIGNED',
+      'Scheduled', 'SCHEDULED',
+      'In Progress', 'IN_PROGRESS', 'IN PROGRESS',
+      'Accepted', 'ACCEPTED',
+      'On Transit', 'ON_TRANSIT', 'ON TRANSIT',
+      'Enroute', 'ENROUTE',
+      'Reach Pickup', 'REACH_PICKUP',
+      'Pickup Completed', 'PICKUP_COMPLETED',
+      'Waiting for Manager Approval', 'WAITING_FOR_MANAGER_APPROVAL',
+      'Ready to Dispatch', 'READY_TO_DISPATCH',
+      'Start Trip', 'START_TRIP'
+    ];
+
+    // 1. Check if driver has an active or scheduled trip
+    const activeTrip = await Trip.findOne({
+      driver: driverId,
+      status: { $in: activeStatuses }
+    }).populate('vehicle').populate('assignedManager', 'name email phone').sort({ createdAt: -1 });
+
+    let vehicle = null;
+    if (activeTrip && activeTrip.vehicle && typeof activeTrip.vehicle === 'object') {
+      vehicle = activeTrip.vehicle;
     }
 
+    // Permanent fix: If driver has NO active or scheduled trip, they DO NOT have an active assigned vehicle.
+    // Clean up any stale database assignments so vehicle page and dashboard never show past trip details.
     if (!vehicle) {
-      return sendSuccess(res, 200, { assigned: false, vehicle: null }, 'No vehicle assigned');
+      if (driver.assignedVehicle && driver.assignedVehicle !== 'Unassigned') {
+        await Driver.findByIdAndUpdate(driverId, {
+          assignedVehicle: 'Unassigned',
+          isAssigned: false,
+          activeTripId: null,
+          currentTripId: null,
+          driverStatus: 'AVAILABLE'
+        }).catch(() => {});
+      }
+      await Vehicle.updateMany(
+        { assignedDriver: driverId },
+        { $set: { assignedDriver: null, currentStatus: 'Available', isAssigned: false, activeTripId: null, currentTripId: null } }
+      ).catch(() => {});
+
+      return sendSuccess(res, 200, { assigned: false, vehicle: null, hasActiveTrip: false }, 'No vehicle assigned: No active trip');
     }
 
     const vehObj = vehicle.toObject ? vehicle.toObject() : vehicle;
@@ -2551,15 +2586,29 @@ export const getDriverMaintenance = async (req, res, next) => {
       return sendError(res, 404, 'Driver profile not found');
     }
 
-    let vehicle = await Vehicle.findOne({ assignedDriver: driverId });
-    if (!vehicle && driver.assignedVehicle && driver.assignedVehicle !== 'Unassigned' && driver.assignedVehicle !== '') {
-      vehicle = await Vehicle.findOne({ vehicleNumber: driver.assignedVehicle });
-    }
-    if (!vehicle) {
-      const activeTrip = await Trip.findOne({ driver: driverId, status: { $nin: ['Completed', 'Cancelled'] } }).populate('vehicle');
-      if (activeTrip && activeTrip.vehicle && typeof activeTrip.vehicle === 'object') {
-        vehicle = activeTrip.vehicle;
-      }
+    const activeStatuses = [
+      'Pending Driver Acceptance', 'PENDING_DRIVER_ACCEPTANCE',
+      'Assigned', 'ASSIGNED',
+      'Scheduled', 'SCHEDULED',
+      'In Progress', 'IN_PROGRESS', 'IN PROGRESS',
+      'Accepted', 'ACCEPTED',
+      'On Transit', 'ON_TRANSIT', 'ON TRANSIT',
+      'Enroute', 'ENROUTE',
+      'Reach Pickup', 'REACH_PICKUP',
+      'Pickup Completed', 'PICKUP_COMPLETED',
+      'Waiting for Manager Approval', 'WAITING_FOR_MANAGER_APPROVAL',
+      'Ready to Dispatch', 'READY_TO_DISPATCH',
+      'Start Trip', 'START_TRIP'
+    ];
+
+    const activeTrip = await Trip.findOne({
+      driver: driverId,
+      status: { $in: activeStatuses }
+    }).populate('vehicle').sort({ createdAt: -1 });
+
+    let vehicle = null;
+    if (activeTrip && activeTrip.vehicle && typeof activeTrip.vehicle === 'object') {
+      vehicle = activeTrip.vehicle;
     }
 
     if (!vehicle) {
@@ -2571,7 +2620,7 @@ export const getDriverMaintenance = async (req, res, next) => {
         upcomingCount: 0,
         overdueCount: 0,
         lastCompleted: null
-      }, 'No vehicle assigned');
+      }, 'No vehicle assigned: No active trip');
     }
 
     const vehNum = vehicle.vehicleNumber || '';
@@ -2705,13 +2754,7 @@ export const createDriverFuelEntry = async (req, res, next) => {
       return sendError(res, 404, 'Driver profile not found');
     }
 
-    // 1. Resolve driver's assigned or associated vehicle
-    let vehicle = await Vehicle.findOne({ assignedDriver: driverId });
-    if (!vehicle && driver.assignedVehicle && driver.assignedVehicle !== 'Unassigned' && driver.assignedVehicle !== '' && driver.assignedVehicle !== 'No Vehicle Assigned') {
-      vehicle = await Vehicle.findOne({ vehicleNumber: driver.assignedVehicle });
-    }
-
-    // 2. Check if driver has an active, scheduled, or assigned trip (including pre-trip states)
+    // 1. Check if driver has an active, scheduled, or assigned trip (including pre-trip states)
     const tripLookupStatuses = [
       'Pending Driver Acceptance',
       'Scheduled',
@@ -2734,7 +2777,8 @@ export const createDriverFuelEntry = async (req, res, next) => {
     if (tripId) {
       activeTrip = await Trip.findOne({
         _id: tripId,
-        driver: driverId
+        driver: driverId,
+        status: { $nin: ['Completed', 'Cancelled', 'Rejected'] }
       }).populate('vehicle');
     }
 
@@ -2745,21 +2789,14 @@ export const createDriverFuelEntry = async (req, res, next) => {
       }).populate('vehicle').sort({ createdAt: -1 });
     }
 
-    // If vehicle not directly assigned to driver profile, fallback to the vehicle on their trip
-    if (!vehicle && activeTrip && activeTrip.vehicle) {
+    // Resolve vehicle strictly from active trip
+    let vehicle = null;
+    if (activeTrip && activeTrip.vehicle) {
       vehicle = typeof activeTrip.vehicle === 'object' ? activeTrip.vehicle : await Vehicle.findById(activeTrip.vehicle);
     }
 
-    // Fallback: check any trip associated with the driver
     if (!vehicle) {
-      const anyDriverTrip = await Trip.findOne({ driver: driverId, vehicle: { $exists: true, $ne: null } }).populate('vehicle').sort({ createdAt: -1 });
-      if (anyDriverTrip && anyDriverTrip.vehicle) {
-        vehicle = typeof anyDriverTrip.vehicle === 'object' ? anyDriverTrip.vehicle : await Vehicle.findById(anyDriverTrip.vehicle);
-      }
-    }
-
-    if (!vehicle) {
-      return sendError(res, 400, 'Fuel logging requires an assigned vehicle or trip. No vehicle is currently assigned to you.');
+      return sendError(res, 400, 'Fuel logging is locked. An active trip with an assigned vehicle is required to log fuel refills.');
     }
 
     const resolvedTripId = tripId || (activeTrip ? activeTrip._id.toString() : '');
@@ -2878,48 +2915,26 @@ export const createDriverTicket = async (req, res, next) => {
       return sendError(res, 404, 'Driver not found');
     }
 
-    // Find Active Trip or Latest Trip Safely
+    // Find Active Trip Safely
     let trip = null;
     if (tripId && mongoose.Types.ObjectId.isValid(tripId)) {
-      trip = await Trip.findById(tripId);
+      trip = await Trip.findOne({ _id: tripId, status: { $nin: ['Completed', 'Cancelled', 'Rejected'] } });
     }
     if (!trip) {
-      trip = await Trip.findOne({ driver: driverId, status: { $in: ['In Transit', 'Dispatched', 'Assigned', 'Loading', 'On Trip'] } }).sort({ createdAt: -1 });
-    }
-    if (!trip) {
-      trip = await Trip.findOne({ driver: driverId }).sort({ createdAt: -1 });
+      trip = await Trip.findOne({
+        driver: driverId,
+        status: { $in: ['In Transit', 'Dispatched', 'Assigned', 'Loading', 'On Trip', 'In Progress', 'Scheduled', 'Accepted', 'Ready to Dispatch', 'Start Trip', 'Pending Driver Acceptance', 'Waiting for Manager Approval'] }
+      }).sort({ createdAt: -1 });
     }
 
-    // Safely Find Vehicle by ObjectId or Registration / Plate String
+    // Resolve vehicle strictly from active trip
     let vehicle = null;
-    const candidates = [vehicleId, trip?.vehicle, driver.assignedVehicle].filter(Boolean);
-
-    for (const cand of candidates) {
-      if (typeof cand === 'object' && cand._id) {
-        vehicle = cand;
-        break;
-      }
-      if (mongoose.Types.ObjectId.isValid(cand)) {
-        vehicle = await Vehicle.findById(cand);
-        if (vehicle) break;
-      }
-      if (typeof cand === 'string' && cand.trim()) {
-        vehicle = await Vehicle.findOne({
-          $or: [
-            { registrationNumber: cand.trim() },
-            { plateNumber: cand.trim() },
-            { vehicleNumber: cand.trim() }
-          ]
-        });
-        if (vehicle) break;
-      }
+    if (trip && trip.vehicle) {
+      vehicle = typeof trip.vehicle === 'object' ? trip.vehicle : await Vehicle.findById(trip.vehicle);
     }
+
     if (!vehicle) {
-      vehicle = await Vehicle.findOne({ assignedDriver: driverId });
-    }
-
-    if (!vehicle && (!driver.assignedVehicle || driver.assignedVehicle === 'Unassigned' || driver.assignedVehicle === 'No Vehicle Assigned' || !driver.assignedVehicle.trim())) {
-      return sendError(res, 400, 'No vehicle is currently assigned to you. Maintenance tickets can only be reported when a vehicle is assigned.');
+      return sendError(res, 400, 'Vehicle issue reporting is locked. An active trip with an assigned vehicle is required to report vehicle maintenance tickets.');
     }
 
     // Determine Vehicle Plate string safely
