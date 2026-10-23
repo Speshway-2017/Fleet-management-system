@@ -8,6 +8,7 @@ import '../constants/app_radius.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
 import '../widgets/upload_required_documents_dialog.dart';
+import '../widgets/document_preview_dialog.dart';
 import '../services/api_service.dart';
 import '../services/socket_service.dart';
 import '../utils/date_formatter.dart';
@@ -160,7 +161,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
 
 
-  Widget _buildDocumentStatusRow(String label, String rawStatusStr) {
+  Widget _buildDocumentStatusRow(String label, String rawStatusStr, {VoidCallback? onView}) {
     final statusTrim = rawStatusStr.trim();
     final statusLower = statusTrim.toLowerCase();
 
@@ -211,27 +212,66 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               ),
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: badgeBg,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(statusIcon, size: 14, color: badgeText),
-                const SizedBox(width: 5),
-                Text(
-                  displayStatus,
-                  style: GoogleFonts.poppins(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: badgeText,
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (onView != null) ...[
+                InkWell(
+                  onTap: onView,
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.secondary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.visibility_outlined,
+                          color: AppColors.secondary,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'View',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.secondary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
+                const SizedBox(width: 8),
               ],
-            ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(statusIcon, size: 14, color: badgeText),
+                    const SizedBox(width: 5),
+                    Text(
+                      displayStatus,
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: badgeText,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1100,13 +1140,35 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                           const Divider(height: 24, color: AppColors.divider),
                           Builder(
                             builder: (context) {
-                              final podStatusStr = (_trip?['podStatus'] ?? _trip?['proofOfDelivery']?['status'] ?? 'Not Uploaded').toString();
-                              final wbStatusStr = (_trip?['weighbridgeStatus'] ?? _trip?['weighbridgeSlip']?['status'] ?? 'Not Uploaded').toString();
+                              final podObj = _trip?['proofOfDelivery'] is Map ? _trip!['proofOfDelivery'] as Map : {};
+                              final podDetails = _trip?['podDetails'] is Map ? _trip!['podDetails'] as Map : {};
+                              final podStatusStr = (_trip?['podStatus'] ?? podObj['status'] ?? podDetails['status'] ?? 'Not Uploaded').toString();
+                              final podUrl = (_trip?['podUrl'] ?? podObj['url'] ?? podObj['deliveryPhotoUrl'] ?? podDetails['podDocumentUrl'] ?? '').toString().trim();
+
+                              final wbObj = _trip?['weighbridgeSlip'] is Map ? _trip!['weighbridgeSlip'] as Map : {};
+                              final wbDetails = _trip?['weighbridgeDetails'] is Map ? _trip!['weighbridgeDetails'] as Map : {};
+                              final wbStatusStr = (_trip?['weighbridgeStatus'] ?? wbObj['status'] ?? wbDetails['status'] ?? 'Not Uploaded').toString();
+                              final wbUrl = (_trip?['weighbridgeUrl'] ?? wbObj['documentUrl'] ?? wbObj['url'] ?? wbDetails['documentUrl'] ?? '').toString().trim();
+
+                              final isPodUploaded = podStatusStr.toLowerCase() == 'uploaded' || podStatusStr.toLowerCase() == 'approved';
+                              final isWbUploaded = wbStatusStr.toLowerCase() == 'uploaded' || wbStatusStr.toLowerCase() == 'approved';
 
                               return Column(
                                 children: [
-                                  _buildDocumentStatusRow('Proof of Delivery (POD)', podStatusStr),
-                                  _buildDocumentStatusRow('Weighbridge Slip', wbStatusStr),
+                                  _buildDocumentStatusRow(
+                                    'Proof of Delivery (POD)',
+                                    podStatusStr,
+                                    onView: (isPodUploaded && podUrl.isNotEmpty && !podUrl.contains('via.placeholder'))
+                                        ? () => DocumentPreviewDialog.open(context, title: 'Proof of Delivery (POD)', documentUrl: podUrl)
+                                        : null,
+                                  ),
+                                  _buildDocumentStatusRow(
+                                    'Weighbridge Slip',
+                                    wbStatusStr,
+                                    onView: (isWbUploaded && wbUrl.isNotEmpty && !wbUrl.contains('via.placeholder'))
+                                        ? () => DocumentPreviewDialog.open(context, title: 'Weighbridge Slip', documentUrl: wbUrl)
+                                        : null,
+                                  ),
                                 ],
                               );
                             },
