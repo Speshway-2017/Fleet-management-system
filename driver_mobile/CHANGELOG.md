@@ -2,6 +2,14 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [2.01.00] - 2026-10-26
+
+### Repository Clean-up: Removed Outdated Nested Development Folder
+- **Repository Optimization (`Fleet-management-system-development/`)**:
+  - Removed redundant legacy subfolder `Fleet-management-system-development/` that was inadvertently tracked in the repository.
+  - Eliminated over 148,000 duplicate lines of code across duplicate backend, frontend, and mobile subdirectories.
+  - Unified project development exclusively within the root modules (`backend/`, `frontend/`, `driver_mobile/`).
+
 ## [2.00.00] - 2026-10-08
 
 ### Manager Reports Center UI Clean-up

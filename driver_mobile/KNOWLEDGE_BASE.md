@@ -6,7 +6,7 @@ This document serves as the central architectural reference and development guid
 
 ## 1. Project Architecture
 
-The application is structured following clean coding principles and modularity. It maintains a separation between visual/UI components, local assets, application configurations, and centralized themes.
+The application is structured following clean coding principles and modularity across the monorepo root (`backend/`, `frontend/`, `driver_mobile/`). Redundant nested clones have been purged to ensure a single, consistent source of truth. It maintains a separation between visual/UI components, local assets, application configurations, and centralized themes.
 
 ### Folder Structure
 
