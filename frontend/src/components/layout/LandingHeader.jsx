@@ -20,7 +20,7 @@ export default function LandingHeader() {
       <div className="flex items-center gap-3">
         <NavLink to="/" className="flex items-center gap-3">
           <img src={platformSettings?.logoUrl || "/logo.png"} alt="Fleet Management Logo" className="h-10 w-auto object-contain" />
-          <span className="font-display font-black text-[#0B1B3D] text-lg tracking-wide">
+          <span className="font-display font-black text-[#0B1B3D] text-xl sm:text-2xl tracking-wide">
             {platformSettings?.platformName && !platformSettings.platformName.includes("jjj") && !platformSettings.platformName.includes("ujjj")
               ? platformSettings.platformName
               : "Fleet Management"}
