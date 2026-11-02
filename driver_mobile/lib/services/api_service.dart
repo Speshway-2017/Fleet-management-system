@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -9,6 +10,18 @@ import 'secure_storage_helper.dart';
 class ApiService {
   static Function()? onUnauthorized;
   static Map<String, dynamic> mockResponses = {};
+
+  static bool isTest = false;
+
+  static bool get _isTest {
+    if (isTest) return true;
+    try {
+      if (WidgetsBinding.instance.runtimeType.toString().contains('Test')) {
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
 
   static void initialize() {
     // Initialization setup if required
@@ -117,6 +130,11 @@ class ApiService {
       return _cachedBaseUrl!;
     }
 
+    if (_isTest) {
+      _cachedBaseUrl = defaultUrl;
+      return _cachedBaseUrl!;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final savedUrl = prefs.getString('server_url')?.trim();
 
@@ -200,6 +218,9 @@ class ApiService {
   /// Probes candidate URLs and returns the first reachable URL while persisting it in SharedPreferences.
   /// Prioritizes production URL in release mode, and local URLs in debug mode.
   static Future<String?> autoDiscoverWorkingBaseUrl() async {
+    if (_isTest) {
+      return defaultUrl;
+    }
     final prefs = await SharedPreferences.getInstance();
     final savedUrl = prefs.getString('server_url')?.trim();
 
@@ -265,6 +286,9 @@ class ApiService {
     if (mockResponses.containsKey(endpoint)) {
       return mockResponses[endpoint];
     }
+    if (_isTest) {
+      return {'success': false, 'message': 'Mock not found for $endpoint'};
+    }
     var baseUrl = await getBaseUrl();
     final headers = await _getHeaders();
     var finalApiUrl = '$baseUrl$endpoint';
@@ -315,6 +339,9 @@ class ApiService {
   ) async {
     if (mockResponses.containsKey(endpoint)) {
       return mockResponses[endpoint];
+    }
+    if (_isTest) {
+      return {'success': false, 'message': 'Mock not found for $endpoint'};
     }
     var baseUrl = await getBaseUrl();
     final headers = await _getHeaders();
@@ -375,6 +402,9 @@ class ApiService {
     if (mockResponses.containsKey(endpoint)) {
       return mockResponses[endpoint];
     }
+    if (_isTest) {
+      return {'success': false, 'message': 'Mock not found for $endpoint'};
+    }
     var baseUrl = await getBaseUrl();
     final headers = await _getHeaders();
     try {
@@ -429,6 +459,9 @@ class ApiService {
     if (mockResponses.containsKey(endpoint)) {
       return mockResponses[endpoint];
     }
+    if (_isTest) {
+      return {'success': false, 'message': 'Mock not found for $endpoint'};
+    }
     var baseUrl = await getBaseUrl();
     final headers = await _getHeaders();
     try {
@@ -482,6 +515,9 @@ class ApiService {
   static Future<dynamic> delete(String endpoint) async {
     if (mockResponses.containsKey(endpoint)) {
       return mockResponses[endpoint];
+    }
+    if (_isTest) {
+      return {'success': false, 'message': 'Mock not found for $endpoint'};
     }
     var baseUrl = await getBaseUrl();
     final headers = await _getHeaders();

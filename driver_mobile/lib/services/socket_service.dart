@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
@@ -9,7 +10,15 @@ class SocketService {
   static bool _isConnected = false;
   static final Map<String, List<Function(dynamic)>> _listeners = {};
 
+  static bool isTest = false;
+
   static bool get _isTest {
+    if (isTest) return true;
+    try {
+      if (WidgetsBinding.instance.runtimeType.toString().contains('Test')) {
+        return true;
+      }
+    } catch (_) {}
     if (kIsWeb) return false;
     try {
       return Platform.environment.containsKey('FLUTTER_TEST');

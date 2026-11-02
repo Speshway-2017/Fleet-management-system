@@ -37,6 +37,11 @@ class _SplashScreenState extends State<SplashScreen>
 
   bool get _isTestEnv {
     try {
+      if (WidgetsBinding.instance.runtimeType.toString().contains('Test')) {
+        return true;
+      }
+    } catch (_) {}
+    try {
       return Platform.environment.containsKey('FLUTTER_TEST');
     } catch (_) {
       return false;

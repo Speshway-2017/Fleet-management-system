@@ -8,14 +8,25 @@ import 'package:driver_mobile/services/api_service.dart';
 
 import 'package:driver_mobile/screens/splash/splash_screen.dart';
 import 'package:driver_mobile/screens/onboarding/onboarding_screen.dart';
+import 'package:driver_mobile/screens/auth/login_identifier_screen.dart';
 import 'package:driver_mobile/screens/auth/login_screen.dart';
 import 'package:driver_mobile/providers/auth_provider.dart';
 import 'package:driver_mobile/providers/notification_provider.dart';
 import 'package:provider/provider.dart';
 
+import 'package:driver_mobile/services/location_service.dart';
+import 'package:driver_mobile/services/socket_service.dart';
+import 'package:driver_mobile/services/fcm_service.dart';
+import 'package:driver_mobile/screens/profile/profile_screen.dart';
+
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({'has_seen_onboarding': true});
+
+    ProfileState.profilePhotoUrlNotifier.value = '';
+    LocationTrackingService.isTest = true;
+    SocketService.isTest = true;
+    FcmService.isTest = true;
 
     // Set standard mobile screen size for testing
     final binding = TestWidgetsFlutterBinding.ensureInitialized();
@@ -154,9 +165,16 @@ void main() {
     await tester.idle();
     await tester.pumpAndSettle();
 
-    // Skip onboarding to reach Login Screen
+    // Skip onboarding to reach Login Screen via Login Identifier Screen
     if (find.text('Skip').evaluate().isNotEmpty) {
       await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+    }
+
+    if (find.text('Next').evaluate().isNotEmpty) {
+      expect(find.text('Login'), findsOneWidget);
+      await tester.enterText(find.byType(TextFormField), 'test@fleetpro.com');
+      await tester.tap(find.text('Next'));
       await tester.pumpAndSettle();
     }
 
@@ -212,9 +230,15 @@ void main() {
     await tester.idle();
     await tester.pumpAndSettle();
 
-    // Skip onboarding to reach Login Screen
+    // Skip onboarding to reach Login Screen via Login Identifier Screen
     if (find.text('Skip').evaluate().isNotEmpty) {
       await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+    }
+
+    if (find.text('Next').evaluate().isNotEmpty) {
+      await tester.enterText(find.byType(TextFormField), 'test@fleetpro.com');
+      await tester.tap(find.text('Next'));
       await tester.pumpAndSettle();
     }
 
@@ -348,9 +372,18 @@ void main() {
     await tester.idle();
     await tester.pumpAndSettle();
 
-    // Skip onboarding to reach Login Screen
+    // Skip onboarding to reach Login Screen via Login Identifier Screen
     if (find.text('Skip').evaluate().isNotEmpty) {
       await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+    }
+
+    if (find.text('Next').evaluate().isNotEmpty) {
+      await tester.enterText(
+        find.byType(TextFormField),
+        'manager@fleetpro.com',
+      );
+      await tester.tap(find.text('Next'));
       await tester.pumpAndSettle();
     }
 
@@ -421,9 +454,18 @@ void main() {
     await tester.idle();
     await tester.pumpAndSettle();
 
-    // Skip onboarding to reach Login Screen
+    // Skip onboarding to reach Login Screen via Login Identifier Screen
     if (find.text('Skip').evaluate().isNotEmpty) {
       await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+    }
+
+    if (find.text('Next').evaluate().isNotEmpty) {
+      await tester.enterText(
+        find.byType(TextFormField),
+        'manager@fleetpro.com',
+      );
+      await tester.tap(find.text('Next'));
       await tester.pumpAndSettle();
     }
 
@@ -559,11 +601,11 @@ void main() {
     await tester.idle();
     await tester.pumpAndSettle();
 
-    // Verify Onboarding Screen is loaded with slide 1 content
+    // Verify Onboarding Screen is loaded with slide 1 content and Next button
     expect(find.text('Welcome to\nFleet Management'), findsOneWidget);
     expect(find.text('SMART LOGISTICS'), findsOneWidget);
     expect(find.text('Skip'), findsOneWidget);
-    expect(find.text('Next'), findsNothing);
+    expect(find.text('Next'), findsOneWidget);
   });
 
   testWidgets('Onboarding Screen slide progression and Get Started completion', (
@@ -586,25 +628,20 @@ void main() {
 
     // Slide 1: Welcome
     expect(find.text('Welcome to\nFleet Management'), findsOneWidget);
-    expect(find.text('Next'), findsNothing);
+    expect(find.text('Next'), findsOneWidget);
 
-    // Advance to Slide 2: Manage Trips via swipe
-    await tester.drag(find.byType(PageView), const Offset(-800, 0));
+    // Advance to Slide 2: Manage Trips via Next button
+    await tester.tap(find.text('Next'));
     await tester.pumpAndSettle();
     expect(find.text('Manage Your\nAssigned Trips'), findsOneWidget);
     expect(find.text('DISPATCH SCHEDULES'), findsOneWidget);
+    expect(find.text('Next'), findsOneWidget);
 
-    // Advance to Slide 3: Track Journey via swipe
-    await tester.drag(find.byType(PageView), const Offset(-800, 0));
+    // Advance to Slide 3 (Final Slide): Track Journey via Next button
+    await tester.tap(find.text('Next'));
     await tester.pumpAndSettle();
     expect(find.text('Track Your Journey\nin Real-Time'), findsOneWidget);
     expect(find.text('LIVE GPS TELEMETRY'), findsOneWidget);
-
-    // Advance to Slide 4: Stay Updated via swipe
-    await tester.drag(find.byType(PageView), const Offset(-800, 0));
-    await tester.pumpAndSettle();
-    expect(find.text('Stay Updated &\nConnected'), findsOneWidget);
-    expect(find.text('INSTANT DISPATCH ALERTS'), findsOneWidget);
     expect(find.text('Get Started'), findsOneWidget);
     // Skip button should be hidden on final slide
     expect(find.text('Skip'), findsNothing);
@@ -613,13 +650,22 @@ void main() {
     await tester.tap(find.text('Get Started'));
     await tester.pumpAndSettle();
 
-    // Verify completion saved in SharedPreferences and navigated to Login
+    // Verify completion saved in SharedPreferences and navigated to LoginIdentifierScreen
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getBool('has_seen_onboarding'), true);
     expect(find.text('Login'), findsOneWidget);
+    expect(find.text('Next'), findsOneWidget);
+
+    // Enter email and tap Next to navigate to LoginScreen prefilled
+    await tester.enterText(find.byType(TextFormField), 'driver@fleetpro.com');
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Login'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'driver@fleetpro.com'), findsOneWidget);
   });
 
-  testWidgets('Onboarding Screen Skip button completes onboarding and navigates to Login', (
+  testWidgets('Onboarding Screen Skip button completes onboarding and navigates to LoginIdentifierScreen', (
     WidgetTester tester,
   ) async {
     SharedPreferences.setMockInitialValues({'has_seen_onboarding': false});
@@ -642,10 +688,19 @@ void main() {
     await tester.tap(find.text('Skip'));
     await tester.pumpAndSettle();
 
-    // Verify preference is saved and Login Screen is displayed
+    // Verify preference is saved and LoginIdentifierScreen is displayed
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getBool('has_seen_onboarding'), true);
     expect(find.text('Login'), findsOneWidget);
+    expect(find.text('Next'), findsOneWidget);
+
+    // Enter mobile number and tap Next to navigate to LoginScreen prefilled
+    await tester.enterText(find.byType(TextFormField), '9876543210');
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Login'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, '9876543210'), findsOneWidget);
   });
 
   group('ApiService Production & URL Configuration Tests', () {
@@ -677,6 +732,154 @@ void main() {
       expect(ApiService.getHostFromUrl('https://fleet.speshway.site/api'), 'https://fleet.speshway.site');
       expect(ApiService.getHostFromUrl('http://10.0.2.2:5000/api'), 'http://10.0.2.2:5000');
       expect(ApiService.getHostFromUrl('http://localhost:5000/api'), 'http://localhost:5000');
+    });
+  });
+
+  group('LoginIdentifierScreen UI & Navigation Tests', () {
+    testWidgets('Displays tagline, Login heading, single input and no skip or password', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: LoginIdentifierScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify Tagline and Login heading
+      expect(find.text('Drive Smarter, Manage Easier'), findsOneWidget);
+      expect(find.text('Login'), findsOneWidget);
+
+      // Verify Skip button is hidden
+      expect(find.text('Skip'), findsNothing);
+
+      // Verify label above field is hidden
+      expect(find.text('Email or mobile number'), findsNothing);
+
+      // Verify only ONE input field is present
+      expect(find.byType(TextFormField), findsOneWidget);
+
+      // Verify no password field or obscure text field is rendered
+      expect(find.text('Password'), findsNothing);
+      expect(find.byIcon(Icons.visibility_rounded), findsNothing);
+      expect(find.byIcon(Icons.visibility_off_rounded), findsNothing);
+
+      // Verify Next button
+      expect(find.text('Next'), findsOneWidget);
+
+      // Verify terms section and feature icons are removed
+      expect(find.text('Terms & Conditions'), findsNothing);
+      expect(find.text('Live GPS\nTracking'), findsNothing);
+    });
+
+    testWidgets('Validates empty and invalid inputs with error displayed outside field', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: LoginIdentifierScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap Next with empty input
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+      expect(find.text('Please enter email or phone number'), findsOneWidget);
+      expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+
+      // Enter invalid email
+      await tester.enterText(find.byType(TextFormField), 'bad@domain');
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+      expect(find.text('Please enter a valid email address'), findsOneWidget);
+      expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+
+      // Enter invalid phone number (too short)
+      await tester.enterText(find.byType(TextFormField), '1234');
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+      expect(find.text('Please enter a valid email or phone number'), findsOneWidget);
+      expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+    });
+
+    testWidgets('Valid email input navigates to LoginScreen and pre-fills email field', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => AuthProvider()),
+            ChangeNotifierProvider(create: (_) => NotificationProvider()),
+          ],
+          child: const MaterialApp(
+            home: LoginIdentifierScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField), 'pilot@fleetflow.com');
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+
+      // Verify LoginScreen is displayed
+      expect(find.text('Login'), findsOneWidget);
+      // Verify email field is pre-filled with the identifier
+      expect(find.widgetWithText(TextFormField, 'pilot@fleetflow.com'), findsOneWidget);
+      // Password field should now be present on LoginScreen
+      expect(find.text('Password'), findsOneWidget);
+    });
+
+    testWidgets('Valid phone number input navigates to LoginScreen and pre-fills phone field', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => AuthProvider()),
+            ChangeNotifierProvider(create: (_) => NotificationProvider()),
+          ],
+          child: const MaterialApp(
+            home: LoginIdentifierScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField), '+91 9876543210');
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+
+      // Verify LoginScreen is displayed
+      expect(find.text('Login'), findsOneWidget);
+      // Verify email/phone field is pre-filled
+      expect(find.widgetWithText(TextFormField, '+91 9876543210'), findsOneWidget);
+    });
+
+    testWidgets('Error message is placed outside field and clears upon input changes', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: LoginIdentifierScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap Next with empty input to trigger error outside field
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Please enter email or phone number'), findsOneWidget);
+      expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+
+      // Typing a character clears the error message
+      await tester.enterText(find.byType(TextFormField), 'a');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Please enter email or phone number'), findsNothing);
+      expect(find.byIcon(Icons.error_outline_rounded), findsNothing);
     });
   });
 }

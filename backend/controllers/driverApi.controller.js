@@ -633,24 +633,42 @@ export const updateDriverProfile = async (req, res, next) => {
 export const getCurrentTrip = async (req, res, next) => {
   try {
     const driverId = req.user._id;
+    const driverDoc = await resolveCurrentDriver(req);
+
+    const driverFilter = driverDoc
+      ? {
+          $or: [
+            { driver: driverDoc._id },
+            { driver: driverId },
+            ...(driverDoc.phoneNumber ? [{ driverPhone: driverDoc.phoneNumber }] : []),
+            ...(driverDoc.email ? [{ driverEmail: driverDoc.email }] : [])
+          ]
+        }
+      : { driver: driverId };
 
     const activeStatuses = [
-      'Pending Driver Acceptance',
-      'Assigned',
-      'Scheduled',
-      'In Progress',
-      'Accepted',
-      'On Transit',
-      'Enroute',
-      'Reach Pickup',
-      'Pickup Completed',
-      'Waiting for Manager Approval',
-      'Ready to Dispatch',
-      'Start Trip'
+      'Pending Driver Acceptance', 'PENDING_DRIVER_ACCEPTANCE', 'PENDING DRIVER ACCEPTANCE',
+      'Assigned', 'ASSIGNED',
+      'Scheduled', 'SCHEDULED',
+      'In Progress', 'IN_PROGRESS', 'IN PROGRESS',
+      'Accepted', 'ACCEPTED',
+      'On Transit', 'ON_TRANSIT', 'ON TRANSIT',
+      'Enroute', 'ENROUTE',
+      'En Route', 'EN_ROUTE', 'EN ROUTE',
+      'At Loading', 'AT_LOADING',
+      'Loading', 'LOADING',
+      'In Transit', 'IN_TRANSIT', 'IN TRANSIT',
+      'Dispatched', 'DISPATCHED',
+      'Delivered', 'DELIVERED',
+      'Reach Pickup', 'REACH_PICKUP',
+      'Pickup Completed', 'PICKUP_COMPLETED',
+      'Waiting for Manager Approval', 'WAITING_FOR_MANAGER_APPROVAL',
+      'Ready to Dispatch', 'READY_TO_DISPATCH', 'READY TO DISPATCH',
+      'Start Trip', 'START_TRIP', 'START TRIP'
     ];
 
     let currentTrip = await Trip.findOne({
-      driver: driverId,
+      ...driverFilter,
       status: { $in: activeStatuses }
     }).populate('vehicle').populate('driver').sort({ createdAt: -1 });
 
@@ -865,14 +883,19 @@ export const getDriverDashboard = async (req, res, next) => {
 export const getDriverNotifications = async (req, res, next) => {
   try {
     const driverId = req.user._id;
+    const driverDoc = await resolveCurrentDriver(req);
+
+    const recipientOrList = [
+      { recipient: driverId },
+      { user: driverId },
+      ...(driverDoc ? [{ recipient: driverDoc._id }, { user: driverDoc._id }] : []),
+      { recipientRole: 'DRIVER', recipient: { $exists: false } },
+      { recipientRole: 'DRIVER', recipient: null }
+    ];
+
     const notifications = await Notification.find({
-      $or: [
-        { recipient: driverId },
-        { user: driverId },
-        { recipientRole: 'DRIVER', recipient: { $exists: false } },
-        { recipientRole: 'DRIVER', recipient: null }
-      ]
-    }).sort({ createdAt: -1 }).limit(20);
+      $or: recipientOrList
+    }).sort({ createdAt: -1 }).limit(30);
 
     return sendSuccess(res, 200, notifications, 'Notifications retrieved');
   } catch (error) {
@@ -888,15 +911,20 @@ export const markDriverNotificationRead = async (req, res, next) => {
   try {
     const { id } = req.params;
     const driverId = req.user._id;
+    const driverDoc = await resolveCurrentDriver(req);
+
+    const recipientOrList = [
+      { recipient: driverId },
+      { user: driverId },
+      ...(driverDoc ? [{ recipient: driverDoc._id }, { user: driverDoc._id }] : []),
+      { recipientRole: 'DRIVER', recipient: { $exists: false } },
+      { recipientRole: 'DRIVER', recipient: null }
+    ];
+
     const notification = await Notification.findOneAndUpdate(
       {
         _id: id,
-        $or: [
-          { recipient: driverId },
-          { user: driverId },
-          { recipientRole: 'DRIVER', recipient: { $exists: false } },
-          { recipientRole: 'DRIVER', recipient: null }
-        ]
+        $or: recipientOrList
       },
       { isRead: true },
       { new: true }
@@ -947,9 +975,13 @@ export const markAllDriverNotificationsRead = async (req, res, next) => {
 export const acceptTrip = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const trip = await Trip.findById(id).populate('vehicle').populate('driver');
+    let trip = await resolveTripHelper(id);
     if (!trip) {
       return sendError(res, 404, 'Trip not found');
+    }
+    if (trip.populate) {
+      await trip.populate('vehicle');
+      await trip.populate('driver');
     }
 
     trip.status = 'Scheduled';
@@ -957,12 +989,24 @@ export const acceptTrip = async (req, res, next) => {
     trip.isActive = true;
     await trip.save();
 
-    const driverDoc = await Driver.findByIdAndUpdate(req.user._id, {
+    const currentDriverDoc = await resolveCurrentDriver(req);
+    const targetDriverId = currentDriverDoc ? currentDriverDoc._id : req.user._id;
+
+    const driverDoc = await Driver.findByIdAndUpdate(targetDriverId, {
       driverStatus: 'ASSIGNED',
       isAssigned: true,
       activeTripId: trip._id,
       currentTripId: trip._id
     }, { new: true });
+
+    if (String(req.user._id) !== String(targetDriverId)) {
+      await Driver.findByIdAndUpdate(req.user._id, {
+        driverStatus: 'ASSIGNED',
+        isAssigned: true,
+        activeTripId: trip._id,
+        currentTripId: trip._id
+      }).catch(() => {});
+    }
 
     if (trip.vehicle) {
       await Vehicle.findByIdAndUpdate(trip.vehicle._id || trip.vehicle, {
@@ -993,22 +1037,36 @@ export const acceptTrip = async (req, res, next) => {
           tripId: trip._id,
           tripNumber: trip.tripNumber,
           status: 'Scheduled',
-          driverId: req.user._id
+          driverId: targetDriverId
         });
         io.to(`manager:${managerId}`).emit('trip:status-updated', {
           tripId: trip._id,
           tripNumber: trip.tripNumber,
           status: 'Scheduled',
-          driverId: req.user._id
+          driverId: targetDriverId
         });
       }
     }
 
     if (io) {
-      io.to(`driver:${req.user._id}`).emit('trip:accepted', {
+      io.to(`driver:${targetDriverId}`).emit('trip:accepted', {
         tripId: trip._id,
         status: 'Scheduled'
       });
+      io.to(`driver:${targetDriverId}`).emit('trip:status-updated', {
+        tripId: trip._id,
+        status: 'Scheduled'
+      });
+      if (String(req.user._id) !== String(targetDriverId)) {
+        io.to(`driver:${req.user._id}`).emit('trip:accepted', {
+          tripId: trip._id,
+          status: 'Scheduled'
+        });
+        io.to(`driver:${req.user._id}`).emit('trip:status-updated', {
+          tripId: trip._id,
+          status: 'Scheduled'
+        });
+      }
     }
 
     return sendSuccess(res, 200, trip, 'Trip accepted successfully. Status updated to Scheduled.');
@@ -1027,9 +1085,13 @@ export const rejectTrip = async (req, res, next) => {
     const { reason, rejectionReason } = req.body;
     const cleanReason = reason || rejectionReason || '';
 
-    const trip = await Trip.findById(id).populate('vehicle').populate('driver');
+    let trip = await resolveTripHelper(id);
     if (!trip) {
       return sendError(res, 404, 'Trip not found');
+    }
+    if (trip.populate) {
+      await trip.populate('vehicle');
+      await trip.populate('driver');
     }
 
     trip.status = 'Rejected';
@@ -2261,9 +2323,21 @@ export const uploadWeighbridgeSlip = async (req, res, next) => {
 export const getDriverTrips = async (req, res, next) => {
   try {
     const driverId = req.user._id;
-    const { status } = req.query;
+    const driverDoc = await resolveCurrentDriver(req);
 
-    const query = { driver: driverId };
+    const driverFilter = driverDoc
+      ? {
+          $or: [
+            { driver: driverDoc._id },
+            { driver: driverId },
+            ...(driverDoc.phoneNumber ? [{ driverPhone: driverDoc.phoneNumber }] : []),
+            ...(driverDoc.email ? [{ driverEmail: driverDoc.email }] : [])
+          ]
+        }
+      : { driver: driverId };
+
+    const { status } = req.query;
+    const query = { ...driverFilter };
     if (status) {
       if (status.includes(',')) {
         query.status = { $in: status.split(',').map(s => s.trim()) };
@@ -2368,14 +2442,24 @@ export const getDriverTrips = async (req, res, next) => {
 export const getAssignedVehicle = async (req, res, next) => {
   try {
     const driverId = req.user._id;
+    const driverDoc = await resolveCurrentDriver(req);
 
-    const driver = await Driver.findById(driverId);
+    const driver = driverDoc || await Driver.findById(driverId);
     if (!driver) {
       return sendError(res, 404, 'Driver profile not found');
     }
 
+    const driverFilter = {
+      $or: [
+        { driver: driver._id },
+        { driver: driverId },
+        ...(driver.phoneNumber ? [{ driverPhone: driver.phoneNumber }] : []),
+        ...(driver.email ? [{ driverEmail: driver.email }] : [])
+      ]
+    };
+
     const activeStatuses = [
-      'Pending Driver Acceptance', 'PENDING_DRIVER_ACCEPTANCE',
+      'Pending Driver Acceptance', 'PENDING_DRIVER_ACCEPTANCE', 'PENDING DRIVER ACCEPTANCE',
       'Assigned', 'ASSIGNED',
       'Scheduled', 'SCHEDULED',
       'In Progress', 'IN_PROGRESS', 'IN PROGRESS',
@@ -2391,7 +2475,7 @@ export const getAssignedVehicle = async (req, res, next) => {
 
     // 1. Check if driver has an active or scheduled trip
     const activeTrip = await Trip.findOne({
-      driver: driverId,
+      ...driverFilter,
       status: { $in: activeStatuses }
     }).populate('vehicle').populate('assignedManager', 'name email phone').sort({ createdAt: -1 });
 
@@ -2404,16 +2488,25 @@ export const getAssignedVehicle = async (req, res, next) => {
     // Clean up any stale database assignments so vehicle page and dashboard never show past trip details.
     if (!vehicle) {
       if (driver.assignedVehicle && driver.assignedVehicle !== 'Unassigned') {
-        await Driver.findByIdAndUpdate(driverId, {
+        await Driver.findByIdAndUpdate(driver._id, {
           assignedVehicle: 'Unassigned',
           isAssigned: false,
           activeTripId: null,
           currentTripId: null,
           driverStatus: 'AVAILABLE'
         }).catch(() => {});
+        if (String(driverId) !== String(driver._id)) {
+          await Driver.findByIdAndUpdate(driverId, {
+            assignedVehicle: 'Unassigned',
+            isAssigned: false,
+            activeTripId: null,
+            currentTripId: null,
+            driverStatus: 'AVAILABLE'
+          }).catch(() => {});
+        }
       }
       await Vehicle.updateMany(
-        { assignedDriver: driverId },
+        { assignedDriver: { $in: [driver._id, driverId] } },
         { $set: { assignedDriver: null, currentStatus: 'Available', isAssigned: false, activeTripId: null, currentTripId: null } }
       ).catch(() => {});
 

@@ -33,17 +33,19 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
 
   Future<void> _fetchDetails() async {
     try {
-      final res = await ApiService.getCurrentTrip();
+      dynamic res;
+      if (widget.tripId.isNotEmpty) {
+        res = await ApiService.getTripDetails(widget.tripId);
+      }
+      if (res == null || res['data'] == null) {
+        res = await ApiService.getCurrentTrip();
+      }
       if (res != null && res['data'] != null) {
         final trip = res['data'];
-        final status = trip['status']?.toString() ?? '';
-        const upcomingStatuses = [
-          'Pending Driver Acceptance',
-          'Assigned',
-          'Scheduled',
-          'Accepted'
-        ];
-        if (upcomingStatuses.contains(status)) {
+        final status = (trip['status']?.toString() ?? '').toLowerCase();
+        final isUpcoming = status.contains('pending') ||
+            ['assigned', 'scheduled', 'accepted', 'upcoming'].contains(status);
+        if (isUpcoming) {
           setState(() {
             _trip = trip;
             _isLoading = false;

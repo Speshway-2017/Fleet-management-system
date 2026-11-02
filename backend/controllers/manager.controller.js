@@ -2000,6 +2000,9 @@ export const updateTrip = async (req, res, next) => {
             referenceType: 'Trip',
             metadata: { tripId: finalTrip._id, tripNumber: finalTrip.tripNumber }
           });
+          if (ioInstance) {
+            ioInstance.to(`driver:${req.body.driver}`).emit('trip:assigned', finalTrip);
+          }
         }
 
         // Notify old driver

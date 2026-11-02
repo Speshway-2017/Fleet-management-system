@@ -77,7 +77,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           final rawStatus = tripData['status']?.toString() ?? '';
           final statusLower = rawStatus.toLowerCase();
           final activeStatuses = [
-            'assigned', 'scheduled', 'in progress', 'accepted', 
+            'pending driver acceptance', 'pending', 'assigned', 'scheduled', 'in progress', 'accepted', 
             'on transit', 'enroute', 'reach pickup', 'pickup completed', 
             'waiting for manager approval'
           ];
