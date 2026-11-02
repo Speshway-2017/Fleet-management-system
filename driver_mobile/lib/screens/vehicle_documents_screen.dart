@@ -85,10 +85,12 @@ class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
   String _sanitizeUrl(String rawUrl) {
     if (rawUrl.isEmpty) return '';
     var url = rawUrl.trim();
-    final defaultHost = 'http://${ApiService.defaultLocalIp}:5000';
+    final defaultHost = ApiService.activeHost;
 
     url = url.replaceAll('http://localhost:5000', defaultHost);
     url = url.replaceAll('http://127.0.0.1:5000', defaultHost);
+    url = url.replaceAll(RegExp(r'http://192\.168\.\d+\.\d+:5000'), defaultHost);
+    url = url.replaceAll(RegExp(r'http://10\.\d+\.\d+\.\d+:5000'), defaultHost);
 
     if (url.startsWith('/')) {
       url = '$defaultHost$url';

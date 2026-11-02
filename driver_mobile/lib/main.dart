@@ -8,6 +8,8 @@ import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/main_navigation_screen.dart';
+import 'screens/splash/splash_screen.dart';
+import 'screens/onboarding/onboarding_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/notification_provider.dart';
 
@@ -37,7 +39,7 @@ class MyApp extends StatelessWidget {
         title: 'Fleet Driver Mobile',
         theme: AppTheme.lightTheme,
         debugShowCheckedModeBanner: false,
-        home: const AuthSessionWrapper(),
+        home: const SplashScreen(),
       ),
     );
   }

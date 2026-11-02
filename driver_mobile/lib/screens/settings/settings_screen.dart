@@ -8,6 +8,7 @@ import '../../providers/auth_provider.dart';
 import '../auth/login_screen.dart';
 import '../profile/profile_screen.dart';
 import '../profile/help_support_screen.dart';
+import '../onboarding/onboarding_screen.dart';
 import 'change_password_screen.dart';
 import 'two_factor_auth_screen.dart';
 import 'notification_settings_screen.dart';
@@ -680,6 +681,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => const HelpSupportScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildRowItem(
+                    icon: Icons.auto_stories_outlined,
+                    title: 'App Tour & Onboarding',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const OnboardingScreen(isReplay: true),
                         ),
                       );
                     },
