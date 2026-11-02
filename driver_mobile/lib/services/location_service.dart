@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:geolocator/geolocator.dart';
 import 'api_service.dart';
 
@@ -7,7 +9,25 @@ class LocationTrackingService {
   static Timer? _timer;
   static bool isTracking = false;
 
+  static bool isTest = false;
+
+  static bool get _isTest {
+    if (isTest) return true;
+    try {
+      if (WidgetsBinding.instance.runtimeType.toString().contains('Test')) {
+        return true;
+      }
+    } catch (_) {}
+    if (kIsWeb) return false;
+    try {
+      return Platform.environment.containsKey('FLUTTER_TEST');
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Future<void> startTracking({String? tripId}) async {
+    if (_isTest) return;
     if (isTracking) return;
 
     LocationPermission permission = await Geolocator.checkPermission();

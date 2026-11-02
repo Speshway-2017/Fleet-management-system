@@ -36,6 +36,15 @@ class _LiveTrackingMapWidgetState extends State<LiveTrackingMapWidget> with Sing
   late double _currentZoom;
   bool _isRerouting = false;
 
+  bool get _isTest {
+    try {
+      if (WidgetsBinding.instance.runtimeType.toString().contains('Test')) {
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -132,10 +141,11 @@ class _LiveTrackingMapWidgetState extends State<LiveTrackingMapWidget> with Sing
               maxZoom: 18.0,
             ),
             children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.fleetmanagement.driver_mobile',
-              ),
+              if (!_isTest)
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.fleetmanagement.driver_mobile',
+                ),
               // Route Polyline Layer
               PolylineLayer(
                 polylines: [

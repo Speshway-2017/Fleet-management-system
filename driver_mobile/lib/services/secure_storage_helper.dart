@@ -3,10 +3,20 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:flutter/widgets.dart';
+
 class SecureStorageHelper {
   static const _secureStorage = FlutterSecureStorage();
 
+  static bool isTest = false;
+
   static bool get _isTest {
+    if (isTest) return true;
+    try {
+      if (WidgetsBinding.instance.runtimeType.toString().contains('Test')) {
+        return true;
+      }
+    } catch (_) {}
     if (kIsWeb) return false;
     try {
       return Platform.environment.containsKey('FLUTTER_TEST');

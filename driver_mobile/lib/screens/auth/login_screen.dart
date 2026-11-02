@@ -11,7 +11,9 @@ import 'forgot_password_screen.dart';
 import '../../main.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final String? initialIdentifier;
+
+  const LoginScreen({super.key, this.initialIdentifier});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -35,6 +37,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   @override
   void initState() {
     super.initState();
+    if (widget.initialIdentifier != null && widget.initialIdentifier!.isNotEmpty) {
+      _emailController.text = widget.initialIdentifier!;
+    }
     _termsRecognizer = TapGestureRecognizer()..onTap = () => LegalModal.showTerms(context);
     _privacyRecognizer = TapGestureRecognizer()..onTap = () => LegalModal.showPrivacy(context);
     _animController = AnimationController(
@@ -368,6 +373,19 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        if (Navigator.canPop(context))
+                          Padding(
+                            padding: const EdgeInsets.only(left: 12.0, bottom: 4.0),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: IconButton(
+                                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF0F1E38), size: 20),
+                                onPressed: () => Navigator.pop(context),
+                                tooltip: 'Back',
+                              ),
+                            ),
+                          ),
+
                         // Top Branding Bar: Official Fleet Management Logo Centered
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),

@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +18,24 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 class FcmService {
   static bool _isInitialized = false;
+
+  static bool isTest = false;
+
+  static bool get _isTest {
+    if (isTest) return true;
+    try {
+      if (WidgetsBinding.instance.runtimeType.toString().contains('Test')) {
+        return true;
+      }
+    } catch (_) {}
+    if (kIsWeb) return false;
+    try {
+      return Platform.environment.containsKey('FLUTTER_TEST');
+    } catch (_) {
+      return false;
+    }
+  }
+
   static final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
@@ -29,6 +49,7 @@ class FcmService {
   );
 
   static Future<void> initialize(BuildContext context) async {
+    if (_isTest) return;
     if (_isInitialized) return;
     _isInitialized = true;
 
@@ -148,6 +169,7 @@ class FcmService {
   }
 
   static Future<void> registerToken(BuildContext context) async {
+    if (_isTest) return;
     try {
       final messaging = FirebaseMessaging.instance;
       final token = await messaging.getToken();

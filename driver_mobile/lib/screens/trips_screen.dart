@@ -9,6 +9,7 @@ import 'active_trips_screen.dart';
 import 'upcoming_trips_screen.dart';
 import 'completed_trips_screen.dart';
 import 'completed_trip_details_screen.dart';
+import 'main_navigation_screen.dart';
 import '../services/api_service.dart';
 import '../services/socket_service.dart';
 
@@ -27,13 +28,27 @@ class _TripsScreenState extends State<TripsScreen> {
   @override
   void initState() {
     super.initState();
+    MainNavigationScreen.selectedTabNotifier.addListener(_onTabChanged);
     _loadTripsData();
     _setupSocketListeners();
+  }
+
+  @override
+  void dispose() {
+    MainNavigationScreen.selectedTabNotifier.removeListener(_onTabChanged);
+    super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (mounted && MainNavigationScreen.selectedTabNotifier.value == 1) {
+      _loadTripsData();
+    }
   }
 
   void _setupSocketListeners() {
     SocketService.onEvent('trip:assigned', (_) => _loadTripsData());
     SocketService.onEvent('trip:status-updated', (_) => _loadTripsData());
+    SocketService.onEvent('notification:new', (_) => _loadTripsData());
   }
 
   Future<void> _loadTripsData() async {
@@ -41,11 +56,30 @@ class _TripsScreenState extends State<TripsScreen> {
     setState(() => _isLoading = true);
     try {
       final dashRes = await ApiService.get('/driver/dashboard');
-      final currentTripRes = await ApiService.getCurrentTrip();
+      var currentTripRes = await ApiService.getCurrentTrip();
+      Map<String, dynamic>? trip = currentTripRes != null ? currentTripRes['data'] : null;
+
+      if (trip == null) {
+        final allTripsRes = await ApiService.get('/driver/trips');
+        if (allTripsRes != null && allTripsRes['data'] is List && (allTripsRes['data'] as List).isNotEmpty) {
+          final list = allTripsRes['data'] as List;
+          final candidate = list.firstWhere(
+            (t) {
+              final st = (t['status'] ?? '').toString().toLowerCase();
+              return !['completed', 'cancelled', 'rejected'].contains(st);
+            },
+            orElse: () => null,
+          );
+          if (candidate != null && candidate is Map<String, dynamic>) {
+            trip = candidate;
+          }
+        }
+      }
+
       if (mounted) {
         setState(() {
           _dashboardMetrics = dashRes != null ? dashRes['data'] : null;
-          _currentTrip = currentTripRes != null ? currentTripRes['data'] : null;
+          _currentTrip = trip;
           _isLoading = false;
         });
       }

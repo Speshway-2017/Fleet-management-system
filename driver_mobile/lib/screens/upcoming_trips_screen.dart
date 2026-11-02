@@ -48,17 +48,31 @@ class _UpcomingTripsScreenState extends State<UpcomingTripsScreen> {
   Future<void> _fetchTripData() async {
     if (!mounted) return;
     try {
-      final res = await ApiService.getCurrentTrip();
-      if (res != null && res['data'] != null) {
-        final trip = res['data'];
-        final status = trip['status']?.toString() ?? '';
-        const upcomingStatuses = [
-          'Pending Driver Acceptance',
-          'Assigned',
-          'Scheduled',
-          'Accepted'
-        ];
-        if (upcomingStatuses.contains(status)) {
+      var res = await ApiService.getCurrentTrip();
+      Map<String, dynamic>? trip = res != null ? res['data'] : null;
+
+      if (trip == null) {
+        final allTripsRes = await ApiService.get('/driver/trips');
+        if (allTripsRes != null && allTripsRes['data'] is List && (allTripsRes['data'] as List).isNotEmpty) {
+          final list = allTripsRes['data'] as List;
+          final candidate = list.firstWhere(
+            (t) {
+              final st = (t['status'] ?? '').toString().toLowerCase();
+              return st.contains('pending') || ['assigned', 'scheduled', 'accepted'].contains(st);
+            },
+            orElse: () => null,
+          );
+          if (candidate != null && candidate is Map<String, dynamic>) {
+            trip = candidate;
+          }
+        }
+      }
+
+      if (trip != null) {
+        final status = (trip['status']?.toString() ?? '').toLowerCase();
+        final isUpcomingOrPending = status.contains('pending') ||
+            ['assigned', 'scheduled', 'accepted', 'upcoming'].contains(status);
+        if (isUpcomingOrPending) {
           setState(() {
             _currentTrip = trip;
             _isLoading = false;
@@ -231,10 +245,10 @@ class _UpcomingTripsScreenState extends State<UpcomingTripsScreen> {
     final pickup = trip['pickup'] ?? trip['startLocation'] ?? 'Pickup Point';
     final destination = trip['destination'] ?? trip['endLocation'] ?? 'Destination Point';
     final departureTime = formatIndianDateTime(trip['departureTime'] ?? 'Scheduled');
-    final status = trip['status'] ?? 'Scheduled';
     final vehicle = trip['vehicle'] ?? 'Van / Truck';
     final managerName = trip['manager'] != null ? trip['manager']['name'] : 'Fleet Manager';
-    final isAssigned = status == 'Assigned';
+    final statusLower = (trip['status']?.toString() ?? '').toLowerCase();
+    final isAssigned = statusLower.contains('pending') || statusLower == 'assigned';
     final startEnabled = _isStartEnabled(trip['departureTime']);
 
     return CustomCard(
