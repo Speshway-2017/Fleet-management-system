@@ -14,20 +14,54 @@ class ApiService {
     // Initialization setup if required
   }
 
-  // Default Android Emulator IP for local host machine
+  // Canonical Deployed Production URL & Host
+  static const String productionHost = 'https://fleet.speshway.site';
+  static const String productionApiUrl = 'https://fleet.speshway.site/api';
+
+  // Local development settings
   static const String defaultLocalIp = '10.0.2.2';
-  static const String defaultServerUrl = 'fleet.speshway.site';
+  static const String defaultLocalPort = '5000';
+
+  // Compile-time environment override if provided via flutter build --dart-define=API_BASE_URL=...
+  static const String _envApiBaseUrl = String.fromEnvironment('API_BASE_URL');
+
+  // Request timeout duration for mobile network resilience
+  static const Duration defaultTimeout = Duration(seconds: 15);
+
   static String? _cachedBaseUrl;
 
+  /// Checks if a given URL points to a local machine, loopback, or LAN IP
+  static bool isLocalAddress(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('localhost') ||
+        lower.contains('127.0.0.1') ||
+        lower.contains('10.0.2.2') ||
+        lower.contains('192.168.') ||
+        lower.contains('10.166.') ||
+        RegExp(r'10\.\d+\.\d+\.\d+').hasMatch(lower) ||
+        RegExp(r'172\.(1[6-9]|2\d|3[01])\.\d+\.\d+').hasMatch(lower) ||
+        lower.contains(':5000');
+  }
+
+  /// Formats any raw input string into a standard API base URL
   static String formatServerUrl(String raw) {
     var formattedUrl = raw.trim();
     if (formattedUrl.isEmpty) {
-      formattedUrl = defaultServerUrl;
+      return defaultUrl;
     }
     if (!formattedUrl.startsWith('http://') &&
         !formattedUrl.startsWith('https://')) {
-      formattedUrl = 'https://$formattedUrl';
+      final isLocal = isLocalAddress(formattedUrl);
+      formattedUrl = isLocal ? 'http://$formattedUrl' : 'https://$formattedUrl';
     }
+    // If local address without port specified, append :5000
+    try {
+      final uri = Uri.parse(formattedUrl);
+      if (uri.hasAuthority && !uri.hasPort && isLocalAddress(uri.host)) {
+        formattedUrl = '${uri.scheme}://${uri.host}:5000${uri.path}';
+      }
+    } catch (_) {}
+
     if (!formattedUrl.endsWith('/api')) {
       if (formattedUrl.endsWith('/')) {
         formattedUrl = '${formattedUrl}api';
@@ -38,17 +72,22 @@ class ApiService {
     return formattedUrl;
   }
 
+  /// Returns the default API base URL:
+  /// - If --dart-define=API_BASE_URL is passed, uses that.
+  /// - In Release Mode, ALWAYS returns the deployed production URL: https://fleet.speshway.site/api.
+  /// - In Debug Mode, returns local emulator/localhost backend.
   static String get defaultUrl {
-    if (kDebugMode) {
-      return kIsWeb ? 'http://localhost:5000/api' : 'http://10.0.2.2:5000/api';
+    if (_envApiBaseUrl.isNotEmpty) {
+      return formatServerUrl(_envApiBaseUrl);
     }
-    if (defaultServerUrl.startsWith('http://') ||
-        defaultServerUrl.startsWith('https://')) {
-      return formatServerUrl(defaultServerUrl);
+    if (kReleaseMode) {
+      return productionApiUrl;
     }
-    return kIsWeb ? 'http://localhost:5000/api' : 'http://$defaultServerUrl:5000/api';
+    // Debug mode defaults
+    return kIsWeb ? 'http://localhost:5000/api' : 'http://$defaultLocalIp:5000/api';
   }
 
+  /// Extracts the base host (scheme + authority) from any URL
   static String getHostFromUrl(String rawUrl) {
     try {
       final uri = Uri.parse(rawUrl.trim());
@@ -56,9 +95,23 @@ class ApiService {
         return '${uri.scheme}://${uri.authority}';
       }
     } catch (_) {}
-    return kDebugMode ? 'http://localhost:5000' : 'https://fleet.speshway.site';
+    return kReleaseMode ? productionHost : 'http://localhost:5000';
   }
 
+  /// Current active server host for images, document links, or uploads
+  static String get activeHost {
+    if (_cachedBaseUrl != null && _cachedBaseUrl!.isNotEmpty) {
+      return getHostFromUrl(_cachedBaseUrl!);
+    }
+    return kReleaseMode
+        ? productionHost
+        : (kIsWeb ? 'http://localhost:5000' : 'http://$defaultLocalIp:5000');
+  }
+
+  /// Resolves the API base URL to use.
+  /// - In release builds, ignores stale local development LAN IPs from SharedPreferences
+  ///   so the release APK seamlessly connects to the deployed backend.
+  /// - In debug builds, allows developers to use local backend endpoints.
   static Future<String> getBaseUrl() async {
     if (_cachedBaseUrl != null && _cachedBaseUrl!.isNotEmpty) {
       return _cachedBaseUrl!;
@@ -67,23 +120,36 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     final savedUrl = prefs.getString('server_url')?.trim();
 
-    if (savedUrl != null &&
-        savedUrl.isNotEmpty &&
-        !savedUrl.contains('10.166.118.1') &&
-        !savedUrl.contains('192.168.88.15')) {
-      _cachedBaseUrl = savedUrl;
+    // Release Mode handling:
+    if (kReleaseMode) {
+      if (savedUrl != null && savedUrl.isNotEmpty) {
+        // If saved URL is a local development IP leftover from testing, purge it!
+        if (isLocalAddress(savedUrl)) {
+          debugPrint('[ApiService] Purging stale local development URL from release build: $savedUrl');
+          await prefs.remove('server_url');
+        } else {
+          _cachedBaseUrl = formatServerUrl(savedUrl);
+          return _cachedBaseUrl!;
+        }
+      }
+      _cachedBaseUrl = productionApiUrl;
       return _cachedBaseUrl!;
     }
 
-    // Auto-discover the first reachable backend URL among [10.0.2.2, 127.0.0.1, localhost, production]
+    // Debug / Development Mode handling:
+    if (savedUrl != null && savedUrl.isNotEmpty) {
+      _cachedBaseUrl = formatServerUrl(savedUrl);
+      return _cachedBaseUrl!;
+    }
+
+    // Auto-discover the first reachable backend URL among candidates
     final discovered = await autoDiscoverWorkingBaseUrl();
     if (discovered != null && discovered.isNotEmpty) {
       _cachedBaseUrl = discovered;
       return _cachedBaseUrl!;
     }
 
-    final fallbackUrl =
-        kIsWeb ? 'http://localhost:5000/api' : 'http://10.0.2.2:5000/api';
+    final fallbackUrl = defaultUrl;
     _cachedBaseUrl = fallbackUrl;
     return _cachedBaseUrl!;
   }
@@ -96,38 +162,62 @@ class ApiService {
     _cachedBaseUrl = formattedUrl;
   }
 
-  /// Fast health-check probe to test if a candidate backend URL is reachable.
-  static Future<bool> testConnection(String targetUrl,
-      {Duration timeout = const Duration(milliseconds: 1500)}) async {
+  /// Fast connectivity probe to test if a candidate backend URL is reachable.
+  /// Probes the public endpoint /public/settings (which returns 200 OK without requiring authentication)
+  /// and falls back to /health.
+  static Future<bool> testConnection(
+    String targetUrl, {
+    Duration timeout = const Duration(seconds: 4),
+  }) async {
     try {
-      var formattedUrl = formatServerUrl(targetUrl);
-      final healthUri = Uri.parse(
-        '${formattedUrl.replaceAll('/api', '')}/health',
-      );
-      final response = await http.get(healthUri).timeout(timeout);
-      return response.statusCode == 200;
+      final formattedUrl = formatServerUrl(targetUrl);
+
+      // Probe 1: Public settings endpoint (guaranteed to be on Express backend)
+      try {
+        final settingsUri = Uri.parse('$formattedUrl/public/settings');
+        final response = await http.get(settingsUri).timeout(timeout);
+        if (response.statusCode == 200) {
+          return true;
+        }
+      } catch (_) {}
+
+      // Probe 2: Server health endpoint
+      try {
+        final baseHost = getHostFromUrl(formattedUrl);
+        final healthUri = Uri.parse('$baseHost/health');
+        final response = await http.get(healthUri).timeout(timeout);
+        if (response.statusCode == 200) {
+          return true;
+        }
+      } catch (_) {}
+
+      return false;
     } catch (_) {
       return false;
     }
   }
 
-  /// Automatically probes candidate URLs (ADB reverse 127.0.0.1, Emulator 10.0.2.2, Localhost, Production)
-  /// and returns the first reachable URL while persisting it in SharedPreferences.
+  /// Probes candidate URLs and returns the first reachable URL while persisting it in SharedPreferences.
+  /// Prioritizes production URL in release mode, and local URLs in debug mode.
   static Future<String?> autoDiscoverWorkingBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
     final savedUrl = prefs.getString('server_url')?.trim();
 
-    final List<String> candidates = [
-      if (savedUrl != null &&
-          savedUrl.isNotEmpty &&
-          !savedUrl.contains('10.166.118.1') &&
-          !savedUrl.contains('192.168.88.15'))
-        savedUrl,
-      'http://10.0.2.2:5000/api',         // Android Emulator default
-      'http://127.0.0.1:5000/api',        // ADB reverse / Localhost
-      'http://localhost:5000/api',        // Web / Desktop
-      'https://fleet.speshway.site/api',   // Production fallback
-    ];
+    final List<String> candidates;
+    if (kReleaseMode) {
+      candidates = [
+        productionApiUrl,
+        if (savedUrl != null && savedUrl.isNotEmpty && !isLocalAddress(savedUrl)) savedUrl,
+      ];
+    } else {
+      candidates = [
+        if (savedUrl != null && savedUrl.isNotEmpty) savedUrl,
+        if (!kIsWeb) 'http://10.0.2.2:5000/api',         // Android Emulator
+        if (!kIsWeb) 'http://127.0.0.1:5000/api',        // ADB reverse
+        'http://localhost:5000/api',                    // Web / Desktop
+        productionApiUrl,                                // Production fallback
+      ];
+    }
 
     final uniqueCandidates = candidates.toSet().toList();
 
@@ -182,7 +272,7 @@ class ApiService {
     try {
       final response = await http
           .get(Uri.parse(finalApiUrl), headers: headers)
-          .timeout(const Duration(seconds: 4));
+          .timeout(defaultTimeout);
       return _processResponse(response);
     } catch (e) {
       final isNetworkError = e is TimeoutException ||
@@ -198,7 +288,7 @@ class ApiService {
           debugPrint('[ApiService GET] Retrying with auto-discovered URL: $retryUrl');
           final response = await http
               .get(Uri.parse(retryUrl), headers: headers)
-              .timeout(const Duration(seconds: 5));
+              .timeout(defaultTimeout);
           return _processResponse(response);
         }
       }
@@ -237,7 +327,7 @@ class ApiService {
             headers: headers,
             body: jsonEncode(body),
           )
-          .timeout(const Duration(seconds: 4));
+          .timeout(defaultTimeout);
       return _processResponse(response);
     } catch (e) {
       final isNetworkError = e is TimeoutException ||
@@ -257,7 +347,7 @@ class ApiService {
                 headers: headers,
                 body: jsonEncode(body),
               )
-              .timeout(const Duration(seconds: 5));
+              .timeout(defaultTimeout);
           return _processResponse(response);
         }
       }
@@ -294,7 +384,7 @@ class ApiService {
             headers: headers,
             body: jsonEncode(body),
           )
-          .timeout(const Duration(seconds: 4));
+          .timeout(defaultTimeout);
       return _processResponse(response);
     } catch (e) {
       final isNetworkError = e is TimeoutException ||
@@ -314,7 +404,7 @@ class ApiService {
                 headers: headers,
                 body: jsonEncode(body),
               )
-              .timeout(const Duration(seconds: 5));
+              .timeout(defaultTimeout);
           return _processResponse(response);
         }
       }
@@ -348,7 +438,7 @@ class ApiService {
             headers: headers,
             body: jsonEncode(body),
           )
-          .timeout(const Duration(seconds: 4));
+          .timeout(defaultTimeout);
       return _processResponse(response);
     } catch (e) {
       final isNetworkError = e is TimeoutException ||
@@ -368,7 +458,7 @@ class ApiService {
                 headers: headers,
                 body: jsonEncode(body),
               )
-              .timeout(const Duration(seconds: 5));
+              .timeout(defaultTimeout);
           return _processResponse(response);
         }
       }
@@ -401,7 +491,7 @@ class ApiService {
             Uri.parse('$baseUrl$endpoint'),
             headers: headers,
           )
-          .timeout(const Duration(seconds: 5));
+          .timeout(defaultTimeout);
       return _processResponse(response);
     } catch (e) {
       final isNetworkError = e is TimeoutException ||
@@ -420,7 +510,7 @@ class ApiService {
                 Uri.parse(retryUrl),
                 headers: headers,
               )
-              .timeout(const Duration(seconds: 5));
+              .timeout(defaultTimeout);
           return _processResponse(response);
         }
       }

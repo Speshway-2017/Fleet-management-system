@@ -6,9 +6,16 @@ import 'package:driver_mobile/screens/vehicle_overview_screen.dart';
 import 'package:driver_mobile/screens/vehicle_documents_screen.dart';
 import 'package:driver_mobile/services/api_service.dart';
 
+import 'package:driver_mobile/screens/splash/splash_screen.dart';
+import 'package:driver_mobile/screens/onboarding/onboarding_screen.dart';
+import 'package:driver_mobile/screens/auth/login_screen.dart';
+import 'package:driver_mobile/providers/auth_provider.dart';
+import 'package:driver_mobile/providers/notification_provider.dart';
+import 'package:provider/provider.dart';
+
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({'has_seen_onboarding': true});
 
     // Set standard mobile screen size for testing
     final binding = TestWidgetsFlutterBinding.ensureInitialized();
@@ -60,7 +67,7 @@ void main() {
             'employeeId': 'FF-9821',
             'fullName': 'Meghana Soo',
             'email': 'meghana.soo@speshway.com',
-            'phoneNumber': '+15550199',
+            'phoneNumber': '9876543210',
             'licenseNumber': 'KF-402-DELTA',
             'licenseType': 'HMV',
             'licenseExpiry': '2026-12-31T00:00:00.000Z',
@@ -92,7 +99,7 @@ void main() {
           'fullName': 'Meghana Soo',
           'name': 'Meghana Soo',
           'email': 'meghana.soo@speshway.com',
-          'phone': '+15550199',
+          'phone': '9876543210',
           'status': 'Active',
           'licenseNumber': 'KF-402-DELTA',
           'licenseExpiry': '2026-12-31',
@@ -147,6 +154,12 @@ void main() {
     await tester.idle();
     await tester.pumpAndSettle();
 
+    // Skip onboarding to reach Login Screen
+    if (find.text('Skip').evaluate().isNotEmpty) {
+      await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+    }
+
     // 1. Verify Login Screen
     expect(find.text('Email / Mobile Number'), findsOneWidget);
     expect(find.text('Login'), findsOneWidget);
@@ -198,6 +211,12 @@ void main() {
     await tester.pumpWidget(const MyApp());
     await tester.idle();
     await tester.pumpAndSettle();
+
+    // Skip onboarding to reach Login Screen
+    if (find.text('Skip').evaluate().isNotEmpty) {
+      await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+    }
 
     // Navigate to Forgot Password
     await tester.tap(find.text('Forgot Password?'));
@@ -329,6 +348,12 @@ void main() {
     await tester.idle();
     await tester.pumpAndSettle();
 
+    // Skip onboarding to reach Login Screen
+    if (find.text('Skip').evaluate().isNotEmpty) {
+      await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+    }
+
     // Enter credentials to log in
     await tester.enterText(
       find.byType(TextFormField).at(0),
@@ -395,6 +420,12 @@ void main() {
     await tester.pumpWidget(const MyApp());
     await tester.idle();
     await tester.pumpAndSettle();
+
+    // Skip onboarding to reach Login Screen
+    if (find.text('Skip').evaluate().isNotEmpty) {
+      await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+    }
 
     // Enter credentials to log in
     await tester.enterText(
@@ -492,4 +523,162 @@ void main() {
     expect(find.text('Maintenance Alerts'), findsNothing);
     expect(find.text('Vehicle Documents'), findsNothing);
   });
+
+  testWidgets('Splash Screen displays brand elements and loading indicator', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({'has_seen_onboarding': true});
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => AuthProvider()),
+          ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ],
+        child: const MaterialApp(
+          home: SplashScreen(),
+        ),
+      ),
+    );
+
+    // Initial frame renders brand title and driver badge
+    expect(find.text('FLEET MANAGEMENT'), findsOneWidget);
+    expect(find.text('DRIVER MOBILE APP'), findsOneWidget);
+    expect(find.text('Smart Commercial Logistics & Telemetry'), findsNothing);
+
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('Splash Screen routes to OnboardingScreen on first launch', (
+    WidgetTester tester,
+  ) async {
+    // Simulate first launch without onboarding completed
+    SharedPreferences.setMockInitialValues({'has_seen_onboarding': false});
+
+    await tester.pumpWidget(const MyApp());
+    await tester.idle();
+    await tester.pumpAndSettle();
+
+    // Verify Onboarding Screen is loaded with slide 1 content
+    expect(find.text('Welcome to\nFleet Management'), findsOneWidget);
+    expect(find.text('SMART LOGISTICS'), findsOneWidget);
+    expect(find.text('Skip'), findsOneWidget);
+    expect(find.text('Next'), findsNothing);
+  });
+
+  testWidgets('Onboarding Screen slide progression and Get Started completion', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({'has_seen_onboarding': false});
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => AuthProvider()),
+          ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ],
+        child: const MaterialApp(
+          home: OnboardingScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Slide 1: Welcome
+    expect(find.text('Welcome to\nFleet Management'), findsOneWidget);
+    expect(find.text('Next'), findsNothing);
+
+    // Advance to Slide 2: Manage Trips via swipe
+    await tester.drag(find.byType(PageView), const Offset(-800, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Manage Your\nAssigned Trips'), findsOneWidget);
+    expect(find.text('DISPATCH SCHEDULES'), findsOneWidget);
+
+    // Advance to Slide 3: Track Journey via swipe
+    await tester.drag(find.byType(PageView), const Offset(-800, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Track Your Journey\nin Real-Time'), findsOneWidget);
+    expect(find.text('LIVE GPS TELEMETRY'), findsOneWidget);
+
+    // Advance to Slide 4: Stay Updated via swipe
+    await tester.drag(find.byType(PageView), const Offset(-800, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Stay Updated &\nConnected'), findsOneWidget);
+    expect(find.text('INSTANT DISPATCH ALERTS'), findsOneWidget);
+    expect(find.text('Get Started'), findsOneWidget);
+    // Skip button should be hidden on final slide
+    expect(find.text('Skip'), findsNothing);
+
+    // Tap Get Started button
+    await tester.tap(find.text('Get Started'));
+    await tester.pumpAndSettle();
+
+    // Verify completion saved in SharedPreferences and navigated to Login
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('has_seen_onboarding'), true);
+    expect(find.text('Login'), findsOneWidget);
+  });
+
+  testWidgets('Onboarding Screen Skip button completes onboarding and navigates to Login', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({'has_seen_onboarding': false});
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => AuthProvider()),
+          ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ],
+        child: const MaterialApp(
+          home: OnboardingScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify on slide 1 and tap Skip
+    expect(find.text('Skip'), findsOneWidget);
+    await tester.tap(find.text('Skip'));
+    await tester.pumpAndSettle();
+
+    // Verify preference is saved and Login Screen is displayed
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('has_seen_onboarding'), true);
+    expect(find.text('Login'), findsOneWidget);
+  });
+
+  group('ApiService Production & URL Configuration Tests', () {
+    test('Production constants and host resolution are properly configured', () {
+      expect(ApiService.productionHost, 'https://fleet.speshway.site');
+      expect(ApiService.productionApiUrl, 'https://fleet.speshway.site/api');
+    });
+
+    test('isLocalAddress accurately detects local and private IP addresses', () {
+      expect(ApiService.isLocalAddress('http://localhost:5000/api'), isTrue);
+      expect(ApiService.isLocalAddress('http://127.0.0.1:5000/api'), isTrue);
+      expect(ApiService.isLocalAddress('http://10.0.2.2:5000/api'), isTrue);
+      expect(ApiService.isLocalAddress('http://192.168.1.17:5000/api'), isTrue);
+      expect(ApiService.isLocalAddress('http://10.166.118.1:5000/api'), isTrue);
+      expect(ApiService.isLocalAddress('192.168.0.100'), isTrue);
+      expect(ApiService.isLocalAddress('https://fleet.speshway.site/api'), isFalse);
+      expect(ApiService.isLocalAddress('https://fleet.speshway.site'), isFalse);
+    });
+
+    test('formatServerUrl standardizes both local and production endpoints', () {
+      expect(ApiService.formatServerUrl('fleet.speshway.site'), 'https://fleet.speshway.site/api');
+      expect(ApiService.formatServerUrl('https://fleet.speshway.site'), 'https://fleet.speshway.site/api');
+      expect(ApiService.formatServerUrl('https://fleet.speshway.site/api'), 'https://fleet.speshway.site/api');
+      expect(ApiService.formatServerUrl('10.0.2.2:5000'), 'http://10.0.2.2:5000/api');
+      expect(ApiService.formatServerUrl('localhost:5000/api'), 'http://localhost:5000/api');
+    });
+
+    test('getHostFromUrl extracts valid schemes and authorities', () {
+      expect(ApiService.getHostFromUrl('https://fleet.speshway.site/api'), 'https://fleet.speshway.site');
+      expect(ApiService.getHostFromUrl('http://10.0.2.2:5000/api'), 'http://10.0.2.2:5000');
+      expect(ApiService.getHostFromUrl('http://localhost:5000/api'), 'http://localhost:5000');
+    });
+  });
 }
+
+

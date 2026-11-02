@@ -101,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'API Host URL (e.g. 10.0.2.2:5000/api or custom IP):',
+                      'API Host URL (Production or local development IP):',
                       style: GoogleFonts.plusJakartaSans(fontSize: 12.5, color: Colors.black87),
                     ),
                     const SizedBox(height: 10),
@@ -109,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       controller: urlController,
                       style: GoogleFonts.plusJakartaSans(fontSize: 13),
                       decoration: InputDecoration(
-                        hintText: 'http://10.0.2.2:5000/api',
+                        hintText: ApiService.defaultUrl,
                         filled: true,
                         fillColor: const Color(0xFFF8FAFC),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -165,9 +165,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       spacing: 6,
                       runSpacing: 6,
                       children: [
+                        _buildPresetChip('https://fleet.speshway.site/api', 'Production (Cloud)', urlController),
                         _buildPresetChip('http://10.0.2.2:5000/api', 'Emulator (10.0.2.2)', urlController),
                         _buildPresetChip('http://127.0.0.1:5000/api', 'ADB Reverse', urlController),
-                        _buildPresetChip('https://fleet.speshway.site/api', 'Production', urlController),
                         _buildPresetChip('http://localhost:5000/api', 'Localhost', urlController),
                       ],
                     ),
