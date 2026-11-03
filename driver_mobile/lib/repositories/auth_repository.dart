@@ -41,6 +41,9 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
+    // Invalidate in-memory token cache immediately
+    ApiService.clearTokenCache();
+
     // 1. Delete local secure storage token immediately
     try {
       await SecureStorageHelper.delete(key: 'jwt_token');
@@ -54,6 +57,11 @@ class AuthRepository {
       await prefs.remove('manager_id');
       await prefs.remove('organization_id');
       await prefs.remove('driver_profile');
+      await prefs.remove('driver_profile_cache');
+      await prefs.remove('dashboard_data_cache');
+      await prefs.remove('driver_current_trip_cache');
+      await prefs.remove('driver_is_vehicle_assigned_cache');
+      await prefs.remove('driver_vehicle_number_cache');
     } catch (_) {}
 
     // 3. Fire-and-forget backend notification (unawaited)

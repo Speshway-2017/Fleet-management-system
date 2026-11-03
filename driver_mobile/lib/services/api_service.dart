@@ -254,13 +254,26 @@ class ApiService {
   }
 
   static const _secureStorage = FlutterSecureStorage();
+  static String? _inMemoryToken;
+
+  static void clearTokenCache() {
+    _inMemoryToken = null;
+  }
+
+  static void setInMemoryToken(String? token) {
+    _inMemoryToken = token;
+  }
 
   static Future<String?> getToken() async {
+    if (_inMemoryToken != null && _inMemoryToken!.isNotEmpty) {
+      return _inMemoryToken;
+    }
     String? token = await _secureStorage.read(key: 'jwt_token');
     if (token == null || token.isEmpty) {
       final prefs = await SharedPreferences.getInstance();
       token = prefs.getString('jwt_token');
     }
+    _inMemoryToken = token;
     return token;
   }
 

@@ -5,6 +5,8 @@ import '../repositories/auth_repository.dart';
 import '../models/driver_model.dart';
 import '../screens/settings/notification_settings_screen.dart';
 import '../services/socket_service.dart';
+import '../screens/profile/profile_screen.dart';
+import '../screens/dashboard_screen.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _authRepository = AuthRepository();
@@ -56,6 +58,7 @@ class AuthProvider extends ChangeNotifier {
             _driver = DriverModel.fromJson(jsonDecode(cachedProfileStr));
             _syncNotificationPreferences();
             _isAuthenticated = true;
+            ProfileState.profilePhotoUrlNotifier.value = _driver?.profileImage ?? '';
             SocketService.initSocket();
           } catch (_) {}
         }
@@ -66,6 +69,7 @@ class AuthProvider extends ChangeNotifier {
             _driver = profile;
             _syncNotificationPreferences();
             _isAuthenticated = true;
+            ProfileState.profilePhotoUrlNotifier.value = profile.profileImage;
             SocketService.initSocket();
           } else {
             _isAuthenticated = false;
@@ -111,6 +115,7 @@ class AuthProvider extends ChangeNotifier {
       if (data['driver'] != null) {
         _driver = DriverModel.fromJson(data['driver']);
         _syncNotificationPreferences();
+        ProfileState.profilePhotoUrlNotifier.value = _driver?.profileImage ?? '';
       }
       _isAuthenticated = true;
       if (_driver != null) {
@@ -143,6 +148,8 @@ class AuthProvider extends ChangeNotifier {
       _driver = null;
       _isAuthenticated = false;
       _isSessionInitialized = true;
+      ProfileState.profilePhotoUrlNotifier.value = '';
+      DashboardScreen.clearStaticCache();
       SocketService.disconnect();
       _isLoading = false;
       notifyListeners();
@@ -245,6 +252,7 @@ class AuthProvider extends ChangeNotifier {
         _driver = profile;
         _syncNotificationPreferences();
         _isAuthenticated = true;
+        ProfileState.profilePhotoUrlNotifier.value = profile.profileImage;
       }
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
@@ -279,6 +287,7 @@ class AuthProvider extends ChangeNotifier {
       if (profile != null) {
         _driver = profile;
         _syncNotificationPreferences();
+        ProfileState.profilePhotoUrlNotifier.value = profile.profileImage;
         return true;
       }
       return false;

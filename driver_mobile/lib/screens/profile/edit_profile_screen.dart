@@ -7,6 +7,8 @@ import '../../theme/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../providers/auth_provider.dart';
 import 'profile_screen.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../widgets/driver_avatar.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -39,9 +41,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _profilePhotoUrl = ProfileState.profilePhotoUrlNotifier.value;
-
     final driver = Provider.of<AuthProvider>(context, listen: false).driver;
+    _profilePhotoUrl = ProfileState.profilePhotoUrlNotifier.value.isNotEmpty
+        ? ProfileState.profilePhotoUrlNotifier.value
+        : (driver?.profileImage ?? '');
     if (driver != null) {
       _nameController.text = driver.fullName;
       _employeeIdController.text = driver.employeeId.isNotEmpty ? driver.employeeId : driver.id;
@@ -197,7 +200,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 title: Text('Take Photo', style: GoogleFonts.poppins()),
                 onTap: () {
                   Navigator.pop(context);
-                  _mockPhotoChange('Camera');
+                  _pickImageFromCamera();
                 },
               ),
               ListTile(
@@ -232,18 +235,42 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  void _mockPhotoChange(String source) {
-    setState(() {
-      // Switch to a different mock network image headshot
-      _profilePhotoUrl = 'https://images.unsplash.com/photo-1560250097-0b93528c311a?fit=crop&w=300&h=300';
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Mock photo loaded successfully from $source.'),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  Future<void> _pickImageFromCamera() async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 600,
+        maxHeight: 600,
+        imageQuality: 85,
+      );
+      if (pickedFile != null) {
+        final bytes = await pickedFile.readAsBytes();
+        final base64String = base64Encode(bytes);
+        final extension = pickedFile.name.split('.').last;
+        final dataUri = 'data:image/$extension;base64,$base64String';
+        setState(() {
+          _profilePhotoUrl = dataUri;
+        });
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Photo captured. Click Save Changes to upload.'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Camera error: $e'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   // Handle Save / Submit validation
@@ -309,41 +336,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Widget _buildAvatarImage() {
-    if (_profilePhotoUrl.isEmpty) {
-      return const Icon(
-        Icons.person,
-        size: 64,
-        color: AppColors.textDisabled,
-      );
-    }
-    
-    if (_profilePhotoUrl.startsWith('data:image') && _profilePhotoUrl.contains('base64,')) {
-      try {
-        final base64Content = _profilePhotoUrl.split('base64,').last;
-        final bytes = base64Decode(base64Content);
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-        );
-      } catch (e) {
-        return const Icon(
-          Icons.person,
-          size: 64,
-          color: AppColors.textDisabled,
-        );
-      }
-    }
-    
-    return Image.network(
-      _profilePhotoUrl,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) {
-        return const Icon(
-          Icons.person,
-          size: 64,
-          color: AppColors.textDisabled,
-        );
-      },
+    final driver = Provider.of<AuthProvider>(context, listen: false).driver;
+    final driverName = driver?.fullName ?? _nameController.text;
+    return DriverAvatar(
+      photoUrl: _profilePhotoUrl,
+      name: driverName,
+      size: 120,
+      fontSize: 42,
+      borderWidth: 0,
+      borderColor: Colors.transparent,
     );
   }
 

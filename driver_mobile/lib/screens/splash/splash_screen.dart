@@ -138,7 +138,7 @@ class _SplashScreenState extends State<SplashScreen>
     final elapsed = DateTime.now().difference(startTime);
     final minSplashDuration = _isTestEnv
         ? Duration.zero
-        : const Duration(milliseconds: 2600);
+        : const Duration(milliseconds: 900);
     if (elapsed < minSplashDuration) {
       await Future.delayed(minSplashDuration - elapsed);
     }
@@ -159,7 +159,7 @@ class _SplashScreenState extends State<SplashScreen>
       targetScreen = const OnboardingScreen();
     }
 
-    Navigator.of(context).pushReplacement(
+    Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 650),
         pageBuilder: (context, animation, secondaryAnimation) => targetScreen,
@@ -179,6 +179,7 @@ class _SplashScreenState extends State<SplashScreen>
           );
         },
       ),
+      (route) => false,
     );
   }
 

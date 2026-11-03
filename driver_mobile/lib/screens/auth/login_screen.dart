@@ -8,6 +8,7 @@ import '../../providers/auth_provider.dart';
 import '../../widgets/legal_modal.dart';
 import '../main_navigation_screen.dart';
 import 'forgot_password_screen.dart';
+import 'login_identifier_screen.dart';
 import '../../main.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -23,9 +24,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  bool _isPasswordVisible = false;
   bool _isLoading = false;
-  bool _rememberMe = false;
 
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
@@ -69,6 +68,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _handleBack() {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginIdentifierScreen()),
+      );
+    }
   }
 
   void _showServerConfigDialog() async {
@@ -271,8 +281,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       );
       if (!mounted) return;
       if (ok) {
-        navigator.pushReplacement(
+        navigator.pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
+          (route) => false,
         );
       } else {
         final err = auth.errorMessage ?? 'Login failed';
@@ -373,22 +384,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        if (Navigator.canPop(context))
-                          Padding(
-                            padding: const EdgeInsets.only(left: 12.0, bottom: 4.0),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: IconButton(
-                                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF0F1E38), size: 20),
-                                onPressed: () => Navigator.pop(context),
-                                tooltip: 'Back',
-                              ),
-                            ),
-                          ),
-
                         // Top Branding Bar: Official Fleet Management Logo Centered
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+                          padding: const EdgeInsets.only(left: 20.0, right: 20.0, bottom: 12.0),
                           child: Center(
                             child: InkWell(
                               onLongPress: _showServerConfigDialog,
@@ -402,11 +400,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   children: [
                                     Image.asset(
                                       'assets/images/auth_logo.png',
-                                      height: 68,
+                                      height: 115,
                                       fit: BoxFit.contain,
                                       errorBuilder: (ctx, err, st) => Image.asset(
                                         'assets/images/logo.png',
-                                        height: 68,
+                                        height: 115,
                                         fit: BoxFit.contain,
                                         errorBuilder: (ctx2, err2, st2) => Row(
                                           mainAxisSize: MainAxisSize.min,
@@ -420,14 +418,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                               child: const Icon(
                                                 Icons.local_shipping_rounded,
                                                 color: Color(0xFFF97316),
-                                                size: 30,
+                                                size: 40,
                                               ),
                                             ),
                                             const SizedBox(width: 8),
                                             Text(
                                               'FLEET MANAGEMENT',
                                               style: GoogleFonts.plusJakartaSans(
-                                                fontSize: 17,
+                                                fontSize: 20,
                                                 fontWeight: FontWeight.w900,
                                                 color: const Color(0xFF0B1B3D),
                                                 letterSpacing: 1.0,
@@ -446,15 +444,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
                         const SizedBox(height: 14),
 
-                  // Hero Titles: "Welcome Back!" (FittedBox to prevent any text overflow)
+                  // Hero Titles: "Welcome Back!" (Centered, FittedBox to prevent any text overflow)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         FittedBox(
                           fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
+                          alignment: Alignment.center,
                           child: RichText(
                             text: TextSpan(
                               style: GoogleFonts.plusJakartaSans(
@@ -478,9 +476,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         const SizedBox(height: 6),
                         Text(
                           'Sign in to continue to your fleet management account',
+                          textAlign: TextAlign.center,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 13,
-                            color: const Color(0xFF475569),
+                            color: Colors.white,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -496,29 +495,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     child: FadeTransition(
                       opacity: _fadeAnimation,
                       child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 18.0),
+                        margin: const EdgeInsets.only(top: 24.0, left: 18.0, right: 18.0),
                         constraints: const BoxConstraints(maxWidth: 440),
-                        padding: const EdgeInsets.symmetric(horizontal: 22.0, vertical: 24.0),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.96),
-                          borderRadius: BorderRadius.circular(28.0),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF0B1B3D).withValues(alpha: 0.12),
-                              blurRadius: 30,
-                              offset: const Offset(0, 12),
-                            ),
-                          ],
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 6.0),
                         child: Form(
                           key: _formKey,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               // 1. Email / Mobile Number
-                              _buildInputLabel('Email / Mobile Number', Icons.person_outline_rounded),
-                              const SizedBox(height: 6),
                               _buildInputField(
                                 controller: _emailController,
                                 hintText: 'Enter email or mobile number',
@@ -531,26 +516,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   return null;
                                 },
                               ),
-                              const SizedBox(height: 18),
+                              const SizedBox(height: 16),
 
-                              // 2. Password
-                              _buildInputLabel('Password', Icons.lock_outline_rounded),
-                              const SizedBox(height: 6),
+                              // 2. Password (clean input box, end icon hidden)
                               _buildInputField(
                                 controller: _passwordController,
                                 hintText: 'Enter your password',
                                 icon: Icons.lock_outline_rounded,
-                                obscureText: !_isPasswordVisible,
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _isPasswordVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                                    color: const Color(0xFF64748B),
-                                    size: 20,
-                                  ),
-                                  onPressed: () {
-                                    setState(() => _isPasswordVisible = !_isPasswordVisible);
-                                  },
-                                ),
+                                obscureText: true,
                                 validator: (v) {
                                   if (v == null || v.trim().isEmpty) {
                                     return 'Please enter your password';
@@ -560,85 +533,55 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               ),
                               const SizedBox(height: 12),
 
-                              // Remember Me & Forgot Password Row (Overflow-proof with Flexible and FittedBox)
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Flexible(
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        SizedBox(
-                                          width: 22,
-                                          height: 22,
-                                          child: Checkbox(
-                                            value: _rememberMe,
-                                            activeColor: const Color(0xFFF97316),
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                                            onChanged: (v) => setState(() => _rememberMe = v ?? false),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Flexible(
-                                          child: FittedBox(
-                                            fit: BoxFit.scaleDown,
-                                            alignment: Alignment.centerLeft,
-                                            child: Text(
-                                              'Remember me',
-                                              style: GoogleFonts.plusJakartaSans(
-                                                fontSize: 12.5,
-                                                color: const Color(0xFF475569),
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Flexible(
-                                    child: InkWell(
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => const ForgotPasswordScreen(),
-                                          ),
-                                        );
-                                      },
-                                      child: FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        alignment: Alignment.centerRight,
-                                        child: Text(
-                                          'Forgot Password?',
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 12.5,
-                                            fontWeight: FontWeight.w700,
-                                            color: const Color(0xFFF97316),
-                                          ),
-                                        ),
+                              // Forgot Password Link (right aligned)
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: InkWell(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const ForgotPasswordScreen(),
+                                      ),
+                                    );
+                                  },
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.centerRight,
+                                    child: Text(
+                                      'Forgot Password?',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFFF97316),
                                       ),
                                     ),
                                   ),
-                                ],
+                                ),
                               ),
 
                               const SizedBox(height: 20),
 
-                              // 3. Login Button (Navy Pill with Orange Arrow Button)
+                              // 3. Login Button (Vibrant Orange Pill matching the identifier page)
                               InkWell(
                                 onTap: _isLoading ? null : _handleLogin,
                                 borderRadius: BorderRadius.circular(30),
                                 child: Container(
                                   height: 52,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF0F1E36),
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFFF97316),
+                                        Color(0xFFEA580C),
+                                      ],
+                                      begin: Alignment.centerLeft,
+                                      end: Alignment.centerRight,
+                                    ),
                                     borderRadius: BorderRadius.circular(30),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: const Color(0xFF0F1E36).withValues(alpha: 0.25),
-                                        blurRadius: 16,
+                                        color: const Color(0xFFF97316).withValues(alpha: 0.38),
+                                        blurRadius: 18,
                                         offset: const Offset(0, 6),
                                       ),
                                     ],
@@ -671,12 +614,19 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                         height: 48,
                                         margin: const EdgeInsets.only(right: 2),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFFF97316),
+                                          color: Colors.white,
                                           borderRadius: BorderRadius.circular(24),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.12),
+                                              blurRadius: 6,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
                                         ),
                                         child: const Icon(
                                           Icons.arrow_forward_rounded,
-                                          color: Colors.white,
+                                          color: Color(0xFFEA580C),
                                           size: 20,
                                         ),
                                       ),
@@ -684,51 +634,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   ),
                                 ),
                               ),
-
-                              const SizedBox(height: 12),
-
-                              // Disclaimer Statement: By clicking on Login, you are accepting Terms & Conditions and Privacy Policy
-                              Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14.0),
-                                  child: Text.rich(
-                                    TextSpan(
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 11.5,
-                                        color: const Color(0xFF64748B),
-                                        height: 1.45,
-                                      ),
-                                      children: [
-                                        const TextSpan(text: 'By clicking on Login, you are accepting '),
-                                        TextSpan(
-                                          text: 'Terms & Conditions',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFFF97316),
-                                            decoration: TextDecoration.underline,
-                                            decorationColor: Color(0xFFF97316),
-                                          ),
-                                          recognizer: _termsRecognizer,
-                                        ),
-                                        const TextSpan(text: ' and '),
-                                        TextSpan(
-                                          text: 'Privacy Policy',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFFF97316),
-                                            decoration: TextDecoration.underline,
-                                            decorationColor: Color(0xFFF97316),
-                                          ),
-                                          recognizer: _privacyRecognizer,
-                                        ),
-                                      ],
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ),
-
-                              const SizedBox(height: 18),
                             ],
                           ),
                         ),
@@ -738,32 +643,44 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
                   const SizedBox(height: 20),
 
-                  // Bottom Floating Feature Bar (4 Colorful Highlights, with Expanded & FittedBox to prevent any overflow)
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 18.0),
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 14.0),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0F1E36).withValues(alpha: 0.92),
-                      borderRadius: BorderRadius.circular(20.0),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
+                  // Disclaimer Statement: By clicking on Login, you are accepting Terms & Conditions and Privacy Policy
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                      child: Text.rich(
+                        TextSpan(
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11.5,
+                            color: const Color(0xFF94A3B8),
+                            height: 1.45,
+                          ),
+                          children: [
+                            const TextSpan(text: 'By clicking on Login, you are accepting '),
+                            TextSpan(
+                              text: 'Terms & Conditions',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFF97316),
+                                decoration: TextDecoration.underline,
+                                decorationColor: Color(0xFFF97316),
+                              ),
+                              recognizer: _termsRecognizer,
+                            ),
+                            const TextSpan(text: ' and '),
+                            TextSpan(
+                              text: 'Privacy Policy',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFF97316),
+                                decoration: TextDecoration.underline,
+                                decorationColor: Color(0xFFF97316),
+                              ),
+                              recognizer: _privacyRecognizer,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        _buildFeatureItem(Icons.location_on_rounded, const Color(0xFFF97316), 'Real-time\nTracking'),
-                        _buildDivider(),
-                        _buildFeatureItem(Icons.security_rounded, const Color(0xFF38BDF8), 'Secure &\nReliable'),
-                        _buildDivider(),
-                        _buildFeatureItem(Icons.trending_up_rounded, const Color(0xFF22C55E), 'Data Driven\nInsights'),
-                        _buildDivider(),
-                        _buildFeatureItem(Icons.description_rounded, const Color(0xFFA855F7), 'End-to-End\nManagement'),
-                      ],
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
 
@@ -775,29 +692,53 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         },
       ),
     ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildInputLabel(String label, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, size: 15, color: const Color(0xFFF97316)),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF0F172A),
+    // Top Left Floating Back Button (Rendered on top of scrollable content for instant tap response)
+    Positioned(
+      top: 12,
+      left: 16,
+      child: SafeArea(
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _handleBack,
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0B1B3D).withValues(alpha: 0.08),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.arrow_back_rounded, size: 15, color: Color(0xFF0B1B3D)),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Back',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF0B1B3D),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-      ],
+      ),
+    ),
+  ],
+),
     );
   }
 
@@ -810,87 +751,52 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+    return TextFormField(
+      controller: controller,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      style: GoogleFonts.plusJakartaSans(
+        fontSize: 14,
+        color: Colors.white,
+        fontWeight: FontWeight.w600,
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            margin: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFEDD5).withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: const Color(0xFFEA580C), size: 20),
-          ),
-          Expanded(
-            child: TextFormField(
-              controller: controller,
-              obscureText: obscureText,
-              keyboardType: keyboardType,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13.5,
-                color: const Color(0xFF0F172A),
-                fontWeight: FontWeight.w600,
-              ),
-              validator: validator,
-              decoration: InputDecoration(
-                hintText: hintText,
-                hintStyle: GoogleFonts.plusJakartaSans(
-                  color: const Color(0xFF94A3B8),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-              ),
-            ),
-          ),
-          ?suffixIcon,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeatureItem(IconData icon, Color color, String title) {
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(height: 5),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                title,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withValues(alpha: 0.85),
-                  height: 1.2,
-                ),
-              ),
-            ),
-          ],
+      validator: validator,
+      decoration: InputDecoration(
+        filled: false,
+        hintText: hintText,
+        hintStyle: GoogleFonts.plusJakartaSans(
+          color: Colors.white.withValues(alpha: 0.45),
+          fontSize: 13.5,
+          fontWeight: FontWeight.w400,
+        ),
+        prefixIcon: Padding(
+          padding: const EdgeInsets.only(left: 14.0, right: 10.0),
+          child: Icon(icon, color: const Color(0xFFF97316), size: 20),
+        ),
+        prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+        suffixIcon: suffixIcon,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.22), width: 1.0),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.22), width: 1.0),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFF97316), width: 1.8),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.2),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.8),
         ),
       ),
-    );
-  }
-
-  Widget _buildDivider() {
-    return Container(
-      width: 1,
-      height: 28,
-      color: Colors.white.withValues(alpha: 0.1),
     );
   }
 }

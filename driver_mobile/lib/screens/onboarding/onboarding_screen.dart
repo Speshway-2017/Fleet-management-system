@@ -115,7 +115,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ? const MainNavigationScreen()
               : const LoginIdentifierScreen();
 
-      Navigator.of(context).pushReplacement(
+      Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 500),
           pageBuilder: (context, animation, secondaryAnimation) => targetScreen,
@@ -129,6 +129,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             );
           },
         ),
+        (route) => false,
       );
     } catch (e) {
       debugPrint('Error saving onboarding completion: $e');

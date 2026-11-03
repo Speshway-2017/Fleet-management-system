@@ -173,13 +173,17 @@ void main() {
 
     if (find.text('Next').evaluate().isNotEmpty) {
       expect(find.text('Login'), findsOneWidget);
+      if (find.byType(Checkbox).evaluate().isNotEmpty) {
+        await tester.tap(find.byType(Checkbox));
+        await tester.pumpAndSettle();
+      }
       await tester.enterText(find.byType(TextFormField), 'test@fleetpro.com');
       await tester.tap(find.text('Next'));
       await tester.pumpAndSettle();
     }
 
     // 1. Verify Login Screen
-    expect(find.text('Email / Mobile Number'), findsOneWidget);
+    expect(find.text('Enter email or mobile number'), findsOneWidget);
     expect(find.text('Login'), findsOneWidget);
 
     // 2. Navigate to Forgot Password Screen
@@ -187,7 +191,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // 3. Verify Forgot Password Screen
-    expect(find.text('Email / Mobile Number'), findsOneWidget);
+    expect(find.text('Enter registered email or mobile'), findsOneWidget);
 
     // 4. Fill in the email textfield and press Send Verification OTP
     await tester.enterText(find.byType(TextFormField), 'test@fleetpro.com');
@@ -196,7 +200,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // 5. Verify OTP Verification Screen is loaded
-    expect(find.text('Security Code'), findsOneWidget);
+    // Verify OTP screen
+    expect(find.text('Verify OTP'), findsOneWidget);
     expect(find.text('Verify OTP'), findsOneWidget);
 
     // 6. Fill in the 6 digit OTP fields
@@ -210,8 +215,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // 8. Verify Reset Password Screen is loaded
-    expect(find.text('New Password'), findsWidgets);
-    expect(find.text('Confirm Password'), findsOneWidget);
+    expect(find.text('Enter new password'), findsOneWidget);
+    expect(find.text('Confirm new password'), findsOneWidget);
     expect(find.text('PASSWORD REQUIREMENTS'), findsOneWidget);
 
     // 9. Tap Sign In to return to main login screen
@@ -237,6 +242,10 @@ void main() {
     }
 
     if (find.text('Next').evaluate().isNotEmpty) {
+      if (find.byType(Checkbox).evaluate().isNotEmpty) {
+        await tester.tap(find.byType(Checkbox));
+        await tester.pumpAndSettle();
+      }
       await tester.enterText(find.byType(TextFormField), 'test@fleetpro.com');
       await tester.tap(find.text('Next'));
       await tester.pumpAndSettle();
@@ -263,7 +272,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify Reset Password Screen is loaded
-    expect(find.text('New Password'), findsWidgets);
+    expect(find.text('Reset Password'), findsWidgets);
 
     // Get TextFormFields for passwords
     final passwordFields = find.byType(TextFormField);
@@ -379,6 +388,10 @@ void main() {
     }
 
     if (find.text('Next').evaluate().isNotEmpty) {
+      if (find.byType(Checkbox).evaluate().isNotEmpty) {
+        await tester.tap(find.byType(Checkbox));
+        await tester.pumpAndSettle();
+      }
       await tester.enterText(
         find.byType(TextFormField),
         'manager@fleetpro.com',
@@ -461,6 +474,10 @@ void main() {
     }
 
     if (find.text('Next').evaluate().isNotEmpty) {
+      if (find.byType(Checkbox).evaluate().isNotEmpty) {
+        await tester.tap(find.byType(Checkbox));
+        await tester.pumpAndSettle();
+      }
       await tester.enterText(
         find.byType(TextFormField),
         'manager@fleetpro.com',
@@ -819,6 +836,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      if (find.byType(Checkbox).evaluate().isNotEmpty) {
+        await tester.tap(find.byType(Checkbox));
+        await tester.pumpAndSettle();
+      }
       await tester.enterText(find.byType(TextFormField), 'pilot@fleetflow.com');
       await tester.tap(find.text('Next'));
       await tester.pumpAndSettle();
@@ -828,7 +849,7 @@ void main() {
       // Verify email field is pre-filled with the identifier
       expect(find.widgetWithText(TextFormField, 'pilot@fleetflow.com'), findsOneWidget);
       // Password field should now be present on LoginScreen
-      expect(find.text('Password'), findsOneWidget);
+      expect(find.text('Enter your password'), findsOneWidget);
     });
 
     testWidgets('Valid phone number input navigates to LoginScreen and pre-fills phone field', (
@@ -847,6 +868,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      if (find.byType(Checkbox).evaluate().isNotEmpty) {
+        await tester.tap(find.byType(Checkbox));
+        await tester.pumpAndSettle();
+      }
       await tester.enterText(find.byType(TextFormField), '+91 9876543210');
       await tester.tap(find.text('Next'));
       await tester.pumpAndSettle();
