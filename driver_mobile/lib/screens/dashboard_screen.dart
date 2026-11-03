@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/date_formatter.dart';
 import 'profile/profile_screen.dart';
 import 'trip_details_screen.dart';
@@ -24,20 +26,47 @@ import '../services/socket_service.dart';
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
+  static void clearStaticCache() {
+    _DashboardScreenState._cachedDriverProfile = null;
+    _DashboardScreenState._cachedCurrentTrip = null;
+    _DashboardScreenState._cachedDashboardData = null;
+    _DashboardScreenState._cachedIsVehicleAssigned = null;
+    _DashboardScreenState._cachedVehicleNumber = null;
+    ProfileState.profilePhotoUrlNotifier.value = '';
+  }
+
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  // In-memory cache for instant zero-delay restoration across tab switches
+  static Map<String, dynamic>? _cachedDriverProfile;
+  static Map<String, dynamic>? _cachedCurrentTrip;
+  static Map<String, dynamic>? _cachedDashboardData;
+  static bool? _cachedIsVehicleAssigned;
+  static String? _cachedVehicleNumber;
+
   Map<String, dynamic>? _driverProfile;
   Map<String, dynamic>? _currentTrip;
   Map<String, dynamic>? _dashboardData;
   bool _isVehicleAssigned = false;
   String? _vehicleNumber;
+  bool _isFetching = false;
 
   @override
   void initState() {
     super.initState();
+    // 1. Immediately hydrate from memory cache for instant 0ms rendering
+    _driverProfile = _cachedDriverProfile;
+    _currentTrip = _cachedCurrentTrip;
+    _dashboardData = _cachedDashboardData;
+    _isVehicleAssigned = _cachedIsVehicleAssigned ?? false;
+    _vehicleNumber = _cachedVehicleNumber;
+
+    // 2. Hydrate from persistent disk cache on cold starts
+    _loadFromLocalCache();
+
     MainNavigationScreen.selectedTabNotifier.addListener(_onTabChanged);
     _loadDashboardData();
     
@@ -45,6 +74,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
     SocketService.onEvent('notification:new', _onSocketEvent);
     SocketService.onEvent('trip:assigned', _onSocketEvent);
     SocketService.onEvent('trip:status-updated', _onSocketEvent);
+  }
+
+  Future<void> _loadFromLocalCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      bool stateChanged = false;
+
+      if (_driverProfile == null) {
+        final cachedProf = prefs.getString('driver_profile_cache') ?? prefs.getString('driver_profile');
+        if (cachedProf != null && cachedProf.isNotEmpty) {
+          final decoded = jsonDecode(cachedProf);
+          if (decoded is Map<String, dynamic>) {
+            _driverProfile = decoded;
+            _cachedDriverProfile = decoded;
+            stateChanged = true;
+            final img = decoded['profileImage']?.toString() ?? '';
+            if (ProfileState.profilePhotoUrlNotifier.value != img) {
+              ProfileState.profilePhotoUrlNotifier.value = img;
+            }
+          }
+        }
+      }
+
+      if (_currentTrip == null) {
+        final cachedTrip = prefs.getString('driver_current_trip_cache');
+        if (cachedTrip != null && cachedTrip.isNotEmpty) {
+          final decoded = jsonDecode(cachedTrip);
+          if (decoded is Map<String, dynamic>) {
+            _currentTrip = decoded;
+            _cachedCurrentTrip = decoded;
+            _isVehicleAssigned = prefs.getBool('driver_is_vehicle_assigned_cache') ?? true;
+            _vehicleNumber = prefs.getString('driver_vehicle_number_cache');
+            _cachedIsVehicleAssigned = _isVehicleAssigned;
+            _cachedVehicleNumber = _vehicleNumber;
+            stateChanged = true;
+          }
+        }
+      }
+
+      if (_dashboardData == null) {
+        final cachedDash = prefs.getString('driver_dashboard_data_cache');
+        if (cachedDash != null && cachedDash.isNotEmpty) {
+          final decoded = jsonDecode(cachedDash);
+          if (decoded is Map<String, dynamic>) {
+            _dashboardData = decoded;
+            _cachedDashboardData = decoded;
+            stateChanged = true;
+          }
+        }
+      }
+
+      if (stateChanged && mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      debugPrint('Error reading dashboard local cache: $e');
+    }
   }
 
   void _onSocketEvent(dynamic data) {
@@ -55,16 +141,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _loadDashboardData() async {
+    if (_isFetching) return;
+    _isFetching = true;
+
     try {
-      final profile = await AuthService.fetchProfile();
-      final currentTripRes = await ApiService.get('/driver/trips/current');
-      final dashRes = await ApiService.get('/driver/dashboard');
-      final vehRes = await ApiService.get('/driver/vehicle');
+      // Fetch profile, current trip, and dashboard metrics in PARALLEL via Future.wait
+      final results = await Future.wait([
+        AuthService.fetchProfile(),
+        ApiService.get('/driver/trips/current'),
+        ApiService.get('/driver/dashboard'),
+      ]);
+
+      final profile = results[0] as Map<String, dynamic>?;
+      final currentTripRes = results[1] as Map<String, dynamic>?;
+      final dashRes = results[2] as Map<String, dynamic>?;
 
       if (mounted) {
-        if (profile != null && profile['profileImage'] != null) {
-          final img = profile['profileImage'].toString();
-          if (img.isNotEmpty && img != ProfileState.profilePhotoUrlNotifier.value) {
+        if (profile != null) {
+          final img = profile['profileImage']?.toString() ?? '';
+          if (img != ProfileState.profilePhotoUrlNotifier.value) {
             ProfileState.profilePhotoUrlNotifier.value = img;
           }
         }
@@ -107,28 +202,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
           }
         }
 
-        if (activeTrip == null) {
-          isAssigned = false;
-          vehicleNum = null;
-        } else if (!isAssigned && vehRes != null && vehRes['success'] == true) {
-          final data = vehRes['data'];
-          if (data != null && data['assigned'] == true && data['vehicle'] != null) {
-            isAssigned = true;
-            final vName = data['vehicle']['vehicleName'] ?? data['vehicle']['brand'] ?? '';
-            final vPlate = data['vehicle']['vehicleNumber'] ?? data['vehicle']['registrationNumber'] ?? '';
-            if (vPlate.isNotEmpty) {
-              vehicleNum = vName.isNotEmpty ? '$vName – $vPlate' : vPlate;
+        // Only query /driver/vehicle if active trip has no vehicle assigned
+        if (activeTrip != null && !isAssigned) {
+          try {
+            final vehRes = await ApiService.get('/driver/vehicle');
+            if (vehRes != null && vehRes['success'] == true) {
+              final data = vehRes['data'];
+              if (data != null && data['assigned'] == true && data['vehicle'] != null) {
+                isAssigned = true;
+                final vName = data['vehicle']['vehicleName'] ?? data['vehicle']['brand'] ?? '';
+                final vPlate = data['vehicle']['vehicleNumber'] ?? data['vehicle']['registrationNumber'] ?? '';
+                if (vPlate.isNotEmpty) {
+                  vehicleNum = vName.isNotEmpty ? '$vName – $vPlate' : vPlate;
+                }
+              }
             }
-          }
+          } catch (_) {}
         }
 
+        // Update in-memory static cache
+        if (profile != null) _cachedDriverProfile = profile;
+        _cachedCurrentTrip = activeTrip;
+        if (dashRes != null && dashRes['data'] != null) _cachedDashboardData = dashRes['data'];
+        _cachedIsVehicleAssigned = isAssigned;
+        _cachedVehicleNumber = vehicleNum;
+
         setState(() {
-          _driverProfile = profile;
+          _driverProfile = profile ?? _driverProfile;
           _currentTrip = activeTrip;
-          _dashboardData = dashRes['data'];
+          _dashboardData = (dashRes != null && dashRes['data'] != null) ? dashRes['data'] : _dashboardData;
           _isVehicleAssigned = isAssigned;
           _vehicleNumber = vehicleNum;
         });
+
+        // Background persistence
+        _persistDashboardCache(profile, activeTrip, dashRes?['data'], isAssigned, vehicleNum);
 
         if (_currentTrip != null && _currentTrip!['tripId'] != null) {
           LocationTrackingService.startTracking(tripId: _currentTrip!['tripId'].toString());
@@ -138,7 +246,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     } catch (e) {
       debugPrint('Error loading dashboard data: $e');
+    } finally {
+      _isFetching = false;
     }
+  }
+
+  void _persistDashboardCache(
+    Map<String, dynamic>? profile,
+    Map<String, dynamic>? activeTrip,
+    dynamic dashboardData,
+    bool isAssigned,
+    String? vehicleNum,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (profile != null) {
+        prefs.setString('driver_profile_cache', jsonEncode(profile));
+      }
+      if (activeTrip != null) {
+        prefs.setString('driver_current_trip_cache', jsonEncode(activeTrip));
+      } else {
+        prefs.remove('driver_current_trip_cache');
+      }
+      if (dashboardData != null && dashboardData is Map) {
+        prefs.setString('driver_dashboard_data_cache', jsonEncode(dashboardData));
+      }
+      prefs.setBool('driver_is_vehicle_assigned_cache', isAssigned);
+      if (vehicleNum != null && vehicleNum.isNotEmpty) {
+        prefs.setString('driver_vehicle_number_cache', vehicleNum);
+      } else {
+        prefs.remove('driver_vehicle_number_cache');
+      }
+    } catch (_) {}
   }
 
   @override
@@ -261,12 +400,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         const SizedBox(height: 20),
 
-                        // 1. Active Trip Card or Standby Status
+                        // 1. Active Trip Card (Hidden if there is no active trip)
                         if (_hasActiveTrip) ...[
                           _buildActiveTripCard(context),
-                          const SizedBox(height: 20),
-                        ] else ...[
-                          _buildNoActiveTripBanner(context),
                           const SizedBox(height: 20),
                         ],
 
@@ -995,52 +1131,74 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Quick Actions Row (5 items)
+  // Quick Actions Row (4 items: Vehicle, Fuel, Issue, Settings)
   Widget _buildQuickActionsRow(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
           Expanded(
-            child: _buildActionCard(context, Icons.local_shipping_outlined, 'Vehicle', () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const VehicleOverviewScreen()),
-              );
-              _loadDashboardData();
-            }),
+            child: _buildActionCard(
+              context,
+              Icons.local_shipping_outlined,
+              'Vehicle',
+              iconColor: const Color(0xFF2563EB),
+              bgColor: const Color(0xFFEFF6FF),
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const VehicleOverviewScreen()),
+                );
+                _loadDashboardData();
+              },
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Expanded(
-            child: _buildActionCard(context, Icons.local_gas_station_outlined, 'Fuel', () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const FuelOverviewScreen()),
-              );
-              _loadDashboardData();
-            }),
+            child: _buildActionCard(
+              context,
+              Icons.local_gas_station_outlined,
+              'Fuel',
+              iconColor: const Color(0xFF059669),
+              bgColor: const Color(0xFFECFDF5),
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const FuelOverviewScreen()),
+                );
+                _loadDashboardData();
+              },
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Expanded(
-            child: _buildActionCard(context, Icons.warning_amber_rounded, 'Issue', () {
-              MainNavigationScreen.selectedTabNotifier.value = 0;
-            }),
+            child: _buildActionCard(
+              context,
+              Icons.warning_amber_rounded,
+              'Issue',
+              iconColor: const Color(0xFFDC2626),
+              bgColor: const Color(0xFFFEF2F2),
+              onTap: () {
+                MainNavigationScreen.selectedTabNotifier.value = 0;
+              },
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Expanded(
-            child: _buildActionCard(context, Icons.route_outlined, 'Trips', () {
-              MainNavigationScreen.selectedTabNotifier.value = 1;
-            }),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _buildActionCard(context, Icons.settings_outlined, 'Settings', () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
-              _loadDashboardData();
-            }),
+            child: _buildActionCard(
+              context,
+              Icons.settings_outlined,
+              'Settings',
+              iconColor: const Color(0xFF7C3AED),
+              bgColor: const Color(0xFFF5F3FF),
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                );
+                _loadDashboardData();
+              },
+            ),
           ),
         ],
       ),
@@ -1050,9 +1208,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildActionCard(
     BuildContext context,
     IconData icon,
-    String label,
-    VoidCallback onTap,
-  ) {
+    String label, {
+    required Color iconColor,
+    required Color bgColor,
+    required VoidCallback onTap,
+  }) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1070,24 +1230,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+          padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 4.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 36,
-                height: 36,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFFF2EB), // Very Light Orange/Peach
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: bgColor,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: const Color(0xFFFF6A00), size: 18),
+                child: Icon(icon, color: iconColor, size: 20),
               ),
               const SizedBox(height: 6),
               Text(
                 label,
                 style: GoogleFonts.poppins(
-                  fontSize: 11,
+                  fontSize: 11.5,
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF0F172A),
                 ),
@@ -1095,64 +1255,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  // Standby Banner when no trip is active
-  Widget _buildNoActiveTripBanner(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.route_outlined, color: Color(0xFF2563EB), size: 24),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'No Active Trip In Progress',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF0F172A),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'You are currently on standby. View scheduled trips or check vehicle logs below.',
-                  style: GoogleFonts.nunito(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

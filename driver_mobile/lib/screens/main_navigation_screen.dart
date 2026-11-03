@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
 import 'dashboard_screen.dart';
@@ -22,11 +23,14 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
+  final Set<int> _activatedTabs = {2};
+  DateTime? _lastBackPressed;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = MainNavigationScreen.selectedTabNotifier.value;
+    _activatedTabs.add(_currentIndex);
     MainNavigationScreen.selectedTabNotifier.addListener(_onTabChanged);
     _setupSocketNotificationListeners();
     // Initialize Firebase Cloud Messaging when entering MainNavigationScreen
@@ -108,27 +112,73 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   void _onTabChanged() {
     if (mounted) {
+      final newIndex = MainNavigationScreen.selectedTabNotifier.value;
       setState(() {
-        _currentIndex = MainNavigationScreen.selectedTabNotifier.value;
+        _currentIndex = newIndex;
+        _activatedTabs.add(newIndex);
       });
     }
   }
 
-  final List<Widget> _screens = [
-    const SupportHistoryScreen(),
-    const TripsScreen(),
-    const DashboardScreen(),
-    const NotificationsScreen(),
-    const ProfileScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
+        if (didPop) return;
+
+        // If not on Home tab (index 2), switch to Home tab
+        if (_currentIndex != 2) {
+          setState(() {
+            _currentIndex = 2;
+          });
+          MainNavigationScreen.selectedTabNotifier.value = 2;
+          return;
+        }
+
+        // On Home tab: double tap within 2 seconds to exit app
+        final now = DateTime.now();
+        if (_lastBackPressed == null ||
+            now.difference(_lastBackPressed!) > const Duration(seconds: 2)) {
+          _lastBackPressed = now;
+          ScaffoldMessenger.of(context).removeCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Press back again to exit',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.only(bottom: 72, left: 60, right: 60),
+              backgroundColor: const Color(0xE60F172A),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+          );
+          return;
+        }
+
+        // Confirmed double-back: exit the app safely
+        await SystemNavigator.pop();
+      },
+      child: Scaffold(
       backgroundColor: Colors.white,
       body: IndexedStack(
         index: _currentIndex,
-        children: _screens,
+        children: [
+          _activatedTabs.contains(0) ? const SupportHistoryScreen() : const SizedBox.shrink(),
+          _activatedTabs.contains(1) ? const TripsScreen() : const SizedBox.shrink(),
+          const DashboardScreen(),
+          _activatedTabs.contains(3) ? const NotificationsScreen() : const SizedBox.shrink(),
+          _activatedTabs.contains(4) ? const ProfileScreen() : const SizedBox.shrink(),
+        ],
       ),
       bottomNavigationBar: Container(
         height: 64.0 + MediaQuery.of(context).padding.bottom,
@@ -157,6 +207,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 

@@ -1,7 +1,9 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_colors.dart';
 import '../../services/api_service.dart';
+import '../../widgets/legal_modal.dart';
 import 'login_screen.dart';
 
 /// Clean Pre-Login Screen for Fleet Driver Mobile App.
@@ -22,6 +24,10 @@ class _LoginIdentifierScreenState extends State<LoginIdentifierScreen>
   final _formKey = GlobalKey<FormState>();
 
   String? _errorMessage;
+  bool _acceptedTerms = false;
+
+  late final TapGestureRecognizer _termsRecognizer;
+  late final TapGestureRecognizer _privacyRecognizer;
 
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
@@ -31,6 +37,8 @@ class _LoginIdentifierScreenState extends State<LoginIdentifierScreen>
   void initState() {
     super.initState();
     _identifierController = TextEditingController(text: widget.initialIdentifier ?? '');
+    _termsRecognizer = TapGestureRecognizer()..onTap = () => LegalModal.showTerms(context);
+    _privacyRecognizer = TapGestureRecognizer()..onTap = () => LegalModal.showPrivacy(context);
 
     _animController = AnimationController(
       vsync: this,
@@ -54,6 +62,8 @@ class _LoginIdentifierScreenState extends State<LoginIdentifierScreen>
   @override
   void dispose() {
     _identifierController.dispose();
+    _termsRecognizer.dispose();
+    _privacyRecognizer.dispose();
     _animController.dispose();
     super.dispose();
   }
@@ -205,6 +215,17 @@ class _LoginIdentifierScreenState extends State<LoginIdentifierScreen>
 
     if (error != null) return;
 
+    if (!_acceptedTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please accept the Terms & Conditions and Privacy Policy to continue.'),
+          backgroundColor: AppColors.error,
+          duration: Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
     final identifier = _identifierController.text.trim();
     Navigator.push(
       context,
@@ -281,39 +302,18 @@ class _LoginIdentifierScreenState extends State<LoginIdentifierScreen>
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            // Back button if navigation history exists
-                            if (Navigator.canPop(context))
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(bottom: 8.0),
-                                  child: IconButton(
-                                    icon: const Icon(
-                                      Icons.arrow_back_ios_new_rounded,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                    onPressed: () => Navigator.pop(context),
-                                    tooltip: 'Back',
-                                  ),
-                                ),
-                              ),
-
-                            // Space to push logo a little down
-                            const SizedBox(height: 20),
-
-                            // 1. Existing Fleet Management Logo (Increased size to 120)
+                            // 1. Existing Fleet Management Logo (Size: 115)
                             Center(
                               child: InkWell(
                                 onLongPress: _showServerConfigDialog,
                                 borderRadius: BorderRadius.circular(20),
                                 child: Image.asset(
                                   'assets/images/auth_logo.png',
-                                  height: 120,
+                                  height: 115,
                                   fit: BoxFit.contain,
                                   errorBuilder: (ctx, err, st) => Image.asset(
                                     'assets/images/logo.png',
-                                    height: 120,
+                                    height: 115,
                                     fit: BoxFit.contain,
                                     errorBuilder: (ctx2, err2, st2) => Row(
                                       mainAxisSize: MainAxisSize.min,
@@ -384,79 +384,71 @@ class _LoginIdentifierScreenState extends State<LoginIdentifierScreen>
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Container(
-                                    decoration: BoxDecoration(
+                                  TextFormField(
+                                    controller: _identifierController,
+                                    keyboardType: TextInputType.emailAddress,
+                                    textInputAction: TextInputAction.done,
+                                    onFieldSubmitted: (_) => _handleNext(),
+                                    onChanged: (_) {
+                                      if (_errorMessage != null) {
+                                        setState(() => _errorMessage = null);
+                                      }
+                                    },
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 14.5,
                                       color: Colors.white,
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: _errorMessage != null
-                                            ? const Color(0xFFEF4444)
-                                            : const Color(0xFFCBD5E1),
-                                        width: _errorMessage != null ? 1.5 : 1.2,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: _errorMessage != null
-                                              ? const Color(0xFFEF4444).withValues(alpha: 0.12)
-                                              : Colors.black.withValues(alpha: 0.08),
-                                          blurRadius: 12,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ],
+                                      fontWeight: FontWeight.w600,
                                     ),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 44,
-                                          height: 44,
-                                          margin: const EdgeInsets.all(4),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFFFEDD5).withValues(alpha: 0.6),
-                                            borderRadius: BorderRadius.circular(10),
-                                          ),
-                                          child: const Icon(
-                                            Icons.alternate_email_rounded,
-                                            color: Color(0xFFEA580C),
-                                            size: 20,
-                                          ),
+                                    decoration: InputDecoration(
+                                      filled: false,
+                                      hintText: 'Email or phone number',
+                                      hintStyle: GoogleFonts.plusJakartaSans(
+                                        color: Colors.white.withValues(alpha: 0.45),
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                      prefixIcon: const Padding(
+                                        padding: EdgeInsets.only(left: 14.0, right: 10.0),
+                                        child: Icon(
+                                          Icons.alternate_email_rounded,
+                                          color: Color(0xFFF97316),
+                                          size: 20,
                                         ),
-                                        Expanded(
-                                          child: TextFormField(
-                                            controller: _identifierController,
-                                            keyboardType: TextInputType.emailAddress,
-                                            textInputAction: TextInputAction.done,
-                                            onFieldSubmitted: (_) => _handleNext(),
-                                            onChanged: (_) {
-                                              if (_errorMessage != null) {
-                                                setState(() => _errorMessage = null);
-                                              }
-                                            },
-                                            style: GoogleFonts.plusJakartaSans(
-                                              fontSize: 14.5,
-                                              color: const Color(0xFF0F172A),
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                            decoration: InputDecoration(
-                                              hintText: 'Email or phone number',
-                                              hintStyle: GoogleFonts.plusJakartaSans(
-                                                color: const Color(0xFF94A3B8),
-                                                fontSize: 13.5,
-                                                fontWeight: FontWeight.w400,
-                                              ),
-                                              border: InputBorder.none,
-                                              errorStyle: const TextStyle(
-                                                height: 0,
-                                                fontSize: 0,
-                                                color: Colors.transparent,
-                                              ),
-                                              contentPadding: const EdgeInsets.symmetric(
-                                                horizontal: 10,
-                                                vertical: 14,
-                                              ),
-                                            ),
-                                          ),
+                                      ),
+                                      prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: BorderSide(
+                                          color: _errorMessage != null
+                                              ? const Color(0xFFEF4444)
+                                              : Colors.white.withValues(alpha: 0.22),
+                                          width: 1.0,
                                         ),
-                                      ],
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: BorderSide(
+                                          color: _errorMessage != null
+                                              ? const Color(0xFFEF4444)
+                                              : Colors.white.withValues(alpha: 0.22),
+                                          width: 1.0,
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: BorderSide(
+                                          color: _errorMessage != null
+                                              ? const Color(0xFFEF4444)
+                                              : const Color(0xFFF97316),
+                                          width: 1.8,
+                                        ),
+                                      ),
+                                      errorStyle: const TextStyle(
+                                        height: 0,
+                                        fontSize: 0,
+                                        color: Colors.transparent,
+                                      ),
                                     ),
                                   ),
 
@@ -488,7 +480,78 @@ class _LoginIdentifierScreenState extends State<LoginIdentifierScreen>
                                     ),
                                   ],
 
-                                  const SizedBox(height: 28),
+                                  const SizedBox(height: 18),
+
+                                  // Accept Terms & Conditions Checkbox
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 12.0),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        SizedBox(
+                                          width: 22,
+                                          height: 22,
+                                          child: Checkbox(
+                                            value: _acceptedTerms,
+                                            fillColor: WidgetStateProperty.resolveWith((states) {
+                                              if (states.contains(WidgetState.selected)) {
+                                                return const Color(0xFFF97316);
+                                              }
+                                              return Colors.transparent;
+                                            }),
+                                            checkColor: Colors.white,
+                                            side: const BorderSide(color: Colors.white, width: 1.6),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(5),
+                                            ),
+                                            onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(top: 1.0),
+                                            child: Text.rich(
+                                              TextSpan(
+                                                style: GoogleFonts.plusJakartaSans(
+                                                  fontSize: 12.5,
+                                                  color: Colors.white.withValues(alpha: 0.85),
+                                                  height: 1.45,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                                children: [
+                                                  const TextSpan(text: 'I accept the '),
+                                                  TextSpan(
+                                                    text: 'Terms & Conditions',
+                                                    style: const TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Color(0xFFF97316),
+                                                      decoration: TextDecoration.underline,
+                                                      decorationColor: Color(0xFFF97316),
+                                                    ),
+                                                    recognizer: _termsRecognizer,
+                                                  ),
+                                                  const TextSpan(text: ' and '),
+                                                  TextSpan(
+                                                    text: 'Privacy Policy',
+                                                    style: const TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Color(0xFFF97316),
+                                                      decoration: TextDecoration.underline,
+                                                      decorationColor: Color(0xFFF97316),
+                                                    ),
+                                                    recognizer: _privacyRecognizer,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 24),
 
                                   // 5. Next Button (Vibrant Fleet Orange with crisp white arrow circular badge)
                                   InkWell(
@@ -566,6 +629,52 @@ class _LoginIdentifierScreenState extends State<LoginIdentifierScreen>
               },
             ),
           ),
+
+          // Top Left Floating Back Button (Rendered on top for instant tap response)
+          if (Navigator.canPop(context))
+            Positioned(
+              top: 12,
+              left: 16,
+              child: SafeArea(
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => Navigator.pop(context),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.92),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF0B1B3D).withValues(alpha: 0.08),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.arrow_back_rounded, size: 15, color: Color(0xFF0B1B3D)),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Back',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF0B1B3D),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

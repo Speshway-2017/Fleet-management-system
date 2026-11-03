@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../../widgets/driver_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -389,7 +390,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
 
         // Dynamically update profile image notifier
-        if (driver.profileImage.isNotEmpty && driver.profileImage != ProfileState.profilePhotoUrlNotifier.value) {
+        if (driver.profileImage != ProfileState.profilePhotoUrlNotifier.value) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             ProfileState.profilePhotoUrlNotifier.value = driver.profileImage;
           });
@@ -480,41 +481,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ),
                               ],
                             ),
-                            child: ClipOval(
-                              child: ValueListenableBuilder<String>(
+                            child: ValueListenableBuilder<String>(
                                 valueListenable: ProfileState.profilePhotoUrlNotifier,
                                 builder: (context, photoUrl, child) {
-                                  if (photoUrl.isEmpty) {
-                                    return const Icon(
-                                      Icons.person,
-                                      size: 64,
-                                      color: AppColors.textDisabled,
-                                    );
-                                  }
-                                  if (photoUrl.startsWith('data:image') && photoUrl.contains('base64,')) {
-                                    try {
-                                      final base64Content = photoUrl.split('base64,').last;
-                                      final bytes = base64Decode(base64Content);
-                                      return Image.memory(
-                                        bytes,
-                                        fit: BoxFit.cover,
-                                      );
-                                    } catch (_) {}
-                                  }
-                                  return Image.network(
-                                    photoUrl,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return const Icon(
-                                        Icons.person,
-                                        size: 64,
-                                        color: AppColors.textDisabled,
-                                      );
-                                    },
+                                  final activeUrl = photoUrl.isNotEmpty ? photoUrl : driver.profileImage;
+                                  return DriverAvatar(
+                                    photoUrl: activeUrl,
+                                    name: driver.fullName,
+                                    size: 120,
+                                    fontSize: 42,
+                                    borderWidth: 0,
+                                    borderColor: Colors.transparent,
                                   );
                                 },
                               ),
-                            ),
                           ),
                           Positioned(
                             bottom: 4,
@@ -936,7 +916,5 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
 class ProfileState {
-  static final ValueNotifier<String> profilePhotoUrlNotifier = ValueNotifier<String>(
-    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?fit=crop&w=300&h=300',
-  );
+  static final ValueNotifier<String> profilePhotoUrlNotifier = ValueNotifier<String>('');
 }

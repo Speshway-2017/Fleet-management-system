@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../../widgets/driver_avatar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
@@ -432,49 +433,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // Profile Header Card
               Row(
                 children: [
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16.0),
-                      border: Border.all(color: AppColors.secondary, width: 2.0),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14.0),
-                      child: ValueListenableBuilder<String>(
-                        valueListenable: ProfileState.profilePhotoUrlNotifier,
-                        builder: (context, photoUrl, child) {
-                          if (photoUrl.isEmpty) {
-                            return const Icon(
-                              Icons.person,
-                              size: 40,
-                              color: AppColors.textDisabled,
-                            );
-                          }
-                          if (photoUrl.startsWith('data:image') && photoUrl.contains('base64,')) {
-                            try {
-                              final base64Content = photoUrl.split('base64,').last;
-                              final bytes = base64Decode(base64Content);
-                              return Image.memory(
-                                bytes,
-                                fit: BoxFit.cover,
-                              );
-                            } catch (_) {}
-                          }
-                          return Image.network(
-                            photoUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.person,
-                                size: 40,
-                                color: AppColors.textDisabled,
-                              );
-                            },
-                          );
-                        },
-                      ),
-                    ),
+                  ValueListenableBuilder<String>(
+                    valueListenable: ProfileState.profilePhotoUrlNotifier,
+                    builder: (context, photoUrl, child) {
+                      final activeUrl = photoUrl.isNotEmpty
+                          ? photoUrl
+                          : (driver?.profileImage ?? '');
+                      return DriverAvatar(
+                        photoUrl: activeUrl,
+                        name: driver?.fullName ?? 'Driver',
+                        size: 72,
+                        fontSize: 26,
+                        shape: BoxShape.rectangle,
+                        borderRadius: BorderRadius.circular(16.0),
+                        borderColor: AppColors.secondary,
+                        borderWidth: 2.0,
+                      );
+                    },
                   ),
                   const SizedBox(width: 18),
                   Expanded(

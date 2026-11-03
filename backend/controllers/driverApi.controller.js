@@ -676,34 +676,33 @@ export const getCurrentTrip = async (req, res, next) => {
       return sendSuccess(res, 200, null, 'No active trip assigned');
     }
 
-    let managerInfo = null;
-    if (currentTrip.assignedManager) {
-      const manager = await User.findById(currentTrip.assignedManager).select('name phone email');
-      if (manager) managerInfo = manager;
-    }
+    const [manager, invoice, podDoc, wbDoc] = await Promise.all([
+      currentTrip.assignedManager
+        ? User.findById(currentTrip.assignedManager).select('name phone email').lean()
+        : Promise.resolve(null),
+      Invoice.findOne({ trip: currentTrip._id }).lean(),
+      ProofOfDelivery.findOne({
+        $or: [
+          { trip: currentTrip._id },
+          { tripId: currentTrip._id.toString() },
+          { tripId: currentTrip.tripNumber }
+        ]
+      }).sort({ createdAt: -1 }).lean(),
+      WeighbridgeSlip.findOne({
+        $or: [
+          { trip: currentTrip._id },
+          { tripId: currentTrip._id.toString() },
+          { tripId: currentTrip.tripNumber }
+        ]
+      }).sort({ createdAt: -1 }).lean()
+    ]);
 
-    const invoice = await Invoice.findOne({ trip: currentTrip._id });
+    let managerInfo = manager || null;
     const invoiceNumber = invoice ? invoice.invoiceNumber : 'N/A';
-
-    const podDoc = await ProofOfDelivery.findOne({
-      $or: [
-        { trip: currentTrip._id },
-        { tripId: currentTrip._id.toString() },
-        { tripId: currentTrip.tripNumber }
-      ]
-    }).sort({ createdAt: -1 });
     const rawPodUrl = (podDoc?.podDocumentUrl || podDoc?.deliveryPhotoUrl || podDoc?.url || currentTrip.podUrl || currentTrip.proofOfDelivery?.url || currentTrip.proofOfDelivery?.podDocumentUrl || '').trim();
     const isRealPodUrl = Boolean(rawPodUrl && !rawPodUrl.includes('unsplash.com') && !rawPodUrl.includes('via.placeholder.com'));
     const podUrl = isRealPodUrl ? rawPodUrl : '';
     const podStatus = isRealPodUrl ? (currentTrip.podStatus === 'Approved' || podDoc?.status === 'Approved' ? 'Approved' : 'Uploaded') : 'Not Uploaded';
-
-    const wbDoc = await WeighbridgeSlip.findOne({
-      $or: [
-        { trip: currentTrip._id },
-        { tripId: currentTrip._id.toString() },
-        { tripId: currentTrip.tripNumber }
-      ]
-    }).sort({ createdAt: -1 });
     const rawWbUrl = (wbDoc?.documentUrl || wbDoc?.url || currentTrip.weighbridgeUrl || currentTrip.weighbridgeSlip?.url || currentTrip.weighbridgeSlip?.documentUrl || '').trim();
     const isRealWbUrl = Boolean(rawWbUrl && !rawWbUrl.includes('unsplash.com') && !rawWbUrl.includes('via.placeholder.com'));
     const wbUrl = isRealWbUrl ? rawWbUrl : '';
