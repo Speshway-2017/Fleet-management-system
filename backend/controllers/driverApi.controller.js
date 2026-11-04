@@ -337,11 +337,13 @@ export const updateDriverProfile = async (req, res, next) => {
 
       if (isOff) {
         updateData.driverStatus = 'OFFLINE';
+        updateData.status = 'Offline';
         updateData.isOnline = false;
         updateData.isDuty = false;
       } else {
         updateData.isOnline = true;
         updateData.isDuty = true;
+        updateData.status = 'Available';
         if (driverBefore && driverBefore.driverStatus !== 'ON_TRIP') {
           updateData.driverStatus = 'AVAILABLE';
         }
@@ -495,20 +497,31 @@ export const updateDriverProfile = async (req, res, next) => {
       console.warn('[DriverApi] Non-critical User doc sync note:', userSyncErr?.message);
     }
 
-    if (updatedDriver.assignedManager) {
-      try {
-        const { getIO } = await import('../server.js');
-        if (getIO()) {
-          const managerRoom = `manager:${updatedDriver.assignedManager._id || updatedDriver.assignedManager}`;
-          getIO().to(managerRoom).emit('driver:status-changed', {
-            driverId: updatedDriver._id,
-            driverName: updatedDriver.fullName,
-            driverStatus: updatedDriver.driverStatus,
-            isOnline: updatedDriver.isOnline,
-          });
+    try {
+      const { getIO } = await import('../server.js');
+      const io = req.app?.get('socketio') || req.app?.locals?.io || (getIO ? getIO() : null);
+      if (io) {
+        const socketPayload = {
+          driverId: updatedDriver._id,
+          _id: updatedDriver._id,
+          id: updatedDriver._id,
+          driverName: updatedDriver.fullName,
+          fullName: updatedDriver.fullName,
+          driverStatus: updatedDriver.driverStatus,
+          status: updatedDriver.status,
+          isOnline: updatedDriver.isOnline,
+          isDuty: updatedDriver.isDuty,
+          assignedManager: updatedDriver.assignedManager,
+        };
+        const managerId = updatedDriver.assignedManager?._id || updatedDriver.assignedManager;
+        if (managerId) {
+          io.to(`manager:${managerId}`).emit('driver:status-changed', socketPayload);
+          io.to(`manager:${managerId}`).emit('driver:status-updated', socketPayload);
         }
-      } catch (_) {}
-    }
+        io.emit('driver:status-changed', socketPayload);
+        io.emit('driver:status-updated', socketPayload);
+      }
+    } catch (_) {}
 
     // Generate System Notifications on driver settings update
     try {
@@ -621,6 +634,106 @@ export const updateDriverProfile = async (req, res, next) => {
               : 'email';
       return sendError(res, 400, `A driver with this ${fieldLabel} ${val ? `("${val}") ` : ''}already exists`);
     }
+    next(error);
+  }
+};
+
+/**
+ * Update Driver Status / Duty
+ * PUT /api/driver/status
+ * PATCH /api/driver/status
+ */
+export const updateDriverStatus = async (req, res, next) => {
+  try {
+    let driver = await resolveCurrentDriver(req);
+    if (!driver && req.user?._id) {
+      driver = await Driver.findById(req.user._id);
+    }
+    if (!driver && req.body?.driverId) {
+      driver = await Driver.findById(req.body.driverId);
+    }
+    if (!driver && req.user?.email) {
+      driver = await Driver.findOne({ email: req.user.email.toLowerCase().trim() });
+    }
+    if (!driver) {
+      return sendError(res, 404, 'Driver profile not found');
+    }
+
+    const { isOnline, isDuty, isOnDuty, driverStatus, status } = req.body;
+    const rawVal = isDuty ?? isOnDuty ?? isOnline;
+
+    const isOff = (
+      rawVal === false ||
+      rawVal === 'false' ||
+      rawVal === 0 ||
+      rawVal === '0' ||
+      driverStatus === 'OFFLINE' ||
+      driverStatus === 'OFF_DUTY' ||
+      status === 'Offline' ||
+      status === 'OFFLINE'
+    );
+
+    const updateData = {};
+    if (isOff) {
+      updateData.driverStatus = 'OFFLINE';
+      updateData.status = 'Offline';
+      updateData.isOnline = false;
+      updateData.isDuty = false;
+    } else {
+      updateData.isOnline = true;
+      updateData.isDuty = true;
+      updateData.status = 'Available';
+      if (driver.driverStatus !== 'ON_TRIP') {
+        updateData.driverStatus = 'AVAILABLE';
+      }
+    }
+
+    const updatedDriver = await Driver.findByIdAndUpdate(
+      driver._id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).lean();
+
+    // Emit real-time updates via Socket.IO
+    try {
+      const { getIO } = await import('../server.js');
+      const io = req.app?.get('socketio') || req.app?.locals?.io || (getIO ? getIO() : null);
+      if (io) {
+        const socketPayload = {
+          driverId: updatedDriver._id,
+          _id: updatedDriver._id,
+          id: updatedDriver._id,
+          driverName: updatedDriver.fullName,
+          fullName: updatedDriver.fullName,
+          driverStatus: updatedDriver.driverStatus,
+          status: updatedDriver.status,
+          isOnline: updatedDriver.isOnline,
+          isDuty: updatedDriver.isDuty,
+          assignedManager: updatedDriver.assignedManager,
+        };
+        const managerId = updatedDriver.assignedManager?._id || updatedDriver.assignedManager;
+        if (managerId) {
+          io.to(`manager:${managerId}`).emit('driver:status-updated', socketPayload);
+          io.to(`manager:${managerId}`).emit('driver:status-changed', socketPayload);
+        }
+        io.emit('driver:status-updated', socketPayload);
+        io.emit('driver:status-changed', socketPayload);
+      }
+    } catch (sockErr) {
+      console.warn('[DriverStatus] Non-critical socket emit note:', sockErr?.message);
+    }
+
+    return sendSuccess(res, 200, {
+      driverId: updatedDriver._id,
+      _id: updatedDriver._id,
+      id: updatedDriver._id,
+      fullName: updatedDriver.fullName,
+      driverStatus: updatedDriver.driverStatus,
+      status: updatedDriver.status,
+      isOnline: updatedDriver.isOnline,
+      isDuty: updatedDriver.isDuty,
+    }, `Duty status updated to ${updatedDriver.isOnline ? 'On Duty' : 'Off Duty'}`);
+  } catch (error) {
     next(error);
   }
 };

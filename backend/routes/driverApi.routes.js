@@ -4,6 +4,7 @@ import {
   logoutDriver,
   getDriverProfile,
   updateDriverProfile,
+  updateDriverStatus,
   getCurrentTrip,
   getDriverDashboard,
   getDriverNotifications,
@@ -50,6 +51,8 @@ router.use(protect);
 
 router.get('/profile', getDriverProfile);
 router.put('/profile', updateDriverProfile);
+router.put('/status', updateDriverStatus);
+router.patch('/status', updateDriverStatus);
 router.delete('/profile', deleteDriverAccount);
 router.delete('/account', deleteDriverAccount);
 router.post('/delete-account', deleteDriverAccount);

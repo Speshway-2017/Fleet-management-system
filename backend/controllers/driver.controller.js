@@ -254,11 +254,15 @@ export const getAvailableDrivers = async (req, res, next) => {
       _id: { $nin: allocatedDriverIds },
       isDeleted: { $ne: true },
       accountStatus: { $nin: ['Deleted', 'Inactive', 'Suspended'] },
+      driverStatus: { $nin: ['OFFLINE', 'OFF_DUTY', 'SUSPENDED', 'INACTIVE', 'DELETED', 'ON_TRIP', 'ASSIGNED'] },
+      status: { $nin: ['Offline', 'OFFLINE', 'Inactive', 'Suspended', 'Off Duty', 'OFF_DUTY'] },
+      isOnline: { $ne: false },
+      isDuty: { $ne: false },
       $and: [
         {
           $or: [
             { driverStatus: { $in: ['AVAILABLE', 'Available', 'ACTIVE', 'Active'] } },
-            { status: { $in: ['Available', 'AVAILABLE', 'Active', 'ACTIVE'] } }
+            { status: { $in: ['Available', 'AVAILABLE'] } }
           ]
         },
         {
@@ -642,18 +646,59 @@ export const updateDriver = async (req, res, next) => {
       }
     }
 
-    const driver = await updateDriverRecord(driverId, req.body);
+    const updatePayload = { ...req.body };
+    if (
+      updatePayload.driverStatus === 'OFFLINE' ||
+      updatePayload.driverStatus === 'OFF_DUTY' ||
+      updatePayload.isDuty === false ||
+      updatePayload.isOnline === false ||
+      updatePayload.status === 'Offline'
+    ) {
+      updatePayload.driverStatus = 'OFFLINE';
+      updatePayload.status = 'Offline';
+      updatePayload.isDuty = false;
+      updatePayload.isOnline = false;
+    } else if (
+      updatePayload.driverStatus === 'AVAILABLE' ||
+      updatePayload.isDuty === true ||
+      updatePayload.isOnline === true ||
+      updatePayload.status === 'Available'
+    ) {
+      if (updatePayload.driverStatus !== 'ON_TRIP') {
+        updatePayload.driverStatus = 'AVAILABLE';
+        updatePayload.status = 'Available';
+      }
+      updatePayload.isDuty = true;
+      updatePayload.isOnline = true;
+    }
+
+    const driver = await updateDriverRecord(driverId, updatePayload);
     if (!driver) {
       return sendError(res, 404, 'Driver not found');
     }
 
-    // Emit real-time driver status update to manager room
+    // Emit real-time driver status update to manager room & globally
     const io = req.app.get('socketio') || (req.app.locals ? req.app.locals.io : null);
     if (io) {
+      const socketPayload = {
+        driverId: driver._id,
+        _id: driver._id,
+        id: driver._id,
+        driverName: driver.fullName,
+        fullName: driver.fullName,
+        driverStatus: driver.driverStatus,
+        status: driver.status,
+        isOnline: driver.isOnline,
+        isDuty: driver.isDuty,
+        assignedManager: driver.assignedManager,
+      };
       const managerId = driver.assignedManager || (req.user && req.user._id);
       if (managerId) {
-        io.to(`manager:${managerId}`).emit('driver:status-updated', driver);
+        io.to(`manager:${managerId}`).emit('driver:status-updated', socketPayload);
+        io.to(`manager:${managerId}`).emit('driver:status-changed', socketPayload);
       }
+      io.emit('driver:status-updated', socketPayload);
+      io.emit('driver:status-changed', socketPayload);
     }
 
     return sendSuccess(res, 200, driver, 'Driver updated successfully');

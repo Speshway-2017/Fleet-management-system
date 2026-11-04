@@ -33,6 +33,7 @@ import { formatEmployeeId } from "@/utils/employeeIdFormatter";
 import { useAuth } from "@/context/AuthContext";
 import { managerApi } from "../api/managerApi";
 import { calculateDrivingRoute, calculateEtaFromDuration } from "../services/routingService";
+import { getSocket } from "@/api/socket";
 import { INDIAN_STATES, getCitiesForState, getStateForCity } from "@/constants/indianStates";
 import { cleanCityName } from "@/utils/locationFormatter";
 import { isSunday, validateSearchQuery } from "@/validations/common.schema.js";
@@ -721,6 +722,66 @@ export default function CreateTripPage() {
     setTripNumber(`TRP-${Math.floor(100000 + Math.random() * 900000)}`);
   }, []);
 
+  // Real-time synchronization of driver status changes from Mobile / Web portal
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const handleDriverStatusUpdate = (updatedDriver) => {
+      if (!updatedDriver) return;
+      const targetId = String(updatedDriver.driverId || updatedDriver._id || updatedDriver.id);
+
+      const isOff = (
+        updatedDriver.driverStatus === 'OFFLINE' ||
+        updatedDriver.driverStatus === 'OFF_DUTY' ||
+        updatedDriver.driverStatus === 'SUSPENDED' ||
+        updatedDriver.driverStatus === 'INACTIVE' ||
+        updatedDriver.status === 'Offline' ||
+        updatedDriver.status === 'Inactive' ||
+        updatedDriver.status === 'Off Duty' ||
+        updatedDriver.isOnline === false ||
+        updatedDriver.isDuty === false ||
+        updatedDriver.isOnDuty === false
+      );
+
+      setDrivers(prevDrivers =>
+        prevDrivers.map(d => {
+          if (String(d.id || d._id) === targetId) {
+            return {
+              ...d,
+              ...updatedDriver,
+              isOffline: isOff,
+              driverStatus: updatedDriver.driverStatus || (isOff ? 'OFFLINE' : 'AVAILABLE'),
+              status: isOff ? 'Offline' : 'Available',
+              isOnline: !isOff,
+              isDuty: !isOff
+            };
+          }
+          return d;
+        })
+      );
+
+      // If the currently selected driver went offline, clear selection
+      if (isOff) {
+        setSelectedDriverId(prev => {
+          if (String(prev) === targetId) {
+            toast.error("The selected driver went offline and has been unselected.");
+            return "";
+          }
+          return prev;
+        });
+      }
+    };
+
+    socket.on('driver:status-updated', handleDriverStatusUpdate);
+    socket.on('driver:status-changed', handleDriverStatusUpdate);
+
+    return () => {
+      socket.off('driver:status-updated', handleDriverStatusUpdate);
+      socket.off('driver:status-changed', handleDriverStatusUpdate);
+    };
+  }, []);
+
   // Load resources dynamically from backend based on startLocation
   useEffect(() => {
     if (!startLocation.trim()) {
@@ -777,7 +838,23 @@ export default function CreateTripPage() {
         });
 
         const driversData = rawDrivers.map(d => {
-          const isAvailable = d.driverStatus === 'AVAILABLE' || d.driverStatus === 'Available' || d.status === 'Available' || d.status === 'Active';
+          const isOfflineDriver = Boolean(
+            d.driverStatus === 'OFFLINE' ||
+            d.driverStatus === 'OFF_DUTY' ||
+            d.driverStatus === 'SUSPENDED' ||
+            d.driverStatus === 'INACTIVE' ||
+            d.status === 'Offline' ||
+            d.status === 'Inactive' ||
+            d.status === 'Off Duty' ||
+            d.isOnline === false ||
+            d.isDuty === false ||
+            d.isOnDuty === false
+          );
+          const isAvailable = !isOfflineDriver && (
+            d.driverStatus === 'AVAILABLE' ||
+            d.driverStatus === 'Available' ||
+            d.status === 'Available'
+          );
           let veh = d.assignedVehicle || d.vehiclePlate || d.vehicleRegistration || d.vehicle || "";
           if (veh === "Unassigned") veh = "";
 
@@ -786,7 +863,8 @@ export default function CreateTripPage() {
             id: d._id || d.id,
             name: d.fullName || d.name,
             employeeId: formatEmployeeId(d.employeeId),
-            status: isAvailable ? 'Available' : (d.status || 'Not Available'),
+            isOffline: isOfflineDriver,
+            status: isAvailable ? 'Available' : (isOfflineDriver ? 'Offline' : (d.status || 'Not Available')),
             isNearby: d.isNearby || isDrvFallback,
             distanceKm: d.distanceKm,
             estimatedTravelTime: d.estimatedTravelTime,
@@ -1562,18 +1640,38 @@ export default function CreateTripPage() {
       <p className="text-xs text-gray-400 mt-2 font-semibold">Fetching available drivers...</p>
     </div>
   ) : (filterAvailableDrivers
-    ? drivers.filter(d => (d.status === "Available" || d.driverStatus === "AVAILABLE" || d.driverStatus === "Available") && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
+    ? drivers.filter(d => {
+        const isOff = d.isOffline || d.driverStatus === "OFFLINE" || d.driverStatus === "OFF_DUTY" || d.driverStatus === "SUSPENDED" || d.driverStatus === "INACTIVE" || d.status === "Offline" || d.status === "Inactive" || d.status === "Off Duty" || d.isOnline === false || d.isDuty === false || d.isOnDuty === false;
+        const isExp = d.licenseExpiry && new Date(d.licenseExpiry) < new Date();
+        return !isOff && !isExp && (d.status === "Available" || d.driverStatus === "AVAILABLE" || d.driverStatus === "Available");
+      })
     : drivers
   ).length === 0 ? (
     <p className="text-xs text-gray-400 py-8 text-center font-semibold font-poppins">No drivers available in the selected location.</p>
   ) : (
     (filterAvailableDrivers
-      ? drivers.filter(d => (d.driverStatus === "AVAILABLE" || d.driverStatus === "Available" || d.status === "Available" || d.status === "Active") && (!d.licenseExpiry || new Date(d.licenseExpiry) >= new Date()))
+      ? drivers.filter(d => {
+          const isOff = d.isOffline || d.driverStatus === "OFFLINE" || d.driverStatus === "OFF_DUTY" || d.driverStatus === "SUSPENDED" || d.driverStatus === "INACTIVE" || d.status === "Offline" || d.status === "Inactive" || d.status === "Off Duty" || d.isOnline === false || d.isDuty === false || d.isOnDuty === false;
+          const isExp = d.licenseExpiry && new Date(d.licenseExpiry) < new Date();
+          return !isOff && !isExp && (d.status === "Available" || d.driverStatus === "AVAILABLE" || d.driverStatus === "Available");
+        })
       : drivers
     ).map(d => {
       const isExpired = d.licenseExpiry && new Date(d.licenseExpiry) < new Date();
-      const isOffline = d.driverStatus === "OFFLINE" || d.driverStatus === "OFF_DUTY" || d.driverStatus === "SUSPENDED" || d.driverStatus === "INACTIVE" || d.status === "Offline" || d.status === "Inactive";
-      const isAvailable = (d.driverStatus === "AVAILABLE" || d.driverStatus === "Available" || d.status === "Available" || d.status === "Active") && !isOffline;
+      const isOffline = Boolean(
+        d.isOffline ||
+        d.driverStatus === "OFFLINE" ||
+        d.driverStatus === "OFF_DUTY" ||
+        d.driverStatus === "SUSPENDED" ||
+        d.driverStatus === "INACTIVE" ||
+        d.status === "Offline" ||
+        d.status === "Inactive" ||
+        d.status === "Off Duty" ||
+        d.isOnline === false ||
+        d.isDuty === false ||
+        d.isOnDuty === false
+      );
+      const isAvailable = !isOffline && !isExpired && (d.driverStatus === "AVAILABLE" || d.driverStatus === "Available" || d.status === "Available");
 
       return (
         <div

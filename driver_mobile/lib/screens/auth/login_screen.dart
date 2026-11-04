@@ -24,6 +24,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _isPasswordVisible = false;
   bool _isLoading = false;
 
   late AnimationController _animController;
@@ -518,12 +519,32 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               ),
                               const SizedBox(height: 16),
 
-                              // 2. Password (clean input box, end icon hidden)
+                              // 2. Password with visibility toggle eye icon
                               _buildInputField(
                                 controller: _passwordController,
                                 hintText: 'Enter your password',
                                 icon: Icons.lock_outline_rounded,
-                                obscureText: true,
+                                obscureText: !_isPasswordVisible,
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _isPasswordVisible
+                                        ? Icons.visibility_rounded
+                                        : Icons.visibility_off_rounded,
+                                    color: _isPasswordVisible
+                                        ? const Color(0xFFF97316)
+                                        : Colors.white.withValues(alpha: 0.65),
+                                    size: 20,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _isPasswordVisible = !_isPasswordVisible;
+                                    });
+                                  },
+                                  splashRadius: 20,
+                                  tooltip: _isPasswordVisible
+                                      ? 'Hide password'
+                                      : 'Show password',
+                                ),
                                 validator: (v) {
                                   if (v == null || v.trim().isEmpty) {
                                     return 'Please enter your password';
@@ -775,6 +796,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         ),
         prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
         suffixIcon: suffixIcon,
+        suffixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),

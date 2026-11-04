@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
 import 'dashboard_screen.dart';
+import 'vehicle_overview_screen.dart';
+import 'fuel_overview_screen.dart';
 import 'trips_screen.dart';
 import 'support_history_screen.dart';
 import 'profile/profile_screen.dart';
@@ -173,10 +175,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       body: IndexedStack(
         index: _currentIndex,
         children: [
-          _activatedTabs.contains(0) ? const SupportHistoryScreen() : const SizedBox.shrink(),
-          _activatedTabs.contains(1) ? const TripsScreen() : const SizedBox.shrink(),
+          _activatedTabs.contains(0) ? const VehicleOverviewScreen() : const SizedBox.shrink(),
+          _activatedTabs.contains(1) ? const FuelOverviewScreen() : const SizedBox.shrink(),
           const DashboardScreen(),
-          _activatedTabs.contains(3) ? const NotificationsScreen() : const SizedBox.shrink(),
+          _activatedTabs.contains(3) ? const TripsScreen() : const SizedBox.shrink(),
           _activatedTabs.contains(4) ? const ProfileScreen() : const SizedBox.shrink(),
         ],
       ),
@@ -198,10 +200,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(0, Icons.headset_mic_outlined, Icons.headset_mic, 'Support'),
-              _buildNavItem(1, Icons.route_outlined, Icons.route, 'Trips'),
+              _buildNavItem(0, Icons.local_shipping_outlined, Icons.local_shipping, 'Vehicle'),
+              _buildNavItem(1, Icons.local_gas_station_outlined, Icons.local_gas_station_rounded, 'Fuel'),
               _buildNavItem(2, Icons.home_outlined, Icons.home, 'Home'),
-              _buildNavItem(3, Icons.notifications_none_rounded, Icons.notifications, 'Alerts'),
+              _buildNavItem(3, Icons.route_outlined, Icons.route, 'Trips'),
               _buildNavItem(4, Icons.account_circle_outlined, Icons.account_circle, 'Profile'),
             ],
           ),
@@ -213,44 +215,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   Widget _buildNavItem(int index, IconData outlineIcon, IconData solidIcon, String label) {
     final bool isSelected = _currentIndex == index;
-    late final Widget iconWidget;
-
-    if (index == 3) {
-      iconWidget = Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Icon(
-            isSelected ? solidIcon : outlineIcon,
-            color: isSelected ? AppColors.secondary : AppColors.textDisabled,
-            size: 24,
-          ),
-          ValueListenableBuilder<int>(
-            valueListenable: NotificationsScreen.unreadCountNotifier,
-            builder: (context, count, _) {
-              if (count == 0) return const SizedBox.shrink();
-              return Positioned(
-                right: -2,
-                top: -2,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: AppColors.secondary, // Fleet Orange
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
-      );
-    } else {
-      iconWidget = Icon(
-        isSelected ? solidIcon : outlineIcon,
-        color: isSelected ? AppColors.secondary : AppColors.textDisabled,
-        size: 24,
-      );
-    }
+    final iconWidget = Icon(
+      isSelected ? solidIcon : outlineIcon,
+      color: isSelected ? AppColors.secondary : AppColors.textDisabled,
+      size: 24,
+    );
 
     return Expanded(
       child: InkWell(
