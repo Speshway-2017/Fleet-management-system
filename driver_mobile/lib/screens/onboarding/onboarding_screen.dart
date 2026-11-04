@@ -603,22 +603,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // SLIDE 1 ILLUSTRATION: Welcome to Fleet Management (Highlighted Vehicle + Floating Badges)
+  // SLIDE 1 TOP CARD: Welcome to Fleet Management (Vehicle Background Image with Overlaid Text)
   // ---------------------------------------------------------------------------
   Widget _buildWelcomeIllustration(Size size) {
     return Container(
       width: double.infinity,
       height: 245,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF071228),
-            Color(0xFF0F1E38),
-            Color(0xFF060F22),
-          ],
-        ),
+        color: const Color(0xFF071228),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
         boxShadow: [
@@ -629,117 +621,150 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
         ],
       ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Background ambient orange and cyan glow circles
-          Positioned(
-            right: -20,
-            top: -20,
-            child: Container(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          children: [
+            // 1. Full-bleed Fleet Vehicle Background Image on Top Card
+            Positioned.fill(
+              child: Image.asset(
+                'assets/images/vehicle.png',
+                fit: BoxFit.cover,
+                alignment: const Alignment(0.0, -0.2),
+                errorBuilder: (ctx, err, st) => Image.asset(
+                  'assets/images/white_van.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (ctx2, err2, st2) => Container(
+                    color: const Color(0xFF071228),
+                  ),
+                ),
+              ),
+            ),
+
+            // 2. Multi-stop Gradient Scrim Overlay for Contrast & Text Readability
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.40),
+                      Colors.black.withValues(alpha: 0.15),
+                      const Color(0xFF071228).withValues(alpha: 0.60),
+                      const Color(0xFF071228).withValues(alpha: 0.88),
+                    ],
+                    stops: const [0.0, 0.35, 0.70, 1.0],
+                  ),
+                ),
+              ),
+            ),
+
+            // 3. Ambient Orange & Cyan Radial Glow
+            Positioned(
+              right: -20,
+              top: -20,
               width: 140,
               height: 140,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFFF97316).withValues(alpha: 0.35),
-                    Colors.transparent,
-                  ],
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0xFFF97316).withValues(alpha: 0.35),
+                      Colors.transparent,
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          Positioned(
-            left: -20,
-            bottom: -20,
-            child: Container(
+            Positioned(
+              left: -20,
+              bottom: -20,
               width: 140,
               height: 140,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFF38BDF8).withValues(alpha: 0.25),
-                    Colors.transparent,
-                  ],
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0xFF38BDF8).withValues(alpha: 0.25),
+                      Colors.transparent,
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
 
-          // Illuminated spotlight platform beneath vehicle
-          Positioned(
-            bottom: 24,
-            child: Container(
-              width: 210,
-              height: 38,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(100),
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFFF97316).withValues(alpha: 0.40),
-                    const Color(0xFF38BDF8).withValues(alpha: 0.18),
-                    Colors.transparent,
-                  ],
-                ),
+            // 4. Overlaid Text, Glassmorphic Chips & Badges on the Top Card Image
+            Padding(
+              padding: const EdgeInsets.all(14.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Top Row: Overlaid Telemetry & Driver First Badges
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildGlassChip(
+                        icon: Icons.bolt_rounded,
+                        iconColor: const Color(0xFFFBBF24),
+                        label: 'Real-Time Telemetry',
+                      ),
+                      _buildGlassChip(
+                        icon: Icons.military_tech_rounded,
+                        iconColor: const Color(0xFFF97316),
+                        label: 'Driver First',
+                      ),
+                    ],
+                  ),
+
+                  // Bottom Row: Enterprise Verified & Commercial Fleet Solutions Badge Overlaid on Image
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildGlassChip(
+                        icon: Icons.verified_user_rounded,
+                        iconColor: const Color(0xFF34D399),
+                        label: 'Enterprise Verified',
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F1E38).withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.20),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.stars_rounded,
+                              color: Color(0xFFF97316),
+                              size: 13,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'AI Commercial Fleet',
+                              style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-          ),
-
-          // Center Highlighted Vehicle Graphic Image
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12.0),
-            child: Image.asset(
-              'assets/images/vehicle.png',
-              height: 130,
-              fit: BoxFit.contain,
-              errorBuilder: (ctx, err, st) => Image.asset(
-                'assets/images/white_van.png',
-                height: 130,
-                fit: BoxFit.contain,
-                errorBuilder: (ctx2, err2, st2) => const Icon(
-                  Icons.local_shipping_rounded,
-                  color: Colors.white70,
-                  size: 90,
-                ),
-              ),
-            ),
-          ),
-
-          // Floating Chip 1: Real-Time Telemetry (Top Left)
-          Positioned(
-            top: 16,
-            left: 16,
-            child: _buildGlassChip(
-              icon: Icons.bolt_rounded,
-              iconColor: const Color(0xFFFBBF24),
-              label: 'Real-Time Telemetry',
-            ),
-          ),
-
-          // Floating Chip 2: Enterprise Verified (Bottom Right)
-          Positioned(
-            bottom: 16,
-            right: 16,
-            child: _buildGlassChip(
-              icon: Icons.verified_user_rounded,
-              iconColor: const Color(0xFF34D399),
-              label: 'Enterprise Verified',
-            ),
-          ),
-
-          // Floating Chip 3: Driver First (Top Right)
-          Positioned(
-            top: 16,
-            right: 16,
-            child: _buildGlassChip(
-              icon: Icons.military_tech_rounded,
-              iconColor: const Color(0xFFF97316),
-              label: 'Driver First',
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

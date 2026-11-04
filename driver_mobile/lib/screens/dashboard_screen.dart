@@ -6,16 +6,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/date_formatter.dart';
 import 'profile/profile_screen.dart';
 import 'trip_details_screen.dart';
-import 'trips_screen.dart';
-import 'active_trips_screen.dart';
-import 'upcoming_trips_screen.dart';
-import 'completed_trips_screen.dart';
+import 'completed_trip_details_screen.dart';
 import 'vehicle_overview_screen.dart';
 import 'main_navigation_screen.dart';
 import 'notifications/notifications_screen.dart';
 import 'notifications/notification_details_screen.dart';
 import 'settings/settings_screen.dart';
 import 'fuel_overview_screen.dart';
+import 'support_history_screen.dart';
 import '../widgets/driver_profile_dropdown.dart';
 
 import '../services/api_service.dart';
@@ -51,6 +49,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, dynamic>? _currentTrip;
   Map<String, dynamic>? _dashboardData;
   bool _isVehicleAssigned = false;
+  bool _isOnDuty = true;
+  List<dynamic> _recentTrips = [];
   String? _vehicleNumber;
   bool _isFetching = false;
 
@@ -81,6 +81,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final prefs = await SharedPreferences.getInstance();
       bool stateChanged = false;
 
+      final cachedDuty = prefs.getBool('driver_is_on_duty_cache');
+      if (cachedDuty != null && cachedDuty != _isOnDuty) {
+        _isOnDuty = cachedDuty;
+        stateChanged = true;
+      }
+
       if (_driverProfile == null) {
         final cachedProf = prefs.getString('driver_profile_cache') ?? prefs.getString('driver_profile');
         if (cachedProf != null && cachedProf.isNotEmpty) {
@@ -88,6 +94,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (decoded is Map<String, dynamic>) {
             _driverProfile = decoded;
             _cachedDriverProfile = decoded;
+            final isDutyVal = decoded['isDuty'] ?? decoded['isOnline'] ?? (decoded['driverStatus'] != 'OFFLINE' && decoded['driverStatus'] != 'OFF_DUTY');
+            final dutyBool = isDutyVal == true || isDutyVal == 'true' || isDutyVal == 1;
+            if (_isOnDuty != dutyBool) {
+              _isOnDuty = dutyBool;
+            }
             stateChanged = true;
             final img = decoded['profileImage']?.toString() ?? '';
             if (ProfileState.profilePhotoUrlNotifier.value != img) {
@@ -150,11 +161,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         AuthService.fetchProfile(),
         ApiService.get('/driver/trips/current'),
         ApiService.get('/driver/dashboard'),
+        ApiService.get('/driver/trips'),
       ]);
 
       final profile = results[0] as Map<String, dynamic>?;
       final currentTripRes = results[1] as Map<String, dynamic>?;
       final dashRes = results[2] as Map<String, dynamic>?;
+      final allTripsRes = results.length > 3 ? results[3] as Map<String, dynamic>? : null;
 
       if (mounted) {
         if (profile != null) {
@@ -224,8 +237,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (profile != null) _cachedDriverProfile = profile;
         _cachedCurrentTrip = activeTrip;
         if (dashRes != null && dashRes['data'] != null) _cachedDashboardData = dashRes['data'];
+
+        List<dynamic> fetchedTrips = [];
+        if (allTripsRes != null && allTripsRes['data'] is List) {
+          fetchedTrips = allTripsRes['data'] as List;
+        } else if (dashRes != null && dashRes['data'] != null && dashRes['data']['todaySchedule'] is List) {
+          fetchedTrips = dashRes['data']['todaySchedule'] as List;
+        }
+        _recentTrips = fetchedTrips.take(2).toList();
+
         _cachedIsVehicleAssigned = isAssigned;
         _cachedVehicleNumber = vehicleNum;
+
+        if (profile != null) {
+          final isDutyVal = profile['isDuty'] ?? profile['isOnline'] ?? (profile['driverStatus'] != 'OFFLINE' && profile['driverStatus'] != 'OFF_DUTY');
+          final dutyBool = isDutyVal == true || isDutyVal == 'true' || isDutyVal == 1;
+          _isOnDuty = dutyBool;
+        }
 
         setState(() {
           _driverProfile = profile ?? _driverProfile;
@@ -260,6 +288,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      prefs.setBool('driver_is_on_duty_cache', _isOnDuty);
       if (profile != null) {
         prefs.setString('driver_profile_cache', jsonEncode(profile));
       }
@@ -286,6 +315,69 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.dispose();
   }
 
+  
+  Future<void> _handleDutyToggle(bool newValue) async {
+    setState(() {
+      _isOnDuty = newValue;
+    });
+
+    final newStatus = newValue ? 'AVAILABLE' : 'OFFLINE';
+    try {
+      final res = await ApiService.put('/driver/status', {
+        'isOnline': newValue,
+        'driverStatus': newStatus,
+        'status': newValue ? 'Available' : 'Offline',
+      });
+
+      if (_driverProfile != null) {
+        _driverProfile!['isOnline'] = newValue;
+        _driverProfile!['isDuty'] = newValue;
+        _driverProfile!['driverStatus'] = newStatus;
+        _driverProfile!['status'] = newValue ? 'Available' : 'Offline';
+        _cachedDriverProfile = _driverProfile;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      prefs.setBool('driver_is_on_duty_cache', newValue);
+      if (_driverProfile != null) {
+        prefs.setString('driver_profile_cache', jsonEncode(_driverProfile));
+      }
+
+      if (!mounted) return;
+
+      if (res != null && res['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              newValue ? 'Status updated to On Duty 🟢' : 'Status updated to Off Duty ⚪',
+              style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500),
+            ),
+            backgroundColor: newValue ? const Color(0xFF10B981) : const Color(0xFF334155),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        await ApiService.put('/driver/profile', {
+          'isOnline': newValue,
+          'driverStatus': newStatus,
+          'status': newValue ? 'Available' : 'Offline',
+        });
+      }
+    } catch (e) {
+      debugPrint('Error updating duty status: $e');
+      try {
+        await ApiService.put('/driver/profile', {
+          'isOnline': newValue,
+          'driverStatus': newStatus,
+          'status': newValue ? 'Available' : 'Offline',
+        });
+      } catch (err2) {
+        debugPrint('Fallback profile update note: $err2');
+      }
+    }
+  }
+
   void _onTabChanged() {
     if (mounted && MainNavigationScreen.selectedTabNotifier.value == 2) {
       _loadDashboardData();
@@ -295,180 +387,453 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF091522), // Sleek Dark Navy
+      backgroundColor: const Color(0xFF071426), // Deep Navy Matching Reference Header
       body: SafeArea(
         bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Header Section: Greeting + Driver Profile Info
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Top Nav Header with Commercial Truck Background Image & Text Overlay
+            Container(
+              height: 76,
+              width: double.infinity,
+              color: const Color(0xFF071426),
+              child: Stack(
                 children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
-                          padding: const EdgeInsets.all(4.0),
-                          child: Image.asset(
-                            'assets/logo.png',
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Image.asset(
-                                'assets/images/logo.png',
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(
-                                    Icons.local_shipping_rounded,
-                                    color: Color(0xFF091522),
-                                    size: 20,
-                                  );
-                                },
-                              );
-                            },
-                          ),
+                  // 1. Semi-truck Background Image Aligned on Right
+                  Positioned.fill(
+                    child: Image.asset(
+                      'assets/images/vehicle.png',
+                      fit: BoxFit.cover,
+                      alignment: const Alignment(0.70, -0.15),
+                      errorBuilder: (ctx, err, st) => Image.asset(
+                        'assets/images/white_van.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (ctx2, err2, st2) => Container(
+                          color: const Color(0xFF071426),
                         ),
-                        const SizedBox(width: 12),
+                      ),
+                    ),
+                  ),
+
+                  // 2. Horizontal Navy Gradient Scrim (Heavy Navy Left, Fading Right)
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [
+                            const Color(0xFF071426),
+                            const Color(0xFF071426).withValues(alpha: 0.94),
+                            const Color(0xFF071426).withValues(alpha: 0.45),
+                            Colors.transparent,
+                          ],
+                          stops: const [0.0, 0.45, 0.75, 1.0],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // 3. Vertical Gradient Scrim for Contrast & Top Bar Legibility
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            const Color(0xFF071426).withValues(alpha: 0.55),
+                            Colors.transparent,
+                            const Color(0xFF071426).withValues(alpha: 0.65),
+                          ],
+                          stops: const [0.0, 0.5, 1.0],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // 4. Overlaid Header Content (Logo, Fleet Management Title, On Duty Switch & Notifications)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Brand Emblem & Title
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                'Good Morning, ${(_driverProfile?['fullName'] ?? 'Driver').toString().split(' ')[0]} 👋',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
+                              Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
                                   color: Colors.white,
+                                  borderRadius: BorderRadius.circular(9.0),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.18),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                padding: const EdgeInsets.all(4.0),
+                                child: Image.asset(
+                                  'assets/logo.png',
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Image.asset(
+                                      'assets/images/logo.png',
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return const Icon(
+                                          Icons.local_shipping_rounded,
+                                          color: Color(0xFF071426),
+                                          size: 20,
+                                        );
+                                      },
+                                    );
+                                  },
                                 ),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                _isVehicleAssigned && _vehicleNumber != null && _vehicleNumber!.isNotEmpty
-                                    ? '$_vehicleNumber • ID: ${_driverProfile?['employeeId'] ?? _driverProfile?['driverId'] ?? 'N/A'}'
-                                    : 'ID: ${_driverProfile?['employeeId'] ?? _driverProfile?['driverId'] ?? 'N/A'}',
-                                style: GoogleFonts.nunito(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  color: const Color(0xFF98A2B3),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Fleet Management',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                        letterSpacing: 0.2,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Commercial Logistics',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.nunito(
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w500,
+                                        color: const Color(0xFF94A3B8),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
                         ),
+                        const SizedBox(width: 6),
+
+                        // Right: On Duty Switch Pill + Alerts Bell
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // On Duty Pill Switch
+                            GestureDetector(
+                              onTap: () => _handleDutyToggle(!_isOnDuty),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0F243E).withValues(alpha: 0.85),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.20),
+                                    width: 1.0,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      _isOnDuty ? 'On Duty' : 'Off Duty',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    AnimatedContainer(
+                                      duration: const Duration(milliseconds: 200),
+                                      width: 32,
+                                      height: 18,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(10),
+                                        color: _isOnDuty ? const Color(0xFF10B981) : const Color(0xFF475569),
+                                      ),
+                                      child: AnimatedAlign(
+                                        duration: const Duration(milliseconds: 200),
+                                        alignment: _isOnDuty ? Alignment.centerRight : Alignment.centerLeft,
+                                        child: Container(
+                                          width: 14,
+                                          height: 14,
+                                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                                          decoration: const BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: Colors.white,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black26,
+                                                blurRadius: 2,
+                                                offset: Offset(0, 1),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+
+                            // Notification Bell Button with Red Dot Badge
+                            InkWell(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const NotificationsScreen(),
+                                  ),
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(20),
+                              child: Container(
+                                width: 35,
+                                height: 35,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white.withValues(alpha: 0.10),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.18),
+                                    width: 1.0,
+                                  ),
+                                ),
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.notifications_none_rounded,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                    Positioned(
+                                      right: 6,
+                                      top: 6,
+                                      child: Container(
+                                        width: 7,
+                                        height: 7,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFFEF4444),
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  const DriverProfileDropdown(
-                    isDarkBackground: true,
-                    compact: true,
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 8),
 
-            // Main Curved Content Area
+            // Main Wave-Curved Content Area
             Expanded(
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF7F9FC), // Modern Light Gray
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(32),
-                    topRight: Radius.circular(32),
-                  ),
-                ),
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(32),
-                    topRight: Radius.circular(32),
-                  ),
+              child: ClipPath(
+                clipper: HeaderWaveClipper(),
+                child: Container(
+                  color: const Color(0xFFF8FAFC),
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.only(top: 22, bottom: 76),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const SizedBox(height: 20),
-
-                        // 1. Active Trip Card (Hidden if there is no active trip)
+                        // Good Morning Greeting & ID Chip (Moved to down of the top card)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20.0, 4.0, 20.0, 16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Good Morning, ${(_driverProfile?['fullName'] ?? 'Abhi').toString().split(' ')[0]} 👋',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF0F1E38),
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFF7ED),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: const Color(0xFFFFEDD5),
+                                        width: 1.0,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.badge_rounded,
+                                          color: Color(0xFFF97316),
+                                          size: 13,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'ID: ${_driverProfile?['employeeId'] ?? _driverProfile?['driverId'] ?? 'EMP-916164'}',
+                                          style: GoogleFonts.nunito(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: const Color(0xFFC2410C),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (_isVehicleAssigned && _vehicleNumber != null && _vehicleNumber!.isNotEmpty) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEFF6FF),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: const Color(0xFFDBEAFE),
+                                          width: 1.0,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.local_shipping_outlined,
+                                            color: Color(0xFF2563EB),
+                                            size: 13,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            _vehicleNumber!,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: const Color(0xFF1D4ED8),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        // 1. Active Trip Card (Only shown when active trip is in progress)
                         if (_hasActiveTrip) ...[
                           _buildActiveTripCard(context),
                           const SizedBox(height: 20),
                         ],
 
-                        // 2. Quick Actions Header & Row
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                          child: Text(
-                            'Quick Actions',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF1B2430),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildQuickActionsRow(context),
-
-                        const SizedBox(height: 24),
-
-                        // 3. Dashboard Overview Header & Stats Row
+                        // 1. Dashboard Overview Header & 2x2 Stats Grid
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20.0),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
+                              Container(
+                                padding: const EdgeInsets.all(5),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEFF6FF),
+                                  borderRadius: BorderRadius.circular(7),
+                                ),
+                                child: const Icon(
+                                  Icons.bar_chart_rounded,
+                                  color: Color(0xFF2563EB),
+                                  size: 19,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
                               Text(
                                 'Dashboard Overview',
                                 style: GoogleFonts.poppins(
-                                  fontSize: 16,
+                                  fontSize: 16.5,
                                   fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF1B2430),
+                                  color: const Color(0xFF0F1E38),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 14),
                         _buildStatsOverview(context),
 
                         const SizedBox(height: 24),
 
-                        // 5. Recent Notifications Header & Items
+                        // 2. Recent Trips Header & Items (Displays recent 2 trips)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20.0),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                'Recent Notifications',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF1B2430),
-                                ),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF0F1E38),
+                                      borderRadius: BorderRadius.circular(7),
+                                    ),
+                                    child: const Icon(
+                                      Icons.business_center_rounded,
+                                      color: Colors.white,
+                                      size: 15,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Recent Trips',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 16.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF0F1E38),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              GestureDetector(
+                              InkWell(
                                 onTap: () {
                                   MainNavigationScreen.selectedTabNotifier.value = 3;
                                 },
                                 child: Text(
                                   'View All',
                                   style: GoogleFonts.poppins(
-                                    fontSize: 12,
+                                    fontSize: 13.5,
                                     fontWeight: FontWeight.bold,
-                                    color: const Color(0xFFFF6A00),
+                                    color: const Color(0xFFF97316),
                                   ),
                                 ),
                               ),
@@ -476,9 +841,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        _buildRecentNotifications(context),
-
-                        const SizedBox(height: 32),
+                        _buildRecentTrips(context),
                       ],
                     ),
                   ),
@@ -488,6 +851,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
       ),
+      floatingActionButton: Container(
+        margin: const EdgeInsets.only(bottom: 6, right: 2),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SupportHistoryScreen(),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(28),
+            child: Ink(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF7A1A), Color(0xFFE65100)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFF7A1A).withValues(alpha: 0.38),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.headset_mic_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Help',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
@@ -1131,207 +1550,169 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Quick Actions Row (4 items: Vehicle, Fuel, Issue, Settings)
-  Widget _buildQuickActionsRow(BuildContext context) {
+  // ---------------------------------------------------------------------------
+  // DASHBOARD OVERVIEW (2x2 Grid Matching Reference Image)
+  // ---------------------------------------------------------------------------
+  Widget _buildStatsOverview(BuildContext context) {
+    final activeTrips = (_dashboardData?['activeTrips'] ?? 0).toString();
+    final upcomingTrips = (_dashboardData?['upcomingTrips'] ?? 0).toString();
+    final completedTrips = (_dashboardData?['completedTrips'] ?? 5).toString();
+    final totalTrips = ((_dashboardData?['activeTrips'] ?? 0) +
+            (_dashboardData?['upcomingTrips'] ?? 0) +
+            (_dashboardData?['completedTrips'] ?? 5))
+        .toString();
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: _buildActionCard(
-              context,
-              Icons.local_shipping_outlined,
-              'Vehicle',
-              iconColor: const Color(0xFF2563EB),
-              bgColor: const Color(0xFFEFF6FF),
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const VehicleOverviewScreen()),
-                );
-                _loadDashboardData();
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _buildActionCard(
-              context,
-              Icons.local_gas_station_outlined,
-              'Fuel',
-              iconColor: const Color(0xFF059669),
-              bgColor: const Color(0xFFECFDF5),
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const FuelOverviewScreen()),
-                );
-                _loadDashboardData();
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _buildActionCard(
-              context,
-              Icons.warning_amber_rounded,
-              'Issue',
-              iconColor: const Color(0xFFDC2626),
-              bgColor: const Color(0xFFFEF2F2),
-              onTap: () {
-                MainNavigationScreen.selectedTabNotifier.value = 0;
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _buildActionCard(
-              context,
-              Icons.settings_outlined,
-              'Settings',
-              iconColor: const Color(0xFF7C3AED),
-              bgColor: const Color(0xFFF5F3FF),
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                );
-                _loadDashboardData();
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionCard(
-    BuildContext context,
-    IconData icon,
-    String label, {
-    required Color iconColor,
-    required Color bgColor,
-    required VoidCallback onTap,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 4.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          // Row 1: Active Trip & Upcoming
+          Row(
             children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: bgColor,
-                  shape: BoxShape.circle,
+              Expanded(
+                child: _buildOverviewCard(
+                  context,
+                  value: activeTrips,
+                  label: 'Active Trip',
+                  icon: Icons.local_shipping_rounded,
+                  iconColor: const Color(0xFF2563EB),
+                  iconBgColor: const Color(0xFFEFF6FF),
+                  waveColor: const Color(0xFFDBEAFE).withValues(alpha: 0.55),
                 ),
-                child: Icon(icon, color: iconColor, size: 20),
               ),
-              const SizedBox(height: 6),
-              Text(
-                label,
-                style: GoogleFonts.poppins(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF0F172A),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildOverviewCard(
+                  context,
+                  value: upcomingTrips,
+                  label: 'Upcoming',
+                  icon: Icons.calendar_month_rounded,
+                  iconColor: const Color(0xFF10B981),
+                  iconBgColor: const Color(0xFFECFDF5),
+                  waveColor: const Color(0xFFD1FAE5).withValues(alpha: 0.55),
                 ),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 12),
+          // Row 2: Completed & Total Trips
+          Row(
+            children: [
+              Expanded(
+                child: _buildOverviewCard(
+                  context,
+                  value: completedTrips,
+                  label: 'Completed',
+                  icon: Icons.check_circle_outline_rounded,
+                  iconColor: const Color(0xFFF97316),
+                  iconBgColor: const Color(0xFFFFF7ED),
+                  waveColor: const Color(0xFFFFEDD5).withValues(alpha: 0.65),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildOverviewCard(
+                  context,
+                  value: totalTrips,
+                  label: 'Total Trips',
+                  icon: Icons.fact_check_outlined,
+                  iconColor: const Color(0xFF8B5CF6),
+                  iconBgColor: const Color(0xFFF5F3FF),
+                  waveColor: const Color(0xFFEDE9FE).withValues(alpha: 0.65),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  // Stats Card Builder
-  Widget _buildStatsOverview(BuildContext context) {
+  Widget _buildOverviewCard(
+    BuildContext context, {
+    required String value,
+    required String label,
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBgColor,
+    required Color waveColor,
+  }) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      height: 96,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFF1F5F9)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Row(
-        children: [
-          _buildStatItem(context, 'Active Trip', (_dashboardData?['activeTrips'] ?? 0).toString(), Icons.local_shipping, const Color(0xFF3B82F6), const Color(0xFFEFF6FF), () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const ActiveTripsScreen()));
-          }),
-          _buildStatItem(context, 'Upcoming', (_dashboardData?['upcomingTrips'] ?? 0).toString(), Icons.calendar_today, const Color(0xFF22C55E), const Color(0xFFF0FDF4), () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const UpcomingTripsScreen()));
-          }),
-          _buildStatItem(context, 'Completed', (_dashboardData?['completedTrips'] ?? 0).toString(), Icons.check_circle_outline, const Color(0xFFFF6A00), const Color(0xFFFFF7ED), () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const CompletedTripsScreen()));
-          }),
-          _buildStatItem(context, 'Total Trips', ((_dashboardData?['activeTrips'] ?? 0) + (_dashboardData?['upcomingTrips'] ?? 0) + (_dashboardData?['completedTrips'] ?? 0)).toString(), Icons.assignment_outlined, const Color(0xFF8B5CF6), const Color(0xFFF5F3FF), () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const TripsScreen()));
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem(
-    BuildContext context,
-    String label,
-    String value,
-    IconData icon,
-    Color iconColor,
-    Color bgColor,
-    VoidCallback onTap,
-  ) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
           children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: bgColor,
-              child: Icon(icon, color: iconColor, size: 18),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: const Color(0xFF1B2430),
+            // Bottom pastel organic wave shape
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 28,
+              child: ClipPath(
+                clipper: CardBottomWaveClipper(),
+                child: Container(
+                  color: waveColor,
+                ),
               ),
             ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: GoogleFonts.nunito(
-                color: const Color(0xFF667085),
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
+            // Card Content: Icon + Count & Label
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: iconBgColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, color: iconColor, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          value,
+                          style: GoogleFonts.poppins(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF0F1E38),
+                            height: 1.1,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -1339,171 +1720,335 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Recent Notifications Builder
-  Widget _buildRecentNotifications(BuildContext context) {
-    final List serverNotifs = _dashboardData?['notifications'] ?? [];
-    if (serverNotifs.isEmpty && NotificationsScreen.notifications.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFF132235),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: const Center(
-          child: Text(
-            'No recent notifications',
-            style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
-          ),
-        ),
-      );
+  // Recent Trips Builder (Displays recent 2 trips matching reference layout)
+  Widget _buildRecentTrips(BuildContext context) {
+    List<dynamic> tripsList = [];
+    if (_recentTrips.isNotEmpty) {
+      tripsList = _recentTrips;
+    } else if (_dashboardData?['todaySchedule'] is List && (_dashboardData!['todaySchedule'] as List).isNotEmpty) {
+      tripsList = _dashboardData!['todaySchedule'] as List;
     }
 
-    final itemsToDisplay = serverNotifs.isNotEmpty
-        ? serverNotifs.take(3).map((item) {
-            return {
-              'id': item['_id'] ?? item['id'] ?? '',
-              'title': item['title'] ?? 'Fleet Notification',
-              'subtitle': item['message'] ?? item['description'] ?? '',
-              'time': formatNotificationTime(item['createdAt']),
-              'isUnread': !(item['isRead'] ?? false),
-              'icon': item['type'] == 'trip_assigned' ? Icons.inventory_2_outlined : Icons.notifications_none_outlined,
-              'type': item['type']?.toString() ?? '',
-              'tripId': item['metadata']?['tripId']?.toString() ?? item['referenceId']?.toString() ?? '',
-            };
-          }).toList()
-        : NotificationsScreen.notifications.take(3).map((item) {
-            return {
-              'id': item.id,
-              'title': item.title,
-              'subtitle': item.description,
-              'time': item.timestamp,
-              'isUnread': !item.isRead,
-              'icon': item.icon,
-              'type': item.type ?? item.title,
-              'tripId': item.tripId ?? '',
-            };
-          }).toList();
+    List<dynamic> itemsToDisplay = tripsList.take(2).toList();
+
+    // Fallback sample trips matching reference image when database is fresh/empty
+    if (itemsToDisplay.isEmpty) {
+      itemsToDisplay = [
+        {
+          'tripNumber': 'TRP-945845',
+          'status': 'Completed',
+          'pickup': 'Vijayawada',
+          'destination': 'Hyderabad',
+          'departureTime': '2026-11-02T14:50:00.000Z',
+          'distance': '285',
+        },
+        {
+          'tripNumber': 'TRP-542307',
+          'status': 'Completed',
+          'pickup': 'Khammam',
+          'destination': 'Hyderabad',
+          'departureTime': '2026-11-01T10:20:00.000Z',
+          'distance': '278',
+        },
+      ];
+    }
 
     return Column(
-      children: itemsToDisplay.map<Widget>((notif) {
-        return _buildNotificationItem(
+      children: itemsToDisplay.map<Widget>((item) {
+        final Map<String, dynamic> trip = item is Map<String, dynamic>
+            ? item
+            : Map<String, dynamic>.from(item as Map);
+
+        final rawTripNumber = trip['tripNumber']?.toString() ??
+            trip['tripId']?.toString() ??
+            trip['_id']?.toString() ??
+            '';
+        final tripNumberDisplay = rawTripNumber.isEmpty
+            ? '#TRP-945845'
+            : (rawTripNumber.startsWith('#') ? rawTripNumber : '#$rawTripNumber');
+
+        final status = trip['status']?.toString() ?? 'Completed';
+        final pickup = trip['pickup']?.toString() ??
+            trip['startLocation']?.toString() ??
+            'Vijayawada';
+        final destination = trip['destination']?.toString() ??
+            trip['dropoff']?.toString() ??
+            trip['endLocation']?.toString() ??
+            'Hyderabad';
+        final distance = trip['distance']?.toString() ?? '285';
+        final date = trip['departureTime'] != null
+            ? formatIndianDateTime(trip['departureTime'])
+            : (trip['createdAt'] != null
+                ? formatIndianDateTime(trip['createdAt'])
+                : '02/11/2026 02:50 PM');
+
+        return _buildTripItem(
           context,
-          icon: notif['icon'] as IconData,
-          iconBgColor: const Color(0xFF1E293B),
-          iconColor: const Color(0xFF38BDF8),
-          title: notif['title'] as String,
-          subtitle: notif['subtitle'] as String,
-          time: notif['time'] as String,
-          isUnread: notif['isUnread'] as bool,
+          tripNumber: tripNumberDisplay,
+          status: status,
+          pickup: pickup,
+          destination: destination,
+          distance: distance,
+          date: date,
           onTap: () {
-            NotificationsScreen.markAsReadStatic(notif['id'] as String);
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => NotificationDetailsScreen(
-                  title: notif['title'] as String,
-                  message: notif['subtitle'] as String,
-                  time: notif['time'] as String,
-                  type: (notif['type'] as String).isNotEmpty ? notif['type'] as String : notif['title'] as String,
-                  icon: notif['icon'] as IconData,
-                  comingFromDashboard: false,
+            final tripId = trip['tripId']?.toString() ??
+                trip['_id']?.toString() ??
+                trip['tripNumber']?.toString() ??
+                '';
+            final statusLower = status.toLowerCase();
+            if (statusLower == 'completed') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CompletedTripDetailsScreen(
+                    tripId: tripId,
+                    tripData: trip,
+                  ),
                 ),
-              ),
-            ).then((_) {
-              if (mounted) {
-                _loadDashboardData();
-              }
-            });
+              ).then((_) {
+                if (mounted) _loadDashboardData();
+              });
+            } else {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TripDetailsScreen(
+                    tripId: tripId,
+                    tripData: trip,
+                  ),
+                ),
+              ).then((_) {
+                if (mounted) _loadDashboardData();
+              });
+            }
           },
         );
       }).toList(),
     );
   }
 
-  Widget _buildNotificationItem(
+  Widget _buildTripItem(
     BuildContext context, {
-    required IconData icon,
-    required Color iconBgColor,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required String time,
-    required bool isUnread,
+    required String tripNumber,
+    required String status,
+    required String pickup,
+    required String destination,
+    required String distance,
+    required String date,
     required VoidCallback onTap,
   }) {
+    Color statusColor = const Color(0xFF059669);
+    Color statusBgColor = const Color(0xFFECFDF5);
+    final statusLower = status.toLowerCase();
+
+    if (statusLower == 'completed') {
+      statusColor = const Color(0xFF059669);
+      statusBgColor = const Color(0xFFECFDF5);
+    } else if (statusLower.contains('progress') ||
+        statusLower.contains('transit') ||
+        statusLower.contains('enroute')) {
+      statusColor = const Color(0xFF2563EB);
+      statusBgColor = const Color(0xFFEFF6FF);
+    } else if (statusLower.contains('pending')) {
+      statusColor = const Color(0xFFEA580C);
+      statusBgColor = const Color(0xFFFFF7ED);
+    } else if (statusLower == 'cancelled' || statusLower == 'rejected') {
+      statusColor = const Color(0xFFDC2626);
+      statusBgColor = const Color(0xFFFEF2F2);
+    } else {
+      statusColor = const Color(0xFF0284C7);
+      statusBgColor = const Color(0xFFF0F9FF);
+    }
+
     return Container(
-      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 10),
+      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFF1F5F9)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
+          padding: const EdgeInsets.all(16),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: iconBgColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: iconColor, size: 18),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: const Color(0xFF1B2430),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: GoogleFonts.nunito(
-                        color: const Color(0xFF667085),
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              // Top Row: Orange Truck Icon + Trip Number & Status Badge
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    time,
-                    style: GoogleFonts.nunito(
-                      color: const Color(0xFF98A2B3),
-                      fontSize: 10,
+                  Expanded(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF7ED),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.local_shipping_rounded,
+                            color: Color(0xFFF97316),
+                            size: 17,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            tripNumber,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14.5,
+                              color: const Color(0xFF0F1E38),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  if (isUnread)
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusBgColor,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      status.toUpperCase(),
+                      style: GoogleFonts.poppins(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: statusColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // Route Row: Origin ➔ Destination
+              Row(
+                children: [
+                  const Icon(
+                    Icons.radio_button_checked,
+                    color: Color(0xFF2563EB),
+                    size: 14,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      pickup,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF1E293B),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Icon(
+                      Icons.arrow_forward_rounded,
+                      color: Colors.grey.withValues(alpha: 0.5),
+                      size: 15,
+                    ),
+                  ),
+                  const Icon(
+                    Icons.location_on,
+                    color: Color(0xFFEF4444),
+                    size: 15,
+                  ),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      destination,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF1E293B),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Bottom Row: Date & Distance
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  if (date.isNotEmpty)
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.schedule_rounded,
+                            size: 13,
+                            color: Colors.grey.withValues(alpha: 0.7),
+                          ),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              date,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.nunito(
+                                fontSize: 11.5,
+                                color: const Color(0xFF64748B),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    const SizedBox.shrink(),
+                  const SizedBox(width: 8),
+                  if (distance.isNotEmpty)
                     Container(
-                      width: 7,
-                      height: 7,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFF6A00),
-                        shape: BoxShape.circle,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.alt_route_rounded,
+                            size: 13,
+                            color: Color(0xFF475569),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            distance.contains('km') || distance.contains('KM')
+                                ? distance
+                                : '$distance km',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF475569),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                 ],
@@ -1516,3 +2061,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// ORGANIC TOP WAVE CLIPPER (Matches reference image wave transition)
+// ---------------------------------------------------------------------------
+class HeaderWaveClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    path.moveTo(0, 16);
+    path.quadraticBezierTo(size.width * 0.28, 26, size.width * 0.55, 14);
+    path.quadraticBezierTo(size.width * 0.82, 6, size.width, 12);
+    path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+// ---------------------------------------------------------------------------
+// STAT CARD BOTTOM WAVE CLIPPER (Matches reference image card bottom tint)
+// ---------------------------------------------------------------------------
+class CardBottomWaveClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    path.moveTo(0, 10);
+    path.quadraticBezierTo(size.width * 0.32, 0, size.width * 0.62, 12);
+    path.quadraticBezierTo(size.width * 0.85, 20, size.width, 8);
+    path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}

@@ -16,6 +16,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> with SingleTi
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
   bool _isLoading = false;
 
   // Real-time requirements tracking
@@ -314,12 +316,32 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> with SingleTi
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // 1. New Password Input (Heading hidden, end icon hidden)
+                                    // 1. New Password Input with visibility toggle eye icon
                                     _buildInputField(
                                       controller: _passwordController,
                                       hintText: 'Enter new password',
                                       icon: Icons.lock_outline_rounded,
-                                      obscureText: true,
+                                      obscureText: !_isPasswordVisible,
+                                      suffixIcon: IconButton(
+                                        icon: Icon(
+                                          _isPasswordVisible
+                                              ? Icons.visibility_rounded
+                                              : Icons.visibility_off_rounded,
+                                          color: _isPasswordVisible
+                                              ? const Color(0xFFF97316)
+                                              : Colors.white.withValues(alpha: 0.65),
+                                          size: 20,
+                                        ),
+                                        onPressed: () {
+                                          setState(() {
+                                            _isPasswordVisible = !_isPasswordVisible;
+                                          });
+                                        },
+                                        splashRadius: 20,
+                                        tooltip: _isPasswordVisible
+                                            ? 'Hide password'
+                                            : 'Show password',
+                                      ),
                                       validator: (v) {
                                         if (v == null || v.trim().isEmpty) return 'Please enter a new password';
                                         if (v.length < 8) return 'Password must be at least 8 characters';
@@ -329,12 +351,32 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> with SingleTi
 
                                     const SizedBox(height: 16),
 
-                                    // 2. Confirm Password Input (Heading hidden, end icon hidden)
+                                    // 2. Confirm Password Input with visibility toggle eye icon
                                     _buildInputField(
                                       controller: _confirmPasswordController,
                                       hintText: 'Confirm new password',
                                       icon: Icons.shield_outlined,
-                                      obscureText: true,
+                                      obscureText: !_isConfirmPasswordVisible,
+                                      suffixIcon: IconButton(
+                                        icon: Icon(
+                                          _isConfirmPasswordVisible
+                                              ? Icons.visibility_rounded
+                                              : Icons.visibility_off_rounded,
+                                          color: _isConfirmPasswordVisible
+                                              ? const Color(0xFFF97316)
+                                              : Colors.white.withValues(alpha: 0.65),
+                                          size: 20,
+                                        ),
+                                        onPressed: () {
+                                          setState(() {
+                                            _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                                          });
+                                        },
+                                        splashRadius: 20,
+                                        tooltip: _isConfirmPasswordVisible
+                                            ? 'Hide password'
+                                            : 'Show password',
+                                      ),
                                       validator: (v) {
                                         if (v == null || v.trim().isEmpty) return 'Please confirm your password';
                                         if (v != _passwordController.text) return 'Passwords do not match';
@@ -590,6 +632,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> with SingleTi
         ),
         prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
         suffixIcon: suffixIcon,
+        suffixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),

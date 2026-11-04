@@ -132,6 +132,10 @@ void main() {
         'success': true,
         'data': null
       },
+      '/driver/trips': {
+        'success': true,
+        'data': []
+      },
       '/driver/dashboard': {
         'success': true,
         'data': {
