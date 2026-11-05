@@ -463,6 +463,70 @@ void main() {
     expect(find.text('Login'), findsOneWidget);
   });
 
+  testWidgets('Profile Screen App Language Selector updates language and badge correctly', (
+    WidgetTester tester,
+  ) async {
+    // Build app
+    await tester.pumpWidget(const MyApp());
+    await tester.idle();
+    await tester.pumpAndSettle();
+
+    if (find.text('Skip').evaluate().isNotEmpty) {
+      await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+    }
+
+    if (find.text('Next').evaluate().isNotEmpty) {
+      if (find.byType(Checkbox).evaluate().isNotEmpty) {
+        await tester.tap(find.byType(Checkbox));
+        await tester.pumpAndSettle();
+      }
+      await tester.enterText(
+        find.byType(TextFormField),
+        'manager@fleetpro.com',
+      );
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+    }
+
+    // Enter credentials to log in
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'manager@fleetpro.com',
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), '1234456');
+    await tester.pump();
+    await tester.tap(find.text('Login'));
+    await tester.pumpAndSettle();
+
+    // Tap Profile Navigation Tab
+    await tester.tap(find.byIcon(Icons.account_circle_outlined));
+    await tester.pumpAndSettle();
+
+    // Verify App Language tile is visible with default English (US)
+    await tester.ensureVisible(find.text('App Language'));
+    expect(find.text('App Language'), findsOneWidget);
+    expect(find.text('English (US)'), findsOneWidget);
+
+    // Tap App Language tile to open bottom sheet
+    await tester.tap(find.text('App Language'));
+    await tester.pumpAndSettle();
+
+    // Verify Language selection modal is displayed
+    expect(find.text('Select Language'), findsOneWidget);
+    expect(find.text('Spanish'), findsOneWidget);
+    expect(find.text('Hindi'), findsOneWidget);
+
+    // Tap Spanish
+    await tester.tap(find.text('Spanish'));
+    await tester.pumpAndSettle();
+
+    // Verify modal dismissed, snackbar displayed, and badge updated to Spanish
+    expect(find.text('Select Language'), findsNothing);
+    expect(find.text('Language changed to Spanish.'), findsOneWidget);
+    expect(find.text('Spanish'), findsOneWidget);
+  });
+
   testWidgets('Edit Profile Screen Validation and Submission Flow', (
     WidgetTester tester,
   ) async {

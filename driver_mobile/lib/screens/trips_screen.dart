@@ -1,3 +1,4 @@
+import '../services/localization_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
@@ -21,6 +22,10 @@ class TripsScreen extends StatefulWidget {
 }
 
 class _TripsScreenState extends State<TripsScreen> {
+  // Static cache for instant 0ms screen loading (Stale-While-Revalidate pattern)
+  static Map<String, dynamic>? _cachedDashboardMetrics;
+  static Map<String, dynamic>? _cachedCurrentTrip;
+
   bool _isLoading = true;
   Map<String, dynamic>? _dashboardMetrics;
   Map<String, dynamic>? _currentTrip;
@@ -29,6 +34,13 @@ class _TripsScreenState extends State<TripsScreen> {
   void initState() {
     super.initState();
     MainNavigationScreen.selectedTabNotifier.addListener(_onTabChanged);
+    if (_cachedDashboardMetrics != null || _cachedCurrentTrip != null) {
+      _dashboardMetrics = _cachedDashboardMetrics;
+      _currentTrip = _cachedCurrentTrip;
+      _isLoading = false;
+    } else {
+      _isLoading = true;
+    }
     _loadTripsData();
     _setupSocketListeners();
   }
@@ -41,26 +53,36 @@ class _TripsScreenState extends State<TripsScreen> {
 
   void _onTabChanged() {
     if (mounted && MainNavigationScreen.selectedTabNotifier.value == 1) {
-      _loadTripsData();
+      _loadTripsData(silent: true);
     }
   }
 
   void _setupSocketListeners() {
-    SocketService.onEvent('trip:assigned', (_) => _loadTripsData());
-    SocketService.onEvent('trip:status-updated', (_) => _loadTripsData());
-    SocketService.onEvent('notification:new', (_) => _loadTripsData());
+    SocketService.onEvent('trip:assigned', (_) => _loadTripsData(silent: true));
+    SocketService.onEvent('trip:status-updated', (_) => _loadTripsData(silent: true));
+    SocketService.onEvent('notification:new', (_) => _loadTripsData(silent: true));
   }
 
-  Future<void> _loadTripsData() async {
+  Future<void> _loadTripsData({bool silent = false}) async {
     if (!mounted) return;
-    setState(() => _isLoading = true);
+    if (!silent && _dashboardMetrics == null && _currentTrip == null) {
+      setState(() => _isLoading = true);
+    }
+
     try {
-      final dashRes = await ApiService.get('/driver/dashboard');
-      var currentTripRes = await ApiService.getCurrentTrip();
+      // Concurrently query dashboard metrics and current active trip via Future.wait
+      final results = await Future.wait([
+        ApiService.get('/driver/dashboard').catchError((_) => null),
+        ApiService.getCurrentTrip().catchError((_) => null),
+      ]);
+
+      final dashRes = results[0];
+      final currentTripRes = results[1];
+
       Map<String, dynamic>? trip = currentTripRes != null ? currentTripRes['data'] : null;
 
       if (trip == null) {
-        final allTripsRes = await ApiService.get('/driver/trips');
+        final allTripsRes = await ApiService.get('/driver/trips').catchError((_) => null);
         if (allTripsRes != null && allTripsRes['data'] is List && (allTripsRes['data'] as List).isNotEmpty) {
           final list = allTripsRes['data'] as List;
           final candidate = list.firstWhere(
@@ -76,9 +98,16 @@ class _TripsScreenState extends State<TripsScreen> {
         }
       }
 
+      if (dashRes != null && dashRes['data'] != null) {
+        _cachedDashboardMetrics = dashRes['data'];
+      }
+      _cachedCurrentTrip = trip;
+
       if (mounted) {
         setState(() {
-          _dashboardMetrics = dashRes != null ? dashRes['data'] : null;
+          _dashboardMetrics = dashRes != null && dashRes['data'] != null
+              ? dashRes['data']
+              : _cachedDashboardMetrics;
           _currentTrip = trip;
           _isLoading = false;
         });
@@ -106,43 +135,23 @@ class _TripsScreenState extends State<TripsScreen> {
       appBar: CustomAppBar(
         centerTitle: false,
         actions: const [],
-        title: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8.0),
-              ),
-              padding: const EdgeInsets.all(4.0),
-              child: Image.asset(
-                'assets/logo.png',
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return Image.asset(
-                    'assets/images/logo.png',
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(
-                        Icons.local_shipping,
-                        color: AppColors.primary,
-                        size: 18,
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Trips',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                color: AppColors.background,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              MainNavigationScreen.selectedTabNotifier.value = 2;
+            }
+          },
+        ),
+        title: Text(
+          'Trips'.tr,
+          style: GoogleFonts.poppins(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
       ),
       body: SafeArea(
@@ -199,7 +208,7 @@ class _TripsScreenState extends State<TripsScreen> {
                             Expanded(
                               child: _buildStatCard(
                                 context,
-                                label: 'Total Trips',
+                                label: 'Total Trips'.tr,
                                 value: totalCount.toString().padLeft(2, '0'),
                               ),
                             ),
@@ -230,7 +239,7 @@ class _TripsScreenState extends State<TripsScreen> {
                       // Trip Categories
                       _buildCategoryCard(
                         context,
-                        title: 'Active Trips',
+                        title: 'Active Trips'.tr,
                         icon: Icons.sync,
                         iconColor: AppColors.secondary,
                         iconBgColor: AppColors.secondary.withValues(alpha: 0.15),
@@ -245,7 +254,7 @@ class _TripsScreenState extends State<TripsScreen> {
                       ),
                       _buildCategoryCard(
                         context,
-                        title: 'Upcoming Trips',
+                        title: 'Upcoming Trips'.tr,
                         icon: Icons.access_time_outlined,
                         iconColor: AppColors.primaryVariant,
                         iconBgColor: AppColors.primaryVariant.withValues(alpha: 0.08),
@@ -260,7 +269,7 @@ class _TripsScreenState extends State<TripsScreen> {
                       ),
                       _buildCategoryCard(
                         context,
-                        title: 'Completed Trips',
+                        title: 'Completed Trips'.tr,
                         icon: Icons.check_circle_outline,
                         iconColor: AppColors.primaryVariant,
                         iconBgColor: AppColors.primaryVariant.withValues(alpha: 0.08),
@@ -723,7 +732,7 @@ class _TripsScreenState extends State<TripsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Filter Trips',
+                        'Filter Trips'.tr,
                         style: GoogleFonts.poppins(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,

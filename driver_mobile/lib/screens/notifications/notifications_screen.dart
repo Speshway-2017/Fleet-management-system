@@ -1,3 +1,4 @@
+import '../../services/localization_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_colors.dart';
@@ -90,6 +91,13 @@ class NotificationsScreen extends StatefulWidget {
     ApiService.patch('/driver/notifications/$id/read', {}).catchError((_) {});
   }
 
+  static void deleteNotificationStatic(String id) {
+    if (id.isEmpty) return;
+    notifications.removeWhere((n) => n.id == id);
+    unreadCountNotifier.value = notifications.where((n) => !n.isRead).length;
+    ApiService.delete('/driver/notifications/$id').catchError((_) {});
+  }
+
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
@@ -162,6 +170,42 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       } catch (e) {
         debugPrint('Failed to mark notification as read: $e');
       }
+    }
+  }
+
+  void _deleteNotification(NotificationItem item) {
+    setState(() {
+      NotificationsScreen.notifications.removeWhere((n) => n.id == item.id);
+      NotificationsScreen.unreadCountNotifier.value =
+          NotificationsScreen.notifications.where((n) => !n.isRead).length;
+    });
+
+    ApiService.delete('/driver/notifications/${item.id}').catchError((_) {});
+
+    if (mounted && context.mounted) {
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.clearSnackBars();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Notification deleted',
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Colors.white,
+            ),
+          ),
+          backgroundColor: const Color(0xFF1E293B),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: const Duration(milliseconds: 1500),
+        ),
+      );
+      Future.delayed(const Duration(milliseconds: 1600), () {
+        if (mounted) {
+          messenger.hideCurrentSnackBar();
+        }
+      });
     }
   }
 
@@ -238,7 +282,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     // Group filtered notifications by category
     final todayNotifications = filteredNotifications.where((n) => n.category == 'TODAY').toList();
-    final yesterdayNotifications = filteredNotifications.where((n) => n.category == 'YESTERDAY').toList();
+    final yesterdayNotifications = filteredNotifications.where((n) => n.category != 'TODAY').toList();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -246,44 +290,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         centerTitle: false,
         backgroundColor: AppColors.primary,
         actions: const [],
-        title: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8.0),
-              ),
-              padding: const EdgeInsets.all(4.0),
-              child: Image.asset(
-                'assets/logo.png',
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return Image.asset(
-                    'assets/images/logo.png',
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(
-                        Icons.local_shipping,
-                        color: AppColors.primary,
-                        size: 18,
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Notifications',
-              style: GoogleFonts.poppins(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ],
+        title: Text(
+          'Notifications'.tr,
+          style: GoogleFonts.poppins(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
       ),
       body: SafeArea(
@@ -335,7 +348,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'TODAY',
+                                'TODAY'.tr,
                                 style: GoogleFonts.nunito(
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold,
@@ -347,7 +360,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 GestureDetector(
                                   onTap: _markAllAsRead,
                                   child: Text(
-                                    'Mark all as read',
+                                    'Mark all as read'.tr,
                                     style: GoogleFonts.poppins(
                                       fontSize: 13,
                                       fontWeight: FontWeight.bold,
@@ -360,7 +373,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           const SizedBox(height: 12),
                           ...todayNotifications.map((item) => Padding(
                                 padding: const EdgeInsets.only(bottom: 12.0),
-                                child: _buildNotificationCard(item),
+                                child: _buildDismissibleNotificationCard(item),
                               )),
                           const SizedBox(height: 16),
                         ],
@@ -368,7 +381,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         // YESTERDAY SECTION
                         if (yesterdayNotifications.isNotEmpty) ...[
                           Text(
-                            'YESTERDAY',
+                            'YESTERDAY'.tr,
                             style: GoogleFonts.nunito(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
@@ -379,7 +392,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           const SizedBox(height: 12),
                           ...yesterdayNotifications.map((item) => Padding(
                                 padding: const EdgeInsets.only(bottom: 12.0),
-                                child: _buildNotificationCard(item),
+                                child: _buildDismissibleNotificationCard(item),
                               )),
                         ],
                       ],
@@ -389,6 +402,45 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildDismissibleNotificationCard(NotificationItem item) {
+    return Dismissible(
+      key: ValueKey('notification_${item.id}'),
+      direction: DismissDirection.endToStart,
+      background: const SizedBox.shrink(),
+      secondaryBackground: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 22.0),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEF4444),
+          borderRadius: BorderRadius.circular(14.0),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.delete_outline_rounded,
+              color: Colors.white,
+              size: 26,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Delete',
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 13.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+      onDismissed: (direction) {
+        _deleteNotification(item);
+      },
+      child: _buildNotificationCard(item),
     );
   }
 

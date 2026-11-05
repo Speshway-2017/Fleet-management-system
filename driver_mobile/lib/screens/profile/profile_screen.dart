@@ -1,18 +1,30 @@
 import 'dart:convert';
-import '../../widgets/driver_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/localization_service.dart';
 import '../../theme/app_colors.dart';
-import '../../widgets/custom_app_bar.dart';
+import '../../widgets/legal_modal.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
 import '../auth/login_screen.dart';
+import '../main_navigation_screen.dart';
 import 'edit_profile_screen.dart';
 import 'help_support_screen.dart';
-import '../../widgets/legal_modal.dart';
-import '../../services/api_service.dart';
-import '../../main.dart';
+import '../settings/change_password_screen.dart';
+import '../settings/two_factor_auth_screen.dart';
+import '../settings/notification_settings_screen.dart';
 
+/// Driver Module - Profile Screen
+/// 
+/// Updated design specifications:
+/// - Dark navy top navigation bar (#101C2C) with white back arrow and title, matching other pages
+/// - Warm light background (#F7F9FC)
+/// - Icons styled in Navy Blue (#0F172A) with warm soft-orange squircle containers (#FFF7ED)
+/// - Accents, pill badges, and highlights transitioned from blue to Fleet Orange (#F97316)
+/// - Hidden items: "My assigned trips", "Assigned vehicle", and "Dark mode"
+/// - Retains full compatibility with tests (Personal Information, Driver's License Details, Logout, Edit Profile)
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -21,12 +33,43 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  static const Color primaryDark = Color(0xFF101C2C);
+  static const Color navyIcon = Color(0xFF0F172A);
+  static const Color orangePrimary = Color(0xFFF97316);
+  static const Color orangeLightBg = Color(0xFFFFF7ED);
+  static const Color orangeBorder = Color(0xFFFFEDD5);
+
+  String _selectedLanguage = 'English (US)';
+
+  static String normalizeLanguage(String? lang) {
+    return LocalizationService.normalizeLanguage(lang);
+  }
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<AuthProvider>(context, listen: false).refreshProfile();
+    _loadSavedLanguage();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      await auth.refreshProfile();
+      if (mounted && auth.driver != null && auth.driver!.language.isNotEmpty) {
+        setState(() {
+          _selectedLanguage = normalizeLanguage(auth.driver!.language);
+        });
+      }
     });
+  }
+
+  Future<void> _loadSavedLanguage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString('app_language');
+      if (saved != null && saved.isNotEmpty && mounted) {
+        setState(() {
+          _selectedLanguage = normalizeLanguage(saved);
+        });
+      }
+    } catch (_) {}
   }
 
   void _showLogoutDialog(BuildContext context) {
@@ -42,13 +85,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             'Confirm Logout',
             style: GoogleFonts.poppins(
               fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              color: navyIcon,
             ),
           ),
           content: Text(
             'Are you sure you want to log out from the application?',
             style: GoogleFonts.nunito(
-              color: AppColors.textSecondary,
+              color: const Color(0xFF64748B),
               fontSize: 15,
             ),
           ),
@@ -60,7 +103,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 'Cancel',
                 style: GoogleFonts.poppins(
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
+                  color: const Color(0xFF64748B),
                 ),
               ),
             ),
@@ -80,14 +123,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ScaffoldMessenger.of(outerContext).showSnackBar(
                     const SnackBar(
                       content: Text('Logged out successfully.'),
-                      backgroundColor: AppColors.success,
+                      backgroundColor: Color(0xFF10B981),
                       behavior: SnackBarBehavior.floating,
                     ),
                   );
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.error,
+                backgroundColor: const Color(0xFFEF4444),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8.0),
                 ),
@@ -126,7 +169,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ScaffoldMessenger.of(outerContext).showSnackBar(
         const SnackBar(
           content: Text('Account permanently deleted and set to In-Active. You have been logged out.'),
-          backgroundColor: AppColors.error,
+          backgroundColor: Color(0xFFEF4444),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -146,12 +189,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: AppColors.error.withValues(alpha: 0.1),
+                  color: const Color(0xFFFEE2E2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
                   Icons.delete_forever_rounded,
-                  color: AppColors.error,
+                  color: Color(0xFFEF4444),
                   size: 24,
                 ),
               ),
@@ -161,7 +204,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   'Delete Account',
                   style: GoogleFonts.poppins(
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                    color: navyIcon,
                     fontSize: 17,
                   ),
                 ),
@@ -175,7 +218,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Text(
                 'Are you sure you want to request deletion of your driver account? This action will permanently deactivate your driver profile, vehicle assignments, and active GPS telemetry.',
                 style: GoogleFonts.nunito(
-                  color: AppColors.textSecondary,
+                  color: const Color(0xFF64748B),
                   fontSize: 14,
                   height: 1.4,
                 ),
@@ -197,7 +240,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const Icon(
                         Icons.article_outlined,
                         size: 16,
-                        color: AppColors.secondary,
+                        color: orangePrimary,
                       ),
                       const SizedBox(width: 6),
                       Expanded(
@@ -206,7 +249,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           style: GoogleFonts.poppins(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.secondary,
+                            color: orangePrimary,
                             decoration: TextDecoration.underline,
                           ),
                         ),
@@ -225,8 +268,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(dialogContext),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textSecondary,
-                      side: const BorderSide(color: AppColors.divider, width: 1.2),
+                      foregroundColor: const Color(0xFF64748B),
+                      side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.2),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10.0),
                       ),
@@ -249,7 +292,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       await _handleDeleteAccount(context);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.error,
+                      backgroundColor: const Color(0xFFEF4444),
                       foregroundColor: Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
@@ -274,46 +317,268 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  String _formatDate(String? dateStr, {bool short = false}) {
-    if (dateStr == null || dateStr.isEmpty) return 'Not Specified';
-    final parsed = DateTime.tryParse(dateStr);
-    if (parsed == null) return dateStr;
-    
-    final months = short 
-        ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-        : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-        
-    if (parsed.month < 1 || parsed.month > 12) return dateStr;
-    return short 
-        ? '${months[parsed.month - 1]} ${parsed.day}, ${parsed.year}'
-        : '${months[parsed.month - 1]} ${parsed.day}, ${parsed.year}';
+  void _showLanguageSelector(BuildContext context, [String? activeLanguage]) {
+    final currentLanguage = activeLanguage ?? _selectedLanguage;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
+      ),
+      builder: (BuildContext sheetContext) {
+        const languages = [
+          'English (US)',
+          'Spanish',
+          'French',
+          'German',
+          'Hindi',
+        ];
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: orangeLightBg,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: orangeBorder, width: 1.0),
+                      ),
+                      child: const Icon(Icons.language_rounded, color: orangePrimary, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Select Language',
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: navyIcon,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const Divider(color: Color(0xFFF1F5F9), height: 1),
+                const SizedBox(height: 8),
+                ...languages.map((lang) {
+                  final isSelected = normalizeLanguage(currentLanguage) == normalizeLanguage(lang);
+                  return InkWell(
+                    onTap: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      Navigator.pop(sheetContext);
+
+                      final normalized = LocalizationService.normalizeLanguage(lang);
+                      setState(() {
+                        _selectedLanguage = normalized;
+                      });
+
+                      final auth = Provider.of<AuthProvider>(context, listen: false);
+                      await auth.setLanguage(normalized);
+
+                      if (mounted) {
+                        messenger.clearSnackBars();
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Language changed to $lang.',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: const Color(0xFF10B981),
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isSelected ? orangeLightBg : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected ? orangeBorder : Colors.transparent,
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              lang,
+                              style: GoogleFonts.poppins(
+                                fontSize: 15,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                color: isSelected ? orangePrimary : navyIcon,
+                              ),
+                            ),
+                          ),
+                          if (isSelected)
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              color: orangePrimary,
+                              size: 20,
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
-  int _calculateYears(String? dateStr) {
-    if (dateStr == null || dateStr.isEmpty) return 4; // default mock fallback
-    final parsed = DateTime.tryParse(dateStr);
-    if (parsed == null) return 4;
-    final now = DateTime.now();
-    int years = now.year - parsed.year;
-    if (now.month < parsed.month || (now.month == parsed.month && now.day < parsed.day)) {
-      years--;
-    }
-    return years < 0 ? 0 : years;
+  void _showLicenseDetailsModal(BuildContext context, dynamic driver) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: orangeLightBg,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.badge_outlined, color: navyIcon, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Driver's License Details",
+                            style: GoogleFonts.poppins(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: navyIcon,
+                            ),
+                          ),
+                          Text(
+                            'Government Verified Transport Authorization',
+                            style: GoogleFonts.nunito(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Divider(color: Color(0xFFF1F5F9), height: 1),
+                const SizedBox(height: 16),
+                _buildLicenseRow('LICENSE NUMBER', driver.licenseNumber ?? 'N/A'),
+                const SizedBox(height: 12),
+                _buildLicenseRow('LICENSE CATEGORY', driver.licenseType ?? 'Heavy Motor Vehicle (HMV)'),
+                const SizedBox(height: 12),
+                _buildLicenseRow('RTO / BRANCH', driver.branch ?? 'Regional Transport Office'),
+                const SizedBox(height: 12),
+                _buildLicenseRow('EXPERIENCE', '${driver.experience ?? 4} Years Commercial Driving'),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryDark,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      'Close Details',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
-  Color _getStatusColor(String status) {
-    switch (status.toUpperCase()) {
-      case 'AVAILABLE':
-        return AppColors.success;
-      case 'ON_TRIP':
-        return AppColors.info;
-      case 'ASSIGNED':
-        return AppColors.warning;
-      case 'SUSPENDED':
-        return AppColors.error;
-      default:
-        return AppColors.success;
-    }
+  Widget _buildLicenseRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF94A3B8),
+            letterSpacing: 0.5,
+          ),
+        ),
+        Text(
+          value,
+          style: GoogleFonts.poppins(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: navyIcon,
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -322,10 +587,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (context, auth, child) {
         if (auth.isLoading && auth.driver == null) {
           return const Scaffold(
-            backgroundColor: Colors.white,
+            backgroundColor: Color(0xFFF7F9FC),
             body: Center(
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                valueColor: AlwaysStoppedAnimation<Color>(orangePrimary),
               ),
             ),
           );
@@ -333,7 +598,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         if (auth.errorMessage != null && auth.driver == null) {
           return Scaffold(
-            backgroundColor: Colors.white,
+            backgroundColor: const Color(0xFFF7F9FC),
             body: Center(
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
@@ -342,7 +607,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     const Icon(
                       Icons.error_outline,
-                      color: AppColors.error,
+                      color: Color(0xFFEF4444),
                       size: 48,
                     ),
                     const SizedBox(height: 16),
@@ -352,14 +617,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       style: GoogleFonts.poppins(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                        color: navyIcon,
                       ),
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () => auth.refreshProfile(),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: primaryDark,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8.0),
                         ),
@@ -382,7 +647,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final driver = auth.driver;
         if (driver == null) {
           return const Scaffold(
-            backgroundColor: Colors.white,
+            backgroundColor: Color(0xFFF7F9FC),
             body: Center(
               child: Text('No profile data found.'),
             ),
@@ -397,362 +662,482 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
 
         final joiningYear = DateTime.tryParse(driver.joiningDate)?.year ?? 2020;
-        final milesVal = (driver.tripsCompleted > 0) ? '${(driver.tripsCompleted * 142)}' : '12.4k';
+        final initialLetter = driver.fullName.isNotEmpty ? driver.fullName[0].toUpperCase() : 'D';
+        final statusDisplay = driver.driverStatus.isNotEmpty
+            ? driver.driverStatus.replaceAll('_', ' ').toUpperCase()
+            : 'SENIOR DRIVER';
+        final cityDisplay = driver.address.isNotEmpty
+            ? driver.address.split(',')[0].trim()
+            : 'Hyderabad';
+        final emergencyContact = driver.manager != null && driver.manager!.name.isNotEmpty
+            ? '${driver.manager!.name} · ${driver.phoneNumber}'
+            : 'Fleet Manager · ${driver.phoneNumber}';
 
         return Scaffold(
-          backgroundColor: Colors.white,
-          appBar: CustomAppBar(
+          backgroundColor: const Color(0xFFF7F9FC),
+          // Top Nav updated like other pages (Dark Navy #101C2C with white back button & title)
+          appBar: AppBar(
+            backgroundColor: primaryDark,
+            elevation: 0,
             centerTitle: false,
-            backgroundColor: AppColors.primary,
-            actions: const [],
-            title: Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  padding: const EdgeInsets.all(4.0),
-                  child: Image.asset(
-                    'assets/logo.png',
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(
-                        Icons.local_shipping,
-                        color: AppColors.primary,
-                        size: 18,
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Profile',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      'Driver',
-                      style: GoogleFonts.nunito(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textDisabled,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            titleSpacing: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+              onPressed: () {
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                } else {
+                  MainNavigationScreen.selectedTabNotifier.value = 2;
+                }
+              },
             ),
+            title: Text(
+              'Profile',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            actions: const [],
           ),
           body: SafeArea(
             child: RefreshIndicator(
               onRefresh: () => auth.refreshProfile(),
-              color: AppColors.primary,
+              color: orangePrimary,
               child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Profile Photo Card with Green Active Indicator
-                    Center(
-                      child: Stack(
-                        children: [
-                          Container(
-                            width: 120,
-                            height: 120,
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.textPrimary.withAlpha(20),
-                                  blurRadius: 16,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: ValueListenableBuilder<String>(
-                                valueListenable: ProfileState.profilePhotoUrlNotifier,
-                                builder: (context, photoUrl, child) {
-                                  final activeUrl = photoUrl.isNotEmpty ? photoUrl : driver.profileImage;
-                                  return DriverAvatar(
-                                    photoUrl: activeUrl,
-                                    name: driver.fullName,
-                                    size: 120,
-                                    fontSize: 42,
-                                    borderWidth: 0,
-                                    borderColor: Colors.transparent,
-                                  );
-                                },
-                              ),
-                          ),
-                          Positioned(
-                            bottom: 4,
-                            right: 4,
-                            child: Container(
-                              width: 22,
-                              height: 22,
-                              decoration: BoxDecoration(
-                                color: _getStatusColor(driver.driverStatus),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 3.5,
-                                ),
-                              ),
-                            ),
+                    // 1. TOP PROFILE HERO CARD
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24.0),
+                        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 14,
+                            offset: const Offset(0, 4),
                           ),
                         ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Name & Badge Section
-                    Text(
-                      driver.fullName,
-                      style: GoogleFonts.poppins(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.verified,
-                          color: AppColors.secondary,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          driver.driverStatus.replaceAll('_', ' '),
-                          style: GoogleFonts.poppins(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.secondary,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Member since $joiningYear',
-                      style: GoogleFonts.nunito(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-
-                    // Stats Row (Miles, Safety, Years)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            icon: Icons.trending_up_rounded,
-                            value: milesVal,
-                            label: 'MILES',
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            icon: Icons.shield_outlined,
-                            value: '${driver.performanceScore}%',
-                            label: 'SAFETY',
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            icon: Icons.calendar_month_outlined,
-                            value: '${_calculateYears(driver.joiningDate)}',
-                            label: 'YEARS',
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 28),
-
-                    // Expansion Accordion Sections
-                    Theme(
-                      data: Theme.of(context).copyWith(
-                        dividerColor: Colors.transparent,
                       ),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Accordion 1: Personal Information (Expanded by default)
-                          _buildAccordionCard(
-                            context,
-                            title: 'Personal Information',
-                            icon: Icons.person_outline_rounded,
-                            initiallyExpanded: true,
+                          // Avatar, Name, Phone & Edit Button Row
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                              // Avatar Squircle (Warm Pastel Orange Background with Orange Accent)
+                              Container(
+                                width: 56,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  color: orangeLightBg,
+                                  borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(color: orangeBorder, width: 1.2),
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                child: ValueListenableBuilder<String>(
+                                  valueListenable: ProfileState.profilePhotoUrlNotifier,
+                                  builder: (context, photoUrl, _) {
+                                    final activeUrl = photoUrl.isNotEmpty ? photoUrl : driver.profileImage;
+                                    if (activeUrl.isNotEmpty) {
+                                      return Image.network(
+                                        activeUrl,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) => Center(
+                                          child: Text(
+                                            initialLetter,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.bold,
+                                              color: orangePrimary,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    return Center(
+                                      child: Text(
+                                        initialLetter,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: orangePrimary,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              // Name & Phone
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
                                       children: [
-                                        _buildInfoField('EMAIL', driver.email),
-                                        const SizedBox(height: 16),
-                                        _buildInfoField('EMPLOYEE ID', driver.employeeId),
-                                        const SizedBox(height: 16),
-                                        _buildInfoField('JOINING DATE', _formatDate(driver.joiningDate, short: false)),
+                                        Flexible(
+                                          child: Text(
+                                            driver.fullName,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w700,
+                                              color: navyIcon,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        // Green Online / Active Status Dot
+                                        Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFF10B981),
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
                                       ],
                                     ),
-                                  ),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        _buildInfoField('PHONE', driver.phoneNumber),
-                                        const SizedBox(height: 16),
-                                        _buildInfoField('ADDRESS', driver.address.isNotEmpty ? driver.address : 'Not Specified'),
-                                      ],
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      driver.phoneNumber,
+                                      style: GoogleFonts.nunito(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF64748B),
+                                      ),
                                     ),
+                                  ],
+                                ),
+                              ),
+                              // Edit Profile Pill Button
+                              OutlinedButton.icon(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+                                  );
+                                },
+                                icon: const Icon(Icons.edit_outlined, size: 14, color: navyIcon),
+                                label: Text(
+                                  'Edit Profile'.tr,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: navyIcon,
                                   ),
-                                ],
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  backgroundColor: Colors.white,
+                                  elevation: 0,
+                                ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
 
-                          // Accordion 2: Driver's License Details
-                          _buildAccordionCard(
-                            context,
-                            title: "Driver's License Details",
-                            icon: Icons.badge_outlined,
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        _buildInfoField('LICENSE NUMBER', driver.licenseNumber),
-                                        const SizedBox(height: 16),
-                                        _buildInfoField('EXPIRY DATE', _formatDate(driver.licenseExpiry, short: true)),
-                                      ],
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        _buildInfoField('CLASS', driver.licenseType),
-                                        const SizedBox(height: 16),
-                                        _buildInfoField('ISSUE STATE', driver.branch.isNotEmpty ? driver.branch : 'Not Specified'),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Settings & Actions Card
-                          Card(
-                            color: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14.0),
-                              side: const BorderSide(color: AppColors.divider, width: 1.0),
-                            ),
-                            margin: EdgeInsets.zero,
-                            clipBehavior: Clip.antiAlias,
-                            child: Column(
+                          // Personal Information & Member since Row
+                          Padding(
+                            padding: const EdgeInsets.only(top: 14.0, bottom: 8.0),
+                            child: Row(
                               children: [
-                                _buildCardActionTile(
-                                  context,
-                                  icon: Icons.edit_outlined,
-                                  title: 'Edit Profile',
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => const EditProfileScreen(),
-                                      ),
-                                    );
-                                  },
+                                Text(
+                                  'Personal Information'.tr,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF94A3B8),
+                                    letterSpacing: 0.5,
+                                  ),
                                 ),
-                                const Divider(color: AppColors.divider, height: 1),
-                                _buildCardActionTile(
-                                  context,
-                                  icon: Icons.help_outline,
-                                  title: 'Help & Support',
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => const HelpSupportScreen(),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                const Divider(color: AppColors.divider, height: 1),
-                                _buildCardActionTile(
-                                  context,
-                                  icon: Icons.delete_outline_rounded,
-                                  title: 'Delete Account',
-                                  isDestructive: true,
-                                  onTap: () => _showDeleteAccountDialog(context),
-                                ),
-                                const SizedBox(height: 12),
-                                Padding(
-                                  padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
-                                  child: OutlinedButton.icon(
-                                    onPressed: () => _showLogoutDialog(context),
-                                    icon: const Icon(
-                                      Icons.logout,
-                                      color: AppColors.error,
-                                      size: 20,
-                                    ),
-                                    label: Text(
-                                      'Logout',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.error,
-                                      ),
-                                    ),
-                                    style: OutlinedButton.styleFrom(
-                                      backgroundColor: Colors.white,
-                                      side: const BorderSide(color: AppColors.error, width: 1.5),
-                                      minimumSize: const Size(double.infinity, 50),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12.0),
-                                      ),
-                                      elevation: 0,
-                                    ),
+                                const Spacer(),
+                                Text(
+                                  '${'Member since'.tr} $joiningYear',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF94A3B8),
                                   ),
                                 ),
                               ],
                             ),
                           ),
+
+                          const Divider(color: Color(0xFFF1F5F9), height: 16),
+
+                          // 2x2 Grid with Navy Blue Icons & Warm Orange Tint Containers
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildInfoCell(
+                                  icon: Icons.mail_outline_rounded,
+                                  label: 'EMAIL',
+                                  value: driver.email,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildInfoCell(
+                                  icon: Icons.phone_outlined,
+                                  label: 'PHONE',
+                                  value: driver.phoneNumber,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildInfoCell(
+                                  icon: Icons.location_on_outlined,
+                                  label: 'CITY',
+                                  value: cityDisplay,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildInfoCell(
+                                  icon: Icons.person_outline_rounded,
+                                  label: 'STATUS',
+                                  value: statusDisplay,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const Divider(color: Color(0xFFF1F5F9), height: 24),
+
+                          // Emergency Contact Row
+                          _buildInfoCell(
+                            icon: Icons.shield_outlined,
+                            label: 'EMERGENCY CONTACT',
+                            value: emergencyContact,
+                          ),
                         ],
                       ),
                     ),
+
+                    const SizedBox(height: 16),
+
+                    // 2. DRIVER CREDENTIALS CARD (Retains Driver's License Details, hides my assigned trips & assigned vehicle)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(18.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24.0),
+                        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 14,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'DRIVER CREDENTIALS',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF94A3B8),
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _buildActionTile(
+                            icon: Icons.badge_outlined,
+                            title: "Driver's License Details",
+                            badge: driver.licenseType.isNotEmpty ? driver.licenseType : 'HMV',
+                            onTap: () {
+                              _showLicenseDetailsModal(context, driver);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // 3. APP SETTINGS & SECURITY CARD (Hides Dark Mode switch)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(18.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24.0),
+                        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 14,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'APP SETTINGS & SECURITY',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF94A3B8),
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _buildActionTile(
+                            icon: Icons.lock_outline_rounded,
+                            title: 'Account Security',
+                            badge: 'Protected',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
+                              );
+                            },
+                          ),
+                          const Divider(color: Color(0xFFF1F5F9), height: 1),
+                          _buildActionTile(
+                            icon: Icons.security_rounded,
+                            title: 'Two-Factor Authentication'.tr,
+                            badge: 'Active',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const TwoFactorAuthScreen()),
+                              );
+                            },
+                          ),
+                          const Divider(color: Color(0xFFF1F5F9), height: 1),
+                          _buildActionTile(
+                            icon: Icons.notifications_none_rounded,
+                            title: 'Push Notifications'.tr,
+                            badge: 'Enabled',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const NotificationSettingsScreen()),
+                              );
+                            },
+                          ),
+                          const Divider(color: Color(0xFFF1F5F9), height: 1),
+                          Builder(
+                            builder: (context) {
+                              final activeLanguage = normalizeLanguage(
+                                driver.language.isNotEmpty ? driver.language : _selectedLanguage,
+                              );
+                              return _buildActionTile(
+                                icon: Icons.language_rounded,
+                                title: 'App Language'.tr,
+                                badge: activeLanguage,
+                                onTap: () {
+                                  _showLanguageSelector(context, activeLanguage);
+                                },
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // 4. HELP & ACCOUNT ACTIONS CARD
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(18.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24.0),
+                        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 14,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'HELP & ACCOUNT',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF94A3B8),
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _buildActionTile(
+                            icon: Icons.headset_mic_outlined,
+                            title: 'Help & Support'.tr,
+                            badge: '24/7 Live',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const HelpSupportScreen()),
+                              );
+                            },
+                          ),
+                          const Divider(color: Color(0xFFF1F5F9), height: 1),
+                          _buildActionTile(
+                            icon: Icons.policy_outlined,
+                            title: 'Privacy Policy & Terms',
+                            onTap: () {
+                              LegalModal.showPrivacy(context);
+                            },
+                          ),
+                          const Divider(color: Color(0xFFF1F5F9), height: 1),
+                          _buildActionTile(
+                            icon: Icons.delete_outline_rounded,
+                            title: 'Delete Account'.tr,
+                            iconColor: const Color(0xFFEF4444),
+                            iconBgColor: const Color(0xFFFEE2E2),
+                            titleColor: const Color(0xFFEF4444),
+                            onTap: () {
+                              _showDeleteAccountDialog(context);
+                            },
+                          ),
+                          const Divider(color: Color(0xFFF1F5F9), height: 1),
+                          _buildActionTile(
+                            icon: Icons.logout_rounded,
+                            title: 'Logout'.tr,
+                            iconColor: const Color(0xFFEF4444),
+                            iconBgColor: const Color(0xFFFEE2E2),
+                            titleColor: const Color(0xFFEF4444),
+                            onTap: () {
+                              _showLogoutDialog(context);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
@@ -763,154 +1148,125 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildStatCard(
-    BuildContext context, {
+  Widget _buildInfoCell({
     required IconData icon,
-    required String value,
     required String label,
+    required String value,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: AppColors.divider, width: 1.0),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: AppColors.secondary,
-            size: 26,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: GoogleFonts.poppins(
-              fontSize: 19,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: GoogleFonts.nunito(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textSecondary,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAccordionCard(
-    BuildContext context, {
-    required String title,
-    required IconData icon,
-    required List<Widget> children,
-    bool initiallyExpanded = false,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14.0),
-        border: Border.all(color: AppColors.divider, width: 1.0),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14.0),
-        child: ExpansionTile(
-          initiallyExpanded: initiallyExpanded,
-          backgroundColor: Colors.white,
-          collapsedBackgroundColor: AppColors.surface,
-          leading: Icon(
-            icon,
-            color: AppColors.secondary,
-            size: 24,
-          ),
-          title: Text(
-            title,
-            style: GoogleFonts.poppins(
-              fontSize: 15.5,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          childrenPadding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 20.0, top: 8.0),
-          children: children,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoField(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Text(
-          label,
-          style: GoogleFonts.nunito(
-            fontSize: 9.5,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textDisabled,
-            letterSpacing: 0.5,
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: orangeLightBg,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: orangeBorder, width: 1.0),
           ),
+          child: Icon(icon, color: navyIcon, size: 19),
         ),
-        const SizedBox(height: 3),
-        Text(
-          value,
-          style: GoogleFonts.poppins(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF94A3B8),
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: navyIcon,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildCardActionTile(
-    BuildContext context, {
+  Widget _buildActionTile({
     required IconData icon,
     required String title,
+    String? badge,
+    Color? iconColor,
+    Color? iconBgColor,
+    Color? titleColor,
     required VoidCallback onTap,
-    bool isDestructive = false,
   }) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: isDestructive
-              ? AppColors.error.withValues(alpha: 0.1)
-              : AppColors.secondary.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10.0),
-        ),
-        child: Icon(
-          icon,
-          color: isDestructive ? AppColors.error : AppColors.secondary,
-          size: 20,
-        ),
-      ),
-      title: Text(
-        title,
-        style: GoogleFonts.poppins(
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-          color: isDestructive ? AppColors.error : AppColors.textPrimary,
-        ),
-      ),
-      trailing: Icon(
-        Icons.chevron_right_rounded,
-        color: isDestructive ? AppColors.error.withValues(alpha: 0.7) : AppColors.textDisabled,
-        size: 20,
-      ),
+    return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12.0),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: iconBgColor ?? orangeLightBg,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: iconBgColor != null ? Colors.transparent : orangeBorder,
+                  width: 1.0,
+                ),
+              ),
+              child: Icon(
+                icon,
+                color: iconColor ?? navyIcon,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                title,
+                style: GoogleFonts.poppins(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                  color: titleColor ?? navyIcon,
+                ),
+              ),
+            ),
+            if (badge != null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: orangeLightBg,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: orangeBorder, width: 1.0),
+                ),
+                child: Text(
+                  badge,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: orangePrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFF94A3B8),
+              size: 20,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

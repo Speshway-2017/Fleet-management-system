@@ -25,4 +25,11 @@ class NotificationRepository {
       throw Exception(response['message'] ?? 'Failed to mark all notifications as read');
     }
   }
+
+  Future<void> deleteNotification(String id) async {
+    final response = await ApiService.delete('/driver/notifications/$id');
+    if (response['success'] != true) {
+      throw Exception(response['message'] ?? 'Failed to delete notification');
+    }
+  }
 }

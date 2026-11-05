@@ -1,3 +1,4 @@
+import '../services/localization_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
@@ -105,31 +106,7 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
             color: Colors.white,
           ),
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8.0),
-              ),
-              padding: const EdgeInsets.all(4.0),
-              child: Image.asset(
-                'assets/images/logo.png',
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(
-                    Icons.local_shipping_rounded,
-                    color: primaryDark,
-                    size: 20,
-                  );
-                },
-              ),
-            ),
-          ),
-        ],
+        actions: const [],
       ),
       body: SafeArea(
         child: _isLoading
@@ -194,7 +171,7 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
               ),
               const SizedBox(height: 20),
               Text(
-                'No Vehicle Assigned',
+                'No Vehicle Assigned'.tr,
                 style: GoogleFonts.poppins(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
@@ -279,7 +256,7 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
         // 3. Operational Action Cards List
         VehicleActionTile(
           icon: Icons.info_outline_rounded,
-          title: 'Vehicle Details',
+          title: 'Vehicle Details'.tr,
           onTap: () async {
             await Navigator.push(
               context,
@@ -292,7 +269,7 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
         ),
         VehicleActionTile(
           icon: Icons.bar_chart_rounded,
-          title: 'Vehicle Status',
+          title: 'Vehicle Status'.tr,
           onTap: () async {
             await Navigator.push(
               context,
@@ -305,7 +282,7 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
         ),
         VehicleActionTile(
           icon: Icons.notifications_active_outlined,
-          title: 'Maintenance Alerts',
+          title: 'Maintenance Alerts'.tr,
           subtitle: '1 CRITICAL',
           subtitleColor: const Color(0xFFEF4444),
           onTap: () async {
@@ -320,7 +297,7 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
         ),
         VehicleActionTile(
           icon: Icons.folder_open_outlined,
-          title: 'Vehicle Documents',
+          title: 'Vehicle Documents'.tr,
           onTap: () async {
             await Navigator.push(
               context,

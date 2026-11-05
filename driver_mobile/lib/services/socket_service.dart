@@ -34,11 +34,17 @@ class SocketService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('driver_id', driverId);
     }
-    await initSocket(onTripStatusUpdated: onTripStatusUpdated, onTripAssigned: onTripAssigned);
+    await initSocket(force: true, onTripStatusUpdated: onTripStatusUpdated, onTripAssigned: onTripAssigned);
   }
 
-  static Future<void> initSocket({Function(dynamic data)? onTripStatusUpdated, Function(dynamic data)? onTripAssigned}) async {
+  static Future<void> initSocket({bool force = false, Function(dynamic data)? onTripStatusUpdated, Function(dynamic data)? onTripAssigned}) async {
     if (_isTest) return;
+    if (force && _socket != null) {
+      _socket?.disconnect();
+      _socket?.dispose();
+      _socket = null;
+      _isConnected = false;
+    }
     if (_socket != null && _socket!.connected) return;
 
     try {

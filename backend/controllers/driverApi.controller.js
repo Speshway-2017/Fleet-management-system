@@ -70,6 +70,24 @@ export async function resolveCurrentDriver(req) {
   return null;
 }
 
+// Helper to build strict driver filter matching exclusively this driver's trips
+export function buildStrictDriverFilter(driverDoc, driverId) {
+  const targetDriverIdStrings = [
+    ...(driverDoc ? [driverDoc._id.toString()] : []),
+    ...(driverId ? [driverId.toString()] : [])
+  ];
+  const targetDriverObjectIds = targetDriverIdStrings
+    .filter(id => mongoose.Types.ObjectId.isValid(id))
+    .map(id => new mongoose.Types.ObjectId(id));
+
+  return {
+    $or: [
+      { driver: { $in: targetDriverObjectIds } },
+      { driver: { $in: targetDriverIdStrings } }
+    ]
+  };
+}
+
 /**
  * Driver Login
  * POST /api/driver/login
@@ -465,7 +483,7 @@ export const updateDriverProfile = async (req, res, next) => {
       driverId,
       { $set: updateData },
       { new: true, runValidators: true }
-    ).lean();
+    ).populate('assignedManager', 'name phone email').lean();
 
     if (!updatedDriver) {
       return sendError(res, 404, 'Driver profile not found');
@@ -608,8 +626,20 @@ export const updateDriverProfile = async (req, res, next) => {
       ...updatedDriver,
       driverId: updatedDriver.employeeId || updatedDriver._id,
       id: updatedDriver._id,
+      language: updatedDriver.language || updateData.language || 'English',
       isOnline: updatedDriver.isOnline,
       driverStatus: updatedDriver.driverStatus,
+      manager: updatedDriver.assignedManager ? {
+        id: updatedDriver.assignedManager._id || updatedDriver.assignedManager.id,
+        name: updatedDriver.assignedManager.name || '',
+        phone: updatedDriver.assignedManager.phone || '',
+        email: updatedDriver.assignedManager.email || '',
+      } : (driverBefore?.assignedManager ? {
+        id: driverBefore.assignedManager._id || driverBefore.assignedManager,
+        name: driverBefore.assignedManager.name || '',
+        phone: driverBefore.assignedManager.phone || '',
+        email: driverBefore.assignedManager.email || '',
+      } : null),
     };
 
     console.log('[DEBUG] [Availability Update] API Response payload isOnline:', responsePayload.isOnline);
@@ -747,17 +777,7 @@ export const getCurrentTrip = async (req, res, next) => {
   try {
     const driverId = req.user._id;
     const driverDoc = await resolveCurrentDriver(req);
-
-    const driverFilter = driverDoc
-      ? {
-          $or: [
-            { driver: driverDoc._id },
-            { driver: driverId },
-            ...(driverDoc.phoneNumber ? [{ driverPhone: driverDoc.phoneNumber }] : []),
-            ...(driverDoc.email ? [{ driverEmail: driverDoc.email }] : [])
-          ]
-        }
-      : { driver: driverId };
+    const driverFilter = buildStrictDriverFilter(driverDoc, driverId);
 
     const activeStatuses = [
       'Pending Driver Acceptance', 'PENDING_DRIVER_ACCEPTANCE', 'PENDING DRIVER ACCEPTANCE',
@@ -885,9 +905,7 @@ export const getCurrentTrip = async (req, res, next) => {
 export const getDriverDashboard = async (req, res, next) => {
   try {
     const driverId = req.user._id;
-
-    // Find driver document to ensure all possible identifier mappings are checked
-    let driverDoc = await Driver.findById(driverId);
+    let driverDoc = await resolveCurrentDriver(req) || await Driver.findById(driverId);
     if (!driverDoc) {
       driverDoc = await Driver.findOne({
         $or: [
@@ -898,16 +916,7 @@ export const getDriverDashboard = async (req, res, next) => {
       });
     }
 
-    const driverFilter = driverDoc
-      ? {
-          $or: [
-            { driver: driverDoc._id },
-            { driver: driverId },
-            ...(driverDoc.phoneNumber ? [{ driverPhone: driverDoc.phoneNumber }] : []),
-            ...(driverDoc.email ? [{ driverEmail: driverDoc.email }] : [])
-          ]
-        }
-      : { driver: driverId };
+    const driverFilter = buildStrictDriverFilter(driverDoc, driverId);
 
     const activeStatuses = [
       'In Progress', 'IN_PROGRESS', 'IN PROGRESS',
@@ -1071,6 +1080,38 @@ export const markAllDriverNotificationsRead = async (req, res, next) => {
       { isRead: true }
     );
     return sendSuccess(res, 200, null, 'All notifications marked as read');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Delete a Driver Notification
+ * DELETE /api/driver/notifications/:id
+ */
+export const deleteDriverNotification = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const driverId = req.user._id;
+    const driverDoc = await resolveCurrentDriver(req);
+
+    const recipientOrList = [
+      { recipient: driverId },
+      { user: driverId },
+      ...(driverDoc ? [{ recipient: driverDoc._id }, { user: driverDoc._id }] : []),
+      { recipientRole: 'DRIVER', recipient: { $exists: false } },
+      { recipientRole: 'DRIVER', recipient: null }
+    ];
+
+    const notification = await Notification.findOneAndDelete({
+      _id: id,
+      $or: recipientOrList
+    });
+
+    if (!notification) {
+      return sendError(res, 404, 'Notification not found or access denied');
+    }
+    return sendSuccess(res, 200, null, 'Notification deleted successfully');
   } catch (error) {
     next(error);
   }
@@ -2436,17 +2477,7 @@ export const getDriverTrips = async (req, res, next) => {
   try {
     const driverId = req.user._id;
     const driverDoc = await resolveCurrentDriver(req);
-
-    const driverFilter = driverDoc
-      ? {
-          $or: [
-            { driver: driverDoc._id },
-            { driver: driverId },
-            ...(driverDoc.phoneNumber ? [{ driverPhone: driverDoc.phoneNumber }] : []),
-            ...(driverDoc.email ? [{ driverEmail: driverDoc.email }] : [])
-          ]
-        }
-      : { driver: driverId };
+    const driverFilter = buildStrictDriverFilter(driverDoc, driverId);
 
     const { status } = req.query;
     const query = { ...driverFilter };
@@ -2561,14 +2592,7 @@ export const getAssignedVehicle = async (req, res, next) => {
       return sendError(res, 404, 'Driver profile not found');
     }
 
-    const driverFilter = {
-      $or: [
-        { driver: driver._id },
-        { driver: driverId },
-        ...(driver.phoneNumber ? [{ driverPhone: driver.phoneNumber }] : []),
-        ...(driver.email ? [{ driverEmail: driver.email }] : [])
-      ]
-    };
+    const driverFilter = buildStrictDriverFilter(driver, driverId);
 
     const activeStatuses = [
       'Pending Driver Acceptance', 'PENDING_DRIVER_ACCEPTANCE', 'PENDING DRIVER ACCEPTANCE',
@@ -2809,7 +2833,7 @@ export const getDriverMaintenance = async (req, res, next) => {
     const activeTrip = await Trip.findOne({
       driver: driverId,
       status: { $in: activeStatuses }
-    }).populate('vehicle').sort({ createdAt: -1 });
+    }).populate('vehicle').sort({ createdAt: -1 }).lean();
 
     let vehicle = null;
     if (activeTrip && activeTrip.vehicle && typeof activeTrip.vehicle === 'object') {
@@ -2838,7 +2862,7 @@ export const getDriverMaintenance = async (req, res, next) => {
         { vehicleId: vehNum },
         { vehicleId: new RegExp(cleanVehNum.split('').join('\\s*'), 'i') }
       ]
-    }).sort({ createdAt: -1 });
+    }).sort({ createdAt: -1 }).lean();
 
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -3293,11 +3317,19 @@ export const createDriverTicket = async (req, res, next) => {
  */
 export const getDriverTickets = async (req, res, next) => {
   try {
-    const driverId = req.user._id;
-    const tickets = await VehicleComplaint.find({ driver: driverId })
-      .populate('vehicle')
-      .populate('trip')
-      .sort({ createdAt: -1 });
+    const driverDoc = await resolveCurrentDriver(req);
+    const driverId = driverDoc?._id || req.user._id;
+    const tickets = await VehicleComplaint.find({
+      $or: [
+        { driver: driverId },
+        ...(driverDoc ? [{ driver: driverDoc._id }] : []),
+        { driver: req.user._id }
+      ]
+    })
+      .populate('vehicle', 'vehicleNumber registrationNumber plateNumber model type')
+      .populate('trip', 'tripNumber status startLocation endLocation')
+      .sort({ createdAt: -1 })
+      .lean();
 
     return sendSuccess(res, 200, tickets, 'Driver tickets retrieved successfully');
   } catch (error) {

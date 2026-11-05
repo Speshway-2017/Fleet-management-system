@@ -80,4 +80,18 @@ class NotificationProvider with ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<void> deleteNotification(String id) async {
+    final originalList = List<NotificationModel>.from(_notifications);
+    _notifications.removeWhere((n) => n.id == id);
+    notifyListeners();
+
+    try {
+      await _repository.deleteNotification(id);
+    } catch (_) {
+      // Revert on failure
+      _notifications = originalList;
+      notifyListeners();
+    }
+  }
 }
