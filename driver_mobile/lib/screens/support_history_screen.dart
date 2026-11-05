@@ -1,3 +1,4 @@
+import '../services/localization_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
@@ -51,6 +52,10 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
   int _selectedFilterIndex = 0;
   final List<String> _filters = ['All', 'Open', 'In Progress', 'Resolved', 'Rejected'];
 
+  // Static cache for instantaneous 0ms screen loading (Stale-While-Revalidate pattern)
+  static List<SupportTicketItem>? _cachedTickets;
+  static bool? _cachedIsVehicleAssigned;
+
   bool _isLoading = false;
   bool _isVehicleAssigned = false;
   List<SupportTicketItem> _tickets = [];
@@ -58,27 +63,42 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
   @override
   void initState() {
     super.initState();
+    if (_cachedTickets != null) {
+      _tickets = _cachedTickets!;
+      _isVehicleAssigned = _cachedIsVehicleAssigned ?? false;
+      _isLoading = false;
+    } else {
+      _isLoading = true;
+    }
     _loadTickets();
   }
 
   Future<void> _loadTickets() async {
-    setState(() {
-      _isLoading = true;
-    });
+    // Only show full loader if there is no cached data to display
+    if (_tickets.isEmpty && _cachedTickets == null) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
 
     try {
-      bool assigned = false;
-      try {
-        final vehRes = await ApiService.getAssignedVehicle();
-        if (vehRes != null && vehRes['success'] == true) {
-          final vData = vehRes['data'];
-          if (vData != null && vData['assigned'] == true && vData['vehicle'] != null) {
-            assigned = true;
-          }
-        }
-      } catch (_) {}
+      // Fetch vehicle assignment and driver tickets concurrently via Future.wait
+      final results = await Future.wait([
+        ApiService.getAssignedVehicle().catchError((_) => null),
+        ApiService.getDriverTickets().catchError((_) => null),
+      ]);
 
-      final res = await ApiService.getDriverTickets();
+      final vehRes = results[0];
+      final res = results[1];
+
+      bool assigned = false;
+      if (vehRes != null && vehRes['success'] == true) {
+        final vData = vehRes['data'];
+        if (vData != null && vData['assigned'] == true && vData['vehicle'] != null) {
+          assigned = true;
+        }
+      }
+
       final List data = (res is Map && res['data'] != null)
           ? res['data']
           : (res is List ? res : []);
@@ -148,22 +168,49 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
         );
       }).toList();
 
-      setState(() {
-        _isVehicleAssigned = assigned;
-        _tickets = fetched;
-      });
+      _cachedTickets = fetched;
+      _cachedIsVehicleAssigned = assigned;
+
+      if (mounted) {
+        setState(() {
+          _isVehicleAssigned = assigned;
+          _tickets = fetched;
+        });
+      }
     } catch (e) {
       debugPrint('Failed to load driver tickets from API: $e');
-      setState(() {
-        _isVehicleAssigned = false;
-        _tickets = [];
-      });
+      if (mounted && _tickets.isEmpty) {
+        setState(() {
+          _isVehicleAssigned = false;
+          _tickets = [];
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _openRaiseTicket(BuildContext context) async {
+    if (!_isVehicleAssigned) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No vehicle is currently assigned. Vehicle issue reporting will unlock once a vehicle is assigned.'),
+          backgroundColor: Color(0xFF0F172A),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final res = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const RaiseTicketScreen()),
+    );
+    if (res == true) {
+      _loadTickets();
     }
   }
 
@@ -201,38 +248,14 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
           },
         ),
         title: Text(
-          'Support & Tickets',
+          'Support & Tickets'.tr,
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: Colors.white,
           ),
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8.0),
-              ),
-              padding: const EdgeInsets.all(4.0),
-              child: Image.asset(
-                'assets/images/logo.png',
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(
-                    Icons.local_shipping_rounded,
-                    color: primaryDark,
-                    size: 20,
-                  );
-                },
-              ),
-            ),
-          ),
-        ],
+        actions: const [],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -338,7 +361,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                     child: _buildBodyActionButton(
                       context,
                       icon: Icons.phone_in_talk_rounded,
-                      label: 'Call Manager',
+                      label: 'Call Manager'.tr,
                       color: const Color(0xFF10B981),
                       onTap: () {
                         Navigator.push(
@@ -353,7 +376,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                     child: _buildBodyActionButton(
                       context,
                       icon: Icons.chat_bubble_rounded,
-                      label: 'Message Manager',
+                      label: 'Message Manager'.tr,
                       color: primaryOrange,
                       onTap: () {
                         Navigator.push(
@@ -441,7 +464,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
-                                  'No Tickets Found',
+                                  'No Tickets Found'.tr,
                                   style: GoogleFonts.poppins(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
@@ -457,43 +480,31 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 18),
-                                ElevatedButton.icon(
-                                  onPressed: () async {
-                                    if (!_isVehicleAssigned) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('No vehicle is currently assigned. Vehicle issue reporting will unlock once a vehicle is assigned.'),
-                                          backgroundColor: Color(0xFF0F172A),
-                                          behavior: SnackBarBehavior.floating,
-                                        ),
-                                      );
-                                      return;
-                                    }
-                                    final res = await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => const RaiseTicketScreen()),
-                                    );
-                                    if (res == true) _loadTickets();
-                                  },
-                                  icon: Icon(
-                                    _isVehicleAssigned ? Icons.add_circle_outline_rounded : Icons.lock_rounded,
-                                    color: _isVehicleAssigned ? Colors.white : const Color(0xFFB45309),
-                                    size: 18,
-                                  ),
-                                  label: Text(
-                                    _isVehicleAssigned ? 'Report Vehicle Issue' : 'Report Vehicle Issue (Locked)',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: _isVehicleAssigned ? Colors.white : const Color(0xFF0F172A),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 46,
+                                  child: ElevatedButton.icon(
+                                    onPressed: () => _openRaiseTicket(context),
+                                    icon: Icon(
+                                      _isVehicleAssigned ? Icons.add_circle_outline_rounded : Icons.lock_rounded,
+                                      color: _isVehicleAssigned ? Colors.white : const Color(0xFFB45309),
+                                      size: 18,
                                     ),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: _isVehicleAssigned ? primaryOrange : const Color(0xFFFEF3C7),
-                                    side: _isVehicleAssigned ? null : const BorderSide(color: Color(0xFFFCD34D), width: 1.5),
-                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    elevation: _isVehicleAssigned ? 2 : 0,
+                                    label: Text(
+                                      _isVehicleAssigned ? 'Report Vehicle Issue' : 'Report Vehicle Issue (Locked)',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: _isVehicleAssigned ? Colors.white : const Color(0xFF0F172A),
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: _isVehicleAssigned ? primaryOrange : const Color(0xFFFEF3C7),
+                                      side: _isVehicleAssigned ? null : const BorderSide(color: Color(0xFFFCD34D), width: 1.5),
+                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      elevation: _isVehicleAssigned ? 2 : 0,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -511,75 +522,12 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                           },
                         ),
 
-              const SizedBox(height: 80.0), // Padding for FAB space
+              const SizedBox(height: 24.0),
             ],
           ),
         ),
       ),
 
-      // 4. Extended Floating Action Button - Always High-Contrast & Readable
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          if (!_isVehicleAssigned) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('No vehicle is currently assigned. Vehicle issue reporting will unlock once a vehicle is assigned.'),
-                backgroundColor: Color(0xFF0F172A),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-            return;
-          }
-          final res = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const RaiseTicketScreen(),
-            ),
-          );
-          if (res == true) {
-            _loadTickets();
-          }
-        },
-        backgroundColor: _isVehicleAssigned ? primaryOrange : const Color(0xFF0F172A),
-        elevation: _isVehicleAssigned ? 4 : 2,
-        icon: Icon(
-          _isVehicleAssigned ? Icons.add_rounded : Icons.lock_rounded,
-          color: _isVehicleAssigned ? Colors.white : const Color(0xFFF59E0B),
-          size: 20,
-        ),
-        label: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Report Vehicle Issue',
-              style: GoogleFonts.poppins(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-            if (!_isVehicleAssigned) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  'LOCKED',
-                  style: GoogleFonts.poppins(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFFB45309),
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
     );
   }
 

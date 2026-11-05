@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import 'dashboard_screen.dart';
 import 'vehicle_overview_screen.dart';
@@ -10,6 +11,7 @@ import 'support_history_screen.dart';
 import 'profile/profile_screen.dart';
 import 'notifications/notifications_screen.dart';
 import '../services/fcm_service.dart';
+import '../services/localization_service.dart';
 
 import '../services/socket_service.dart';
 import '../utils/date_formatter.dart';
@@ -62,14 +64,33 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       }
     });
 
-    SocketService.onEvent('trip:assigned', (data) {
+    SocketService.onEvent('trip:assigned', (data) async {
       if (mounted) {
+        if (data != null && data is Map) {
+          final prefs = await SharedPreferences.getInstance();
+          final currentDriverId = prefs.getString('driver_id') ?? '';
+          final tripDriver = data['driver'];
+          final assignedDriverId = (tripDriver is Map ? (tripDriver['_id'] ?? tripDriver['id']) : tripDriver)?.toString() ?? '';
+          if (assignedDriverId.isNotEmpty && currentDriverId.isNotEmpty && assignedDriverId != currentDriverId) {
+            debugPrint('Ignoring trip:assigned notification for different driver $assignedDriverId (current: $currentDriverId)');
+            return;
+          }
+        }
         _showPopupNotification('🚀 New Trip Assigned!', 'Your manager has assigned a new trip to you.');
       }
     });
 
-    SocketService.onEvent('trip:status-updated', (data) {
+    SocketService.onEvent('trip:status-updated', (data) async {
       if (mounted && data != null) {
+        if (data is Map) {
+          final prefs = await SharedPreferences.getInstance();
+          final currentDriverId = prefs.getString('driver_id') ?? '';
+          final tripDriver = data['driver'];
+          final assignedDriverId = (tripDriver is Map ? (tripDriver['_id'] ?? tripDriver['id']) : tripDriver)?.toString() ?? '';
+          if (assignedDriverId.isNotEmpty && currentDriverId.isNotEmpty && assignedDriverId != currentDriverId) {
+            return;
+          }
+        }
         final status = data['status'] ?? 'Updated';
         _showPopupNotification('📋 Trip Status Updated', 'Trip status changed to $status');
       }
@@ -124,92 +145,99 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (bool didPop, dynamic result) async {
-        if (didPop) return;
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLanguage, _) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (bool didPop, dynamic result) async {
+            if (didPop) return;
 
-        // If not on Home tab (index 2), switch to Home tab
-        if (_currentIndex != 2) {
-          setState(() {
-            _currentIndex = 2;
-          });
-          MainNavigationScreen.selectedTabNotifier.value = 2;
-          return;
-        }
+            // If not on Home tab (index 2), switch to Home tab
+            if (_currentIndex != 2) {
+              setState(() {
+                _currentIndex = 2;
+              });
+              MainNavigationScreen.selectedTabNotifier.value = 2;
+              return;
+            }
 
-        // On Home tab: double tap within 2 seconds to exit app
-        final now = DateTime.now();
-        if (_lastBackPressed == null ||
-            now.difference(_lastBackPressed!) > const Duration(seconds: 2)) {
-          _lastBackPressed = now;
-          ScaffoldMessenger.of(context).removeCurrentSnackBar();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Press back again to exit',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
+            // On Home tab: double tap within 2 seconds to exit app
+            final now = DateTime.now();
+            if (_lastBackPressed == null ||
+                now.difference(_lastBackPressed!) > const Duration(seconds: 2)) {
+              _lastBackPressed = now;
+              ScaffoldMessenger.of(context).removeCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Press back again to exit',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  duration: const Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                  margin: const EdgeInsets.only(bottom: 72, left: 60, right: 60),
+                  backgroundColor: const Color(0xE60F172A),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                 ),
-                textAlign: TextAlign.center,
-              ),
-              duration: const Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-              margin: const EdgeInsets.only(bottom: 72, left: 60, right: 60),
-              backgroundColor: const Color(0xE60F172A),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-            ),
-          );
-          return;
-        }
+              );
+              return;
+            }
 
-        // Confirmed double-back: exit the app safely
-        await SystemNavigator.pop();
-      },
-      child: Scaffold(
-      backgroundColor: Colors.white,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [
-          _activatedTabs.contains(0) ? const VehicleOverviewScreen() : const SizedBox.shrink(),
-          _activatedTabs.contains(1) ? const FuelOverviewScreen() : const SizedBox.shrink(),
-          const DashboardScreen(),
-          _activatedTabs.contains(3) ? const TripsScreen() : const SizedBox.shrink(),
-          _activatedTabs.contains(4) ? const ProfileScreen() : const SizedBox.shrink(),
-        ],
-      ),
-      bottomNavigationBar: Container(
-        height: 64.0 + MediaQuery.of(context).padding.bottom,
-        decoration: const BoxDecoration(
-          color: AppColors.primary,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 8,
-              offset: Offset(0, -2),
+            // Confirmed double-back: exit the app safely
+            await SystemNavigator.pop();
+          },
+          child: Scaffold(
+            key: ValueKey('main_scaffold_${currentLanguage}_$_currentIndex'),
+            backgroundColor: Colors.white,
+            body: IndexedStack(
+              key: ValueKey('main_stack_$currentLanguage'),
+              index: _currentIndex,
+              children: [
+                _activatedTabs.contains(0) ? const VehicleOverviewScreen() : const SizedBox.shrink(),
+                _activatedTabs.contains(1) ? const FuelOverviewScreen() : const SizedBox.shrink(),
+                const DashboardScreen(),
+                _activatedTabs.contains(3) ? const TripsScreen() : const SizedBox.shrink(),
+                _activatedTabs.contains(4) ? const ProfileScreen() : const SizedBox.shrink(),
+              ],
             ),
-          ],
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 4.0),
-        child: SafeArea(
-          top: false,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(0, Icons.local_shipping_outlined, Icons.local_shipping, 'Vehicle'),
-              _buildNavItem(1, Icons.local_gas_station_outlined, Icons.local_gas_station_rounded, 'Fuel'),
-              _buildNavItem(2, Icons.home_outlined, Icons.home, 'Home'),
-              _buildNavItem(3, Icons.route_outlined, Icons.route, 'Trips'),
-              _buildNavItem(4, Icons.account_circle_outlined, Icons.account_circle, 'Profile'),
-            ],
+            bottomNavigationBar: Container(
+              height: 64.0 + MediaQuery.of(context).padding.bottom,
+              decoration: const BoxDecoration(
+                color: AppColors.primary,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 8,
+                    offset: Offset(0, -2),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: SafeArea(
+                top: false,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildNavItem(0, Icons.local_shipping_outlined, Icons.local_shipping, 'Vehicle'.tr),
+                    _buildNavItem(1, Icons.local_gas_station_outlined, Icons.local_gas_station_rounded, 'Fuel'.tr),
+                    _buildNavItem(2, Icons.home_outlined, Icons.home, 'Home'.tr),
+                    _buildNavItem(3, Icons.route_outlined, Icons.route, 'Trips'.tr),
+                    _buildNavItem(4, Icons.account_circle_outlined, Icons.account_circle, 'Profile'.tr),
+                  ],
+                ),
+              ),
+            ),
           ),
-        ),
-      ),
-    ),
+        );
+      },
     );
   }
 

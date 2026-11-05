@@ -399,29 +399,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             color: Colors.white,
           ),
         ),
-        actions: [
-          Container(
-            width: 32,
-            height: 32,
-            margin: const EdgeInsets.only(right: 16.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8.0),
-            ),
-            padding: const EdgeInsets.all(4.0),
-            child: Image.asset(
-              'assets/logo.png',
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(
-                  Icons.local_shipping,
-                  color: AppColors.primary,
-                  size: 18,
-                );
-              },
-            ),
-          ),
-        ],
+        actions: const [],
       ),
       body: SafeArea(
         child: SingleChildScrollView(

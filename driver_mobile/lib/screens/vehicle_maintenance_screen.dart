@@ -1,8 +1,10 @@
+import '../services/localization_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import 'contact_fleet_manager_screen.dart';
 import 'fuel_overview_screen.dart';
+import 'raise_ticket_screen.dart';
 import 'support_history_screen.dart';
 
 /// Vehicle Maintenance Alert Data Item representation.
@@ -53,6 +55,13 @@ class VehicleMaintenanceScreen extends StatefulWidget {
 }
 
 class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
+  static const primaryOrange = Color(0xFFF97316);
+
+  // Static cache for instant 0ms screen loading (Stale-While-Revalidate pattern)
+  static Map<String, dynamic>? _cachedMaintenanceData;
+  static bool? _cachedIsAssigned;
+  static Map<String, dynamic>? _cachedVehicle;
+
   bool _isLoading = false;
   bool _isAssigned = false;
   Map<String, dynamic>? _vehicle;
@@ -64,13 +73,34 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
   @override
   void initState() {
     super.initState();
+    if (_cachedMaintenanceData != null) {
+      _isAssigned = _cachedIsAssigned ?? (widget.vehicle != null);
+      _vehicle = _cachedVehicle ?? widget.vehicle;
+      _activeMaintenances = List<dynamic>.from(_cachedMaintenanceData!['activeMaintenances'] ?? []);
+      _lastCompleted = _cachedMaintenanceData!['lastCompleted'] != null ? Map<String, dynamic>.from(_cachedMaintenanceData!['lastCompleted']) : null;
+      _upcomingCount = _cachedMaintenanceData!['upcomingCount'] ?? 0;
+      _overdueCount = _cachedMaintenanceData!['overdueCount'] ?? 0;
+      _isLoading = false;
+    } else if (widget.vehicle != null) {
+      _isAssigned = true;
+      _vehicle = widget.vehicle;
+      _isLoading = false;
+    } else {
+      _isLoading = true;
+    }
     _fetchMaintenanceData();
   }
 
   Future<void> _fetchMaintenanceData() async {
     try {
-      // Check vehicle assignment first to avoid unnecessary maintenance API calls when unassigned
-      final vehRes = await ApiService.getAssignedVehicle();
+      // Execute maintenance and assignment queries concurrently via Future.wait
+      final results = await Future.wait([
+        ApiService.getDriverMaintenance().catchError((_) => null),
+        ApiService.getAssignedVehicle().catchError((_) => null),
+      ]);
+      final response = results[0];
+      final vehRes = results[1];
+
       bool assigned = false;
       Map<String, dynamic>? vehObj;
       if (vehRes != null && vehRes['success'] == true) {
@@ -81,7 +111,34 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
         }
       }
 
-      if (!assigned) {
+      if (response != null && response['success'] == true) {
+        final data = response['data'];
+        if (data != null && data['assigned'] == true) {
+          final vehicleData = data['vehicle'] != null ? Map<String, dynamic>.from(data['vehicle']) : vehObj ?? widget.vehicle;
+          _cachedMaintenanceData = Map<String, dynamic>.from(data);
+          _cachedIsAssigned = true;
+          _cachedVehicle = vehicleData;
+
+          if (mounted) {
+            setState(() {
+              _isAssigned = true;
+              _vehicle = vehicleData;
+              _activeMaintenances = List<dynamic>.from(data['activeMaintenances'] ?? []);
+              _lastCompleted = data['lastCompleted'] != null ? Map<String, dynamic>.from(data['lastCompleted']) : null;
+              _upcomingCount = data['upcomingCount'] ?? 0;
+              _overdueCount = data['overdueCount'] ?? 0;
+              _isLoading = false;
+            });
+            return;
+          }
+        }
+      }
+
+      // If neither response indicates an assigned vehicle
+      if (!assigned && (response == null || response['data']?['assigned'] != true)) {
+        _cachedIsAssigned = false;
+        _cachedVehicle = null;
+        _cachedMaintenanceData = null;
         if (mounted) {
           setState(() {
             _isAssigned = false;
@@ -94,25 +151,6 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
           });
         }
         return;
-      }
-
-      final response = await ApiService.getDriverMaintenance();
-      if (mounted) {
-        if (response != null && response['success'] == true) {
-          final data = response['data'];
-          if (data != null && data['assigned'] == true) {
-            setState(() {
-              _isAssigned = true;
-              _vehicle = data['vehicle'] != null ? Map<String, dynamic>.from(data['vehicle']) : vehObj ?? widget.vehicle;
-              _activeMaintenances = List<dynamic>.from(data['activeMaintenances'] ?? []);
-              _lastCompleted = data['lastCompleted'] != null ? Map<String, dynamic>.from(data['lastCompleted']) : null;
-              _upcomingCount = data['upcomingCount'] ?? 0;
-              _overdueCount = data['overdueCount'] ?? 0;
-              _isLoading = false;
-            });
-            return;
-          }
-        }
       }
     } catch (_) {}
 
@@ -192,7 +230,6 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
   Widget build(BuildContext context) {
     const primaryDark = Color(0xFF101C2C);
     const bgLight = Color(0xFFF7F8FA);
-    const primaryOrange = Color(0xFFF97316);
 
     return Scaffold(
       backgroundColor: bgLight,
@@ -205,38 +242,14 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          'Vehicle Maintenance',
+          'Vehicle Maintenance'.tr,
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: Colors.white,
           ),
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8.0),
-              ),
-              padding: const EdgeInsets.all(4.0),
-              child: Image.asset(
-                'assets/images/logo.png',
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(
-                    Icons.local_shipping_rounded,
-                    color: primaryDark,
-                    size: 20,
-                  );
-                },
-              ),
-            ),
-          ),
-        ],
+        actions: const [],
       ),
       body: SafeArea(
         child: _isLoading
@@ -257,22 +270,95 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
                 ),
               ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const SupportHistoryScreen()),
-          );
-        },
-        backgroundColor: const Color(0xFF0F172A),
-        elevation: 3,
-        icon: const Icon(Icons.report_problem_rounded, color: Color(0xFFF59E0B), size: 20),
-        label: Text(
-          'Vehicle Issues',
-          style: GoogleFonts.poppins(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: const Border(
+            top: BorderSide(color: Color(0xFFE2E8F0), width: 1.0),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -3),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+        child: SafeArea(
+          top: false,
+          child: Row(
+            children: [
+              // 1. Vehicle Issues Button (View Tickets / History)
+              Expanded(
+                child: SizedBox(
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SupportHistoryScreen()),
+                      );
+                    },
+                    icon: const Icon(Icons.warning_amber_rounded, size: 18, color: Color(0xFF0F172A)),
+                    label: Text(
+                      'Vehicle Issues'.tr,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF0F172A),
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      backgroundColor: const Color(0xFFF8FAFC),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // 2. Raise Ticket Button (Create New Issue Ticket)
+              Expanded(
+                child: SizedBox(
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      if (!_isAssigned && _vehicle == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('No vehicle is currently assigned. Vehicle issue reporting will unlock once a vehicle is assigned.'),
+                            backgroundColor: Color(0xFF0F172A),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        return;
+                      }
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const RaiseTicketScreen()),
+                      );
+                    },
+                    icon: const Icon(Icons.add_circle_outline_rounded, size: 18, color: Colors.white),
+                    label: Text(
+                      'Raise Ticket'.tr,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryOrange,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -386,9 +472,19 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
                 Expanded(
                   child: InkWell(
                     onTap: () {
+                      if (!_isAssigned && _vehicle == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('No vehicle is currently assigned. Vehicle issue reporting will unlock once a vehicle is assigned.'),
+                            backgroundColor: Color(0xFF0F172A),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        return;
+                      }
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const FuelOverviewScreen()),
+                        MaterialPageRoute(builder: (context) => const RaiseTicketScreen()),
                       );
                     },
                     borderRadius: BorderRadius.circular(16),
@@ -412,14 +508,14 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFEF3C7),
+                              color: const Color(0xFFFFF7ED),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Icon(Icons.local_gas_station_rounded, color: Color(0xFFD97706), size: 22),
+                            child: const Icon(Icons.add_circle_outline_rounded, color: Color(0xFFF97316), size: 22),
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            'Fuel Logs',
+                            'Raise Ticket',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.poppins(
                               fontSize: 13,
@@ -431,15 +527,15 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFEF3C7),
+                              color: const Color(0xFFFFEDD5),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              'VIEW LOGS',
+                              'REPORT ISSUE',
                               style: GoogleFonts.poppins(
                                 fontSize: 9.5,
                                 fontWeight: FontWeight.w800,
-                                color: const Color(0xFFB45309),
+                                color: const Color(0xFFC2410C),
                               ),
                             ),
                           ),
@@ -462,7 +558,7 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
                 },
                 icon: const Icon(Icons.support_agent_rounded, size: 18, color: Color(0xFF0F172A)),
                 label: Text(
-                  'Contact Fleet Manager',
+                  'Contact Fleet Manager'.tr,
                   style: GoogleFonts.poppins(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -486,7 +582,6 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
     const borderGray = Color(0xFFE5E7EB);
     const textPrimary = Color(0xFF1F2937);
     const textSecondary = Color(0xFF6B7280);
-    const primaryOrange = Color(0xFFF97316);
 
     final alerts = _activeMaintenances.map((m) => _mapMaintenanceToAlert(Map<String, dynamic>.from(m))).toList();
 
@@ -515,7 +610,7 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Upcoming Services',
+                      'Upcoming Services'.tr,
                       style: GoogleFonts.nunito(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -568,7 +663,7 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Overdue Services',
+                      'Overdue Services'.tr,
                       style: GoogleFonts.nunito(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -611,7 +706,7 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Active Alerts',
+              'Active Alerts'.tr,
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -802,7 +897,7 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
 
         // 4. Last Service Insight Section
         Text(
-          'Last Service Insight',
+          'Last Service Insight'.tr,
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -818,8 +913,8 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
         // 5. Contact Fleet Manager Bottom Button
         SizedBox(
           width: double.infinity,
-          height: 52,
-          child: ElevatedButton.icon(
+          height: 48,
+          child: OutlinedButton.icon(
             onPressed: () {
               Navigator.push(
                 context,
@@ -828,18 +923,21 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
                 ),
               );
             },
-            icon: const Icon(Icons.headset_mic_rounded, size: 20),
-            label: const Text('Contact Fleet Manager'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryOrange,
-              foregroundColor: Colors.white,
+            icon: const Icon(Icons.headset_mic_rounded, size: 20, color: Color(0xFF0F172A)),
+            label: Text(
+              'Contact Fleet Manager',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF0F172A),
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.5),
+              backgroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12.0),
-              ),
-              textStyle: GoogleFonts.poppins(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
               ),
             ),
           ),

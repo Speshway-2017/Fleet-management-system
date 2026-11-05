@@ -13,6 +13,7 @@ import {
   rejectTrip,
   markDriverNotificationRead,
   markAllDriverNotificationsRead,
+  deleteDriverNotification,
   updateTripStatus,
   endTrip,
   toggleCustomerLocation,
@@ -73,6 +74,7 @@ router.post('/trips/:id/reject', rejectTrip);
 router.patch('/notifications/read-all', markAllDriverNotificationsRead);
 router.patch('/notifications/:id/read', markDriverNotificationRead);
 router.put('/notifications/:id/read', markDriverNotificationRead);
+router.delete('/notifications/:id', deleteDriverNotification);
 router.patch('/trips/:id/status', updateTripStatus);
 router.patch('/trips/:id/end-trip', endTrip);
 router.post('/trips/:id/end-trip', endTrip);

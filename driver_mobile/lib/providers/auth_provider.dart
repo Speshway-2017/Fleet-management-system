@@ -7,6 +7,7 @@ import '../screens/settings/notification_settings_screen.dart';
 import '../services/socket_service.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/dashboard_screen.dart';
+import '../services/localization_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _authRepository = AuthRepository();
@@ -52,10 +53,18 @@ class AuthProvider extends ChangeNotifier {
       final hasToken = await _authRepository.hasToken();
       if (hasToken) {
         final prefs = await SharedPreferences.getInstance();
+        final savedLanguage = prefs.getString('app_language');
+        if (savedLanguage != null && savedLanguage.isNotEmpty) {
+          LocalizationService.setLanguage(savedLanguage);
+        }
         final cachedProfileStr = prefs.getString('driver_profile');
         if (cachedProfileStr != null && cachedProfileStr.isNotEmpty) {
           try {
-            _driver = DriverModel.fromJson(jsonDecode(cachedProfileStr));
+            var model = DriverModel.fromJson(jsonDecode(cachedProfileStr));
+            if (savedLanguage != null && savedLanguage.isNotEmpty) {
+              model = model.copyWith(language: savedLanguage);
+            }
+            _driver = model;
             _syncNotificationPreferences();
             _isAuthenticated = true;
             ProfileState.profilePhotoUrlNotifier.value = _driver?.profileImage ?? '';
@@ -66,7 +75,14 @@ class AuthProvider extends ChangeNotifier {
         try {
           final profile = await _authRepository.fetchProfile();
           if (profile != null) {
-            _driver = profile;
+            if (savedLanguage != null && savedLanguage.isNotEmpty) {
+              _driver = profile.copyWith(language: savedLanguage);
+            } else {
+              _driver = profile;
+              if (profile.language.isNotEmpty) {
+                await prefs.setString('app_language', profile.language);
+              }
+            }
             _syncNotificationPreferences();
             _isAuthenticated = true;
             ProfileState.profilePhotoUrlNotifier.value = profile.profileImage;
@@ -111,15 +127,25 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      DashboardScreen.clearStaticCache();
       final data = await _authRepository.login(identifier, password);
       if (data['driver'] != null) {
         _driver = DriverModel.fromJson(data['driver']);
+        final prefs = await SharedPreferences.getInstance();
+        final savedLanguage = prefs.getString('app_language');
+        if (savedLanguage != null && savedLanguage.isNotEmpty) {
+          _driver = _driver!.copyWith(language: savedLanguage);
+          LocalizationService.setLanguage(savedLanguage);
+        } else if (_driver!.language.isNotEmpty) {
+          LocalizationService.setLanguage(_driver!.language);
+          await prefs.setString('app_language', _driver!.language);
+        }
         _syncNotificationPreferences();
         ProfileState.profilePhotoUrlNotifier.value = _driver?.profileImage ?? '';
       }
       _isAuthenticated = true;
       if (_driver != null) {
-        SocketService.initSocket();
+        SocketService.connect(_driver!.id);
       }
       return true;
     } catch (e) {
@@ -249,7 +275,18 @@ class AuthProvider extends ChangeNotifier {
     try {
       final profile = await _authRepository.fetchProfile();
       if (profile != null) {
-        _driver = profile;
+        final prefs = await SharedPreferences.getInstance();
+        final savedLanguage = prefs.getString('app_language');
+        if (savedLanguage != null && savedLanguage.isNotEmpty) {
+          _driver = profile.copyWith(language: savedLanguage);
+          LocalizationService.setLanguage(savedLanguage);
+        } else {
+          _driver = profile;
+          if (profile.language.isNotEmpty) {
+            LocalizationService.setLanguage(profile.language);
+            await prefs.setString('app_language', profile.language);
+          }
+        }
         _syncNotificationPreferences();
         _isAuthenticated = true;
         ProfileState.profilePhotoUrlNotifier.value = profile.profileImage;
@@ -269,6 +306,46 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> setLanguage(String lang) async {
+    final normalized = LocalizationService.normalizeLanguage(lang);
+
+    // 0. Update localization service immediately for real-time translation across all screens
+    LocalizationService.setLanguage(normalized);
+
+    // 1. Immediate optimistic UI update
+    if (_driver != null) {
+      _driver = _driver!.copyWith(language: normalized);
+    }
+    notifyListeners();
+
+    // 2. Persist locally to SharedPreferences
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('app_language', normalized);
+      if (_driver != null) {
+        await prefs.setString('driver_profile', jsonEncode(_driver!.toJson()));
+      }
+    } catch (e) {
+      debugPrint('[AuthProvider] Error persisting app_language: $e');
+    }
+
+    // 3. Asynchronously sync to backend
+    try {
+      final profile = await _authRepository.updateProfile({'language': normalized});
+      if (profile != null) {
+        _driver = profile.copyWith(language: normalized);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('app_language', normalized);
+        await prefs.setString('driver_profile', jsonEncode(_driver!.toJson()));
+        notifyListeners();
+      }
+      return true;
+    } catch (e) {
+      debugPrint('[AuthProvider] Background remote language sync note: $e');
+      return true;
+    }
+  }
+
   Future<bool> updateProfile(Map<String, dynamic> data) async {
     _isLoading = true;
     _errorMessage = null;
@@ -283,9 +360,21 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
+      final prefs = await SharedPreferences.getInstance();
+      final savedLanguage = prefs.getString('app_language') ?? _driver?.language ?? LocalizationService.currentLanguage;
+      if (!data.containsKey('language') && savedLanguage.isNotEmpty) {
+        data['language'] = savedLanguage;
+      }
+
       final profile = await _authRepository.updateProfile(data);
       if (profile != null) {
-        _driver = profile;
+        final activeLang = savedLanguage.isNotEmpty ? savedLanguage : profile.language;
+        _driver = profile.copyWith(language: activeLang);
+        if (activeLang.isNotEmpty) {
+          LocalizationService.setLanguage(activeLang);
+          await prefs.setString('app_language', activeLang);
+          await prefs.setString('driver_profile', jsonEncode(_driver!.toJson()));
+        }
         _syncNotificationPreferences();
         ProfileState.profilePhotoUrlNotifier.value = profile.profileImage;
         return true;

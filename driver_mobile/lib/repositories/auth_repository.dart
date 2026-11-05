@@ -26,6 +26,15 @@ class AuthRepository {
       await prefs.setString('manager_id', data['managerId'] ?? '');
       await prefs.setString('organization_id', data['organizationId'] ?? '');
 
+      // Wipe any lingering cached trip or dashboard data from a previous driver session
+      await prefs.remove('driver_current_trip_cache');
+      await prefs.remove('driver_dashboard_data_cache');
+      await prefs.remove('dashboard_data_cache');
+      await prefs.remove('driver_profile_cache');
+      await prefs.remove('driver_is_vehicle_assigned_cache');
+      await prefs.remove('driver_vehicle_number_cache');
+      await prefs.remove('driver_is_on_duty_cache');
+
       // Cache the driver profile JSON if returned
       if (data['driver'] != null) {
         try {
@@ -59,9 +68,11 @@ class AuthRepository {
       await prefs.remove('driver_profile');
       await prefs.remove('driver_profile_cache');
       await prefs.remove('dashboard_data_cache');
+      await prefs.remove('driver_dashboard_data_cache');
       await prefs.remove('driver_current_trip_cache');
       await prefs.remove('driver_is_vehicle_assigned_cache');
       await prefs.remove('driver_vehicle_number_cache');
+      await prefs.remove('driver_is_on_duty_cache');
     } catch (_) {}
 
     // 3. Fire-and-forget backend notification (unawaited)
@@ -137,6 +148,13 @@ class AuthRepository {
 
   Future<DriverModel?> updateProfile(Map<String, dynamic> data) async {
     try {
+      if (data.containsKey('language') && data['language'] != null) {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('app_language', data['language'].toString());
+        } catch (_) {}
+      }
+
       final response = await ApiService.put('/driver/profile', data);
       if (response['success'] == true) {
         if (response['data'] != null) {
@@ -145,6 +163,9 @@ class AuthRepository {
           // Cache the updated profile JSON
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('driver_profile', jsonEncode(profile.toJson()));
+          if (profile.language.isNotEmpty) {
+            await prefs.setString('app_language', profile.language);
+          }
 
           return profile;
         }
@@ -169,11 +190,21 @@ class AuthRepository {
   }
 
   Future<bool> hasToken() async {
-    final token = await SecureStorageHelper.read(key: 'jwt_token');
+    final token = await getToken();
     return token != null && token.isNotEmpty;
   }
 
   Future<String?> getToken() async {
-    return await SecureStorageHelper.read(key: 'jwt_token');
+    try {
+      final secureToken = await SecureStorageHelper.read(key: 'jwt_token');
+      if (secureToken != null && secureToken.isNotEmpty) {
+        return secureToken;
+      }
+    } catch (_) {}
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('jwt_token');
+    } catch (_) {}
+    return null;
   }
 }

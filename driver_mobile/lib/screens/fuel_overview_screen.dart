@@ -1,3 +1,4 @@
+import '../services/localization_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
@@ -143,31 +144,7 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
             color: Colors.white,
           ),
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8.0),
-              ),
-              padding: const EdgeInsets.all(4.0),
-              child: Image.asset(
-                'assets/images/logo.png',
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(
-                    Icons.local_shipping_rounded,
-                    color: primaryDark,
-                    size: 20,
-                  );
-                },
-              ),
-            ),
-          ),
-        ],
+        actions: const [],
       ),
       body: SafeArea(
         child: _isLoading
@@ -274,7 +251,7 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
                                           ),
                                           const SizedBox(width: 6),
                                           Text(
-                                            'Active Vehicle',
+                                            'Active Vehicle'.tr,
                                             style: GoogleFonts.poppins(
                                               fontSize: 11,
                                               fontWeight: FontWeight.w600,
@@ -311,7 +288,7 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'TOTAL FUEL LOGS',
+                                        'TOTAL FUEL LOGS'.tr,
                                         style: GoogleFonts.poppins(
                                           fontSize: 10.5,
                                           fontWeight: FontWeight.w600,
@@ -336,7 +313,7 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'LAST REFILL',
+                                        'LAST REFILL'.tr,
                                         style: GoogleFonts.poppins(
                                           fontSize: 10.5,
                                           fontWeight: FontWeight.w600,
