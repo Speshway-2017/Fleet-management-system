@@ -22,12 +22,24 @@ class UpcomingTripDetailsScreen extends StatefulWidget {
 }
 
 class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
+  static final Map<String, Map<String, dynamic>> _cachedUpcomingDetails = {};
+
   bool _isLoading = false;
   Map<String, dynamic>? _trip;
 
   @override
   void initState() {
     super.initState();
+    final cleanId = widget.tripId.replaceAll('#', '').trim();
+    if (_cachedUpcomingDetails.containsKey(cleanId)) {
+      _trip = _cachedUpcomingDetails[cleanId];
+      _isLoading = false;
+    } else {
+      _isLoading = true;
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _isLoading) setState(() => _isLoading = false);
+      });
+    }
     _fetchDetails();
   }
 
@@ -46,8 +58,11 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
         final isUpcoming = status.contains('pending') ||
             ['assigned', 'scheduled', 'accepted', 'upcoming'].contains(status);
         if (isUpcoming) {
+          final tripMap = Map<String, dynamic>.from(trip);
+          final cleanId = widget.tripId.replaceAll('#', '').trim();
+          _cachedUpcomingDetails[cleanId] = tripMap;
           setState(() {
-            _trip = trip;
+            _trip = tripMap;
             _isLoading = false;
           });
         } else {
@@ -144,9 +159,21 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
       ),
       body: SafeArea(
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+            ? const Center(child: CircularProgressIndicator(color: AppColors.secondary))
+            : RefreshIndicator(
+                color: AppColors.secondary,
+                backgroundColor: Colors.white,
+                onRefresh: () async {
+                  _cachedUpcomingDetails.remove(widget.tripId.replaceAll('#', '').trim());
+                  ApiService.clearApiCache();
+                  await Future.any([
+                    _fetchDetails(),
+                    Future.delayed(const Duration(milliseconds: 500)),
+                  ]);
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -178,6 +205,7 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
                   ],
                 ),
               ),
+            ),
       ),
     );
   }

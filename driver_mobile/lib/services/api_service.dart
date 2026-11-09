@@ -242,15 +242,30 @@ class ApiService {
 
     final uniqueCandidates = candidates.toSet().toList();
 
+    final completer = Completer<String?>();
+    int pending = uniqueCandidates.length;
+
     for (final url in uniqueCandidates) {
-      final isOk = await testConnection(url);
-      if (isOk) {
-        await setBaseUrl(url);
-        debugPrint('[ApiService] Auto-discovered working server URL: $url');
-        return url;
-      }
+      testConnection(url, timeout: const Duration(milliseconds: 1500)).then((isOk) async {
+        if (isOk && !completer.isCompleted) {
+          await setBaseUrl(url);
+          debugPrint('[ApiService] Fast auto-discovered working server URL: $url');
+          completer.complete(url);
+        } else {
+          pending--;
+          if (pending == 0 && !completer.isCompleted) {
+            completer.complete(null);
+          }
+        }
+      }).catchError((_) {
+        pending--;
+        if (pending == 0 && !completer.isCompleted) {
+          completer.complete(null);
+        }
+      });
     }
-    return null;
+
+    return completer.future;
   }
 
   static const _secureStorage = FlutterSecureStorage();
@@ -295,13 +310,56 @@ class ApiService {
     return headers;
   }
 
-  static Future<dynamic> get(String endpoint) async {
+  static final Map<String, _CachedApiResponse> _apiCache = {};
+
+  static void clearApiCache([String? endpoint]) {
+    if (endpoint != null) {
+      _apiCache.remove(endpoint);
+    } else {
+      _apiCache.clear();
+    }
+  }
+
+  static void _revalidateInBackground(String endpoint) {
+    Future.microtask(() async {
+      try {
+        final baseUrl = await getBaseUrl();
+        final headers = await _getHeaders();
+        final finalApiUrl = '$baseUrl$endpoint';
+        final response = await http
+            .get(Uri.parse(finalApiUrl), headers: headers)
+            .timeout(const Duration(seconds: 4));
+        final res = _processResponse(response);
+        if (res != null && (res is Map && res['success'] == true || res is List)) {
+          _apiCache[endpoint] = _CachedApiResponse(res);
+        }
+      } catch (_) {}
+    });
+  }
+
+  static Future<dynamic> get(
+    String endpoint, {
+    bool forceRefresh = false,
+    Duration cacheTtl = const Duration(seconds: 45),
+  }) async {
     if (mockResponses.containsKey(endpoint)) {
       return mockResponses[endpoint];
     }
     if (_isTest) {
       return {'success': false, 'message': 'Mock not found for $endpoint'};
     }
+
+    if (!forceRefresh && _apiCache.containsKey(endpoint)) {
+      final cached = _apiCache[endpoint]!;
+      if (DateTime.now().difference(cached.timestamp) < cacheTtl) {
+        debugPrint('[ApiService GET Cache Hit 0ms] $endpoint');
+        if (DateTime.now().difference(cached.timestamp) > const Duration(seconds: 10)) {
+          _revalidateInBackground(endpoint);
+        }
+        return cached.data;
+      }
+    }
+
     var baseUrl = await getBaseUrl();
     final headers = await _getHeaders();
     var finalApiUrl = '$baseUrl$endpoint';
@@ -310,7 +368,11 @@ class ApiService {
       final response = await http
           .get(Uri.parse(finalApiUrl), headers: headers)
           .timeout(defaultTimeout);
-      return _processResponse(response);
+      final res = _processResponse(response);
+      if (res != null && (res is Map && res['success'] == true || res is List)) {
+        _apiCache[endpoint] = _CachedApiResponse(res);
+      }
+      return res;
     } catch (e) {
       final isNetworkError = e is TimeoutException ||
           e.toString().contains('SocketException') ||
@@ -326,7 +388,11 @@ class ApiService {
           final response = await http
               .get(Uri.parse(retryUrl), headers: headers)
               .timeout(defaultTimeout);
-          return _processResponse(response);
+          final res = _processResponse(response);
+          if (res != null && (res is Map && res['success'] == true || res is List)) {
+            _apiCache[endpoint] = _CachedApiResponse(res);
+          }
+          return res;
         }
       }
 
@@ -1040,6 +1106,9 @@ class ApiService {
     }
     final body = jsonDecode(response.body);
     if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.request?.method != null && response.request!.method != 'GET') {
+        clearApiCache();
+      }
       return body;
     } else {
       throw Exception(
@@ -1047,4 +1116,10 @@ class ApiService {
       );
     }
   }
+}
+
+class _CachedApiResponse {
+  final dynamic data;
+  final DateTime timestamp;
+  _CachedApiResponse(this.data) : timestamp = DateTime.now();
 }

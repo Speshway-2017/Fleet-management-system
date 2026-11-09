@@ -6,6 +6,7 @@ import 'contact_fleet_manager_screen.dart';
 import 'fuel_overview_screen.dart';
 import 'raise_ticket_screen.dart';
 import 'support_history_screen.dart';
+import 'vehicle_overview_screen.dart';
 
 /// Vehicle Maintenance Alert Data Item representation.
 class MaintenanceAlertItem {
@@ -73,20 +74,24 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
   @override
   void initState() {
     super.initState();
+    final fallbackVehicle = widget.vehicle ?? VehicleOverviewScreen.cachedVehicle;
     if (_cachedMaintenanceData != null) {
-      _isAssigned = _cachedIsAssigned ?? (widget.vehicle != null);
-      _vehicle = _cachedVehicle ?? widget.vehicle;
+      _isAssigned = _cachedIsAssigned ?? (fallbackVehicle != null);
+      _vehicle = _cachedVehicle ?? fallbackVehicle;
       _activeMaintenances = List<dynamic>.from(_cachedMaintenanceData!['activeMaintenances'] ?? []);
       _lastCompleted = _cachedMaintenanceData!['lastCompleted'] != null ? Map<String, dynamic>.from(_cachedMaintenanceData!['lastCompleted']) : null;
       _upcomingCount = _cachedMaintenanceData!['upcomingCount'] ?? 0;
       _overdueCount = _cachedMaintenanceData!['overdueCount'] ?? 0;
       _isLoading = false;
-    } else if (widget.vehicle != null) {
+    } else if (fallbackVehicle != null) {
       _isAssigned = true;
-      _vehicle = widget.vehicle;
+      _vehicle = fallbackVehicle;
       _isLoading = false;
     } else {
       _isLoading = true;
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _isLoading) setState(() => _isLoading = false);
+      });
     }
     _fetchMaintenanceData();
   }
@@ -259,8 +264,19 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
                 ),
               )
             : RefreshIndicator(
-                onRefresh: _fetchMaintenanceData,
+                onRefresh: () async {
+                  _cachedMaintenanceData = null;
+                  _cachedIsAssigned = null;
+                  _cachedVehicle = null;
+                  ApiService.clearApiCache('/driver/maintenance');
+                  ApiService.clearApiCache('/driver/vehicle');
+                  await Future.any([
+                    _fetchMaintenanceData(),
+                    Future.delayed(const Duration(milliseconds: 500)),
+                  ]);
+                },
                 color: primaryOrange,
+                backgroundColor: Colors.white,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                   padding: const EdgeInsets.all(16.0),

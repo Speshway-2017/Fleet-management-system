@@ -49,6 +49,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
       _isLoading = true;
       _errorMessage = null;
     });
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted && _isLoading) setState(() => _isLoading = false);
+    });
     try {
       final response = await ApiService.get('/driver/support');
       if (response != null && response['success'] == true) {

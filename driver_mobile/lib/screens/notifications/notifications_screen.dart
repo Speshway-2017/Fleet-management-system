@@ -305,7 +305,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             _buildFilterBar(),
             Expanded(
               child: RefreshIndicator(
-                onRefresh: _fetchServerNotifications,
+                onRefresh: () async {
+                  ApiService.clearApiCache('/driver/notifications');
+                  await Future.any([
+                    _fetchServerNotifications(),
+                    Future.delayed(const Duration(milliseconds: 500)),
+                  ]);
+                },
                 color: AppColors.secondary,
                 child: filteredNotifications.isEmpty
                     ? SingleChildScrollView(

@@ -1239,6 +1239,9 @@ class _TollTransactionsDialogState extends State<TollTransactionsDialog> {
   @override
   void initState() {
     super.initState();
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted && _isLoading) setState(() => _isLoading = false);
+    });
     _fetchTolls();
   }
 

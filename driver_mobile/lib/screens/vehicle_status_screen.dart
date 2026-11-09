@@ -1,3 +1,4 @@
+import '../services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -18,6 +19,27 @@ class VehicleStatusScreen extends StatefulWidget {
 }
 
 class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
+  static Map<String, dynamic>? _cachedVehicle;
+  Map<String, dynamic>? _vehicle;
+
+  @override
+  void initState() {
+    super.initState();
+    _vehicle = widget.vehicle ?? _cachedVehicle;
+  }
+
+  Future<void> _refreshVehicle() async {
+    try {
+      final res = await ApiService.getAssignedVehicle();
+      if (mounted && res['success'] == true && res['data'] != null && res['data']['vehicle'] != null) {
+        final vehMap = Map<String, dynamic>.from(res['data']['vehicle']);
+        _cachedVehicle = vehMap;
+        setState(() {
+          _vehicle = vehMap;
+        });
+      }
+    } catch (_) {}
+  }
 
   Widget _buildSectionHeader(IconData icon, String title) {
     const textPrimary = Color(0xFF1F2937);
@@ -111,7 +133,8 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
     const successGreen = Color(0xFF16A34A);
     const accentOrange = Color(0xFFF97316);
 
-    if (widget.vehicle == null) {
+    final currentVehicle = _vehicle ?? widget.vehicle;
+    if (currentVehicle == null) {
       return Scaffold(
         backgroundColor: bgLight,
         appBar: AppBar(
@@ -159,7 +182,7 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
       );
     }
 
-    final veh = widget.vehicle!;
+    final veh = currentVehicle;
     final vehicleNumber = veh['vehicleNumber'] ?? veh['registrationNumber'] ?? 'N/A';
     final vehicleType = veh['vehicleType'] ?? 'Truck';
     final driverName = veh['assignedDriverName'] ?? 'Driver';
@@ -192,9 +215,20 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
         actions: const [],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
+        child: RefreshIndicator(
+          color: accentOrange,
+          backgroundColor: Colors.white,
+          onRefresh: () async {
+            _cachedVehicle = null;
+            ApiService.clearApiCache('/driver/vehicle');
+            await Future.any([
+              _refreshVehicle(),
+              Future.delayed(const Duration(milliseconds: 500)),
+            ]);
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -524,6 +558,7 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

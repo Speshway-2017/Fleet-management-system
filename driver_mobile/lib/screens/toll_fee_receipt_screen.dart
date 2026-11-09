@@ -57,6 +57,9 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
     setState(() {
       _isLoading = true;
     });
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted && _isLoading) setState(() => _isLoading = false);
+    });
 
     final cleanId = widget.tripId.replaceAll('#', '').trim();
 

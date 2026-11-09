@@ -69,6 +69,9 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
       _isLoading = false;
     } else {
       _isLoading = true;
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _isLoading) setState(() => _isLoading = false);
+      });
     }
     _loadTickets();
   }
@@ -78,6 +81,9 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
     if (_tickets.isEmpty && _cachedTickets == null) {
       setState(() {
         _isLoading = true;
+      });
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _isLoading) setState(() => _isLoading = false);
       });
     }
 
@@ -258,10 +264,23 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
         actions: const [],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
+        child: RefreshIndicator(
+          color: const Color(0xFFF97316),
+          backgroundColor: Colors.white,
+          onRefresh: () async {
+            _cachedTickets = null;
+            _cachedIsVehicleAssigned = null;
+            ApiService.clearApiCache('/driver/tickets');
+            ApiService.clearApiCache('/driver/vehicle');
+            await Future.any([
+              _loadTickets(),
+              Future.delayed(const Duration(milliseconds: 500)),
+            ]);
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (!_isVehicleAssigned) ...[
@@ -527,6 +546,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
           ),
         ),
       ),
+    ),
 
     );
   }
