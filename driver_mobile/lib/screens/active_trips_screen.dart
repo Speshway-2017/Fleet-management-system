@@ -20,6 +20,8 @@ class ActiveTripsScreen extends StatefulWidget {
 }
 
 class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
+  static Map<String, dynamic>? _cachedActiveTrip;
+
   bool _isLoading = true;
   Map<String, dynamic>? _activeTrip;
   
@@ -40,6 +42,18 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
   @override
   void initState() {
     super.initState();
+    if (_cachedActiveTrip != null) {
+      _activeTrip = _cachedActiveTrip;
+      _reachedCustomer = _activeTrip!['customerLocationReached'] ?? false;
+      _podUploaded = (_activeTrip!['podStatus'] == 'Uploaded' || _activeTrip!['podStatus'] == 'Pending' || _activeTrip!['podStatus'] == 'Approved');
+      _weighbridgeUploaded = (_activeTrip!['weighbridgeStatus'] == 'Uploaded' || _activeTrip!['weighbridgeStatus'] == 'Pending' || _activeTrip!['weighbridgeStatus'] == 'Approved');
+      _isLoading = false;
+    } else {
+      _isLoading = true;
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _isLoading) setState(() => _isLoading = false);
+      });
+    }
     _fetchActiveTrip();
     _setupSocketListeners();
   }
@@ -119,7 +133,12 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
 
   Future<void> _fetchActiveTrip() async {
     if (!mounted) return;
-    setState(() => _isLoading = true);
+    if (_cachedActiveTrip == null) {
+      setState(() => _isLoading = true);
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _isLoading) setState(() => _isLoading = false);
+      });
+    }
     try {
       final res = await ApiService.getCurrentTrip();
       if (res != null && res['data'] != null) {
@@ -138,24 +157,33 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
           'Documents Rejected'
         ];
         if (activeStatuses.contains(status)) {
-          setState(() {
-            _activeTrip = trip;
-            _reachedCustomer = trip['customerLocationReached'] ?? false;
-            _podUploaded = (trip['podStatus'] == 'Uploaded' || trip['podStatus'] == 'Pending' || trip['podStatus'] == 'Approved');
-            _weighbridgeUploaded = (trip['weighbridgeStatus'] == 'Uploaded' || trip['weighbridgeStatus'] == 'Pending' || trip['weighbridgeStatus'] == 'Approved');
-            _isLoading = false;
-          });
+          _cachedActiveTrip = trip;
+          if (mounted) {
+            setState(() {
+              _activeTrip = trip;
+              _reachedCustomer = trip['customerLocationReached'] ?? false;
+              _podUploaded = (trip['podStatus'] == 'Uploaded' || trip['podStatus'] == 'Pending' || trip['podStatus'] == 'Approved');
+              _weighbridgeUploaded = (trip['weighbridgeStatus'] == 'Uploaded' || trip['weighbridgeStatus'] == 'Pending' || trip['weighbridgeStatus'] == 'Approved');
+              _isLoading = false;
+            });
+          }
         } else {
+          _cachedActiveTrip = null;
+          if (mounted) {
+            setState(() {
+              _activeTrip = null;
+              _isLoading = false;
+            });
+          }
+        }
+      } else {
+        _cachedActiveTrip = null;
+        if (mounted) {
           setState(() {
             _activeTrip = null;
             _isLoading = false;
           });
         }
-      } else {
-        setState(() {
-          _activeTrip = null;
-          _isLoading = false;
-        });
       }
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
@@ -308,7 +336,14 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: _fetchActiveTrip,
+          onRefresh: () async {
+            _cachedActiveTrip = null;
+            ApiService.clearApiCache('/driver/trips/current');
+            await Future.any([
+              _fetchActiveTrip(),
+              Future.delayed(const Duration(milliseconds: 500)),
+            ]);
+          },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),

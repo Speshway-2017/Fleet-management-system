@@ -703,7 +703,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           body: SafeArea(
             child: RefreshIndicator(
-              onRefresh: () => auth.refreshProfile(),
+              onRefresh: () async {
+                ApiService.clearApiCache();
+                await Future.any([
+                  auth.refreshProfile(),
+                  Future.delayed(const Duration(milliseconds: 500)),
+                ]);
+              },
               color: orangePrimary,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),

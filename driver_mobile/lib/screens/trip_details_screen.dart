@@ -30,6 +30,8 @@ class TripDetailsScreen extends StatefulWidget {
 }
 
 class _TripDetailsScreenState extends State<TripDetailsScreen> {
+  static final Map<String, Map<String, dynamic>> _cachedTrips = {};
+
   bool _isLoading = false;
   bool _isSubmitting = false;
   Map<String, dynamic>? _trip;
@@ -463,8 +465,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   @override
   void initState() {
     super.initState();
+    final cleanId = widget.tripId.replaceAll('#', '').trim();
     if (widget.tripData != null) {
       _trip = widget.tripData;
+      _cachedTrips[cleanId] = widget.tripData!;
+    } else if (_cachedTrips.containsKey(cleanId)) {
+      _trip = _cachedTrips[cleanId];
     }
     _fetchTripDetails();
     SocketService.onEvent('trip:updated', _onTripUpdatedSocket);
@@ -495,13 +501,20 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     setState(() {
       _isLoading = _trip == null;
     });
+    if (_isLoading) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _isLoading) setState(() => _isLoading = false);
+      });
+    }
     try {
       final cleanId = widget.tripId.replaceAll('#', '').trim();
       final res = await ApiService.getTripDetails(cleanId);
       if (res != null && res['data'] != null) {
         if (mounted) {
+          final tripMap = Map<String, dynamic>.from(res['data']);
+          _cachedTrips[cleanId] = tripMap;
           setState(() {
-            _trip = res['data'];
+            _trip = tripMap;
             _isLoading = false;
           });
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -874,9 +887,21 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       ),
       body: SafeArea(
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+            ? const Center(child: CircularProgressIndicator(color: Color(0xFFF97316)))
+            : RefreshIndicator(
+                color: const Color(0xFFF97316),
+                backgroundColor: Colors.white,
+                onRefresh: () async {
+                  _cachedTrips.remove(widget.tripId.replaceAll('#', '').trim());
+                  ApiService.clearApiCache('/driver/trips/${widget.tripId.replaceAll('#', '').trim()}');
+                  await Future.any([
+                    _fetchTripDetails(),
+                    Future.delayed(const Duration(milliseconds: 500)),
+                  ]);
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -1572,6 +1597,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   ],
                 ),
               ),
+            ),
       ),
     );
   }

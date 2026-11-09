@@ -42,20 +42,32 @@ class VehicleDocumentsScreen extends StatefulWidget {
 }
 
 class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
+  static Map<String, dynamic>? _cachedVehicle;
   Map<String, dynamic>? _vehicle;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _vehicle = widget.vehicle;
+    _vehicle = widget.vehicle ?? _cachedVehicle;
+    _isLoading = _vehicle == null;
+    if (_isLoading) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _isLoading) setState(() => _isLoading = false);
+      });
+    }
     _fetchAssignedVehicle();
   }
 
   Future<void> _fetchAssignedVehicle() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (_vehicle == null) {
+      setState(() {
+        _isLoading = true;
+      });
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _isLoading) setState(() => _isLoading = false);
+      });
+    }
 
     try {
       final res = await ApiService.getAssignedVehicle();
@@ -63,8 +75,10 @@ class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
       if (mounted && res != null && res['success'] == true) {
         final data = res['data'];
         if (data != null && data['vehicle'] is Map) {
+          final vehMap = Map<String, dynamic>.from(data['vehicle']);
+          _cachedVehicle = vehMap;
           setState(() {
-            _vehicle = Map<String, dynamic>.from(data['vehicle']);
+            _vehicle = vehMap;
             _isLoading = false;
           });
           debugPrint('[VehicleDocumentsScreen] Loaded vehicle documents: ${_vehicle?['documents']}');
@@ -412,7 +426,14 @@ class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: _fetchAssignedVehicle,
+          onRefresh: () async {
+            _cachedVehicle = null;
+            ApiService.clearApiCache('/driver/vehicle');
+            await Future.any([
+              _fetchAssignedVehicle(),
+              Future.delayed(const Duration(milliseconds: 500)),
+            ]);
+          },
           color: secondaryOrange,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),

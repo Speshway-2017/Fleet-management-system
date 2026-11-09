@@ -25,6 +25,11 @@ import '../services/socket_service.dart';
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
+  static Map<String, dynamic>? get cachedCurrentTrip => _DashboardScreenState._cachedCurrentTrip;
+  static Map<String, dynamic>? get cachedDashboardData => _DashboardScreenState._cachedDashboardData;
+  static bool? get cachedIsVehicleAssigned => _DashboardScreenState._cachedIsVehicleAssigned;
+  static String? get cachedVehicleNumber => _DashboardScreenState._cachedVehicleNumber;
+
   static void clearStaticCache() {
     _DashboardScreenState._cachedDriverProfile = null;
     _DashboardScreenState._cachedCurrentTrip = null;
@@ -766,12 +771,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       clipper: HeaderWaveClipper(),
                       child: Container(
                         color: const Color(0xFFF8FAFC),
-                        child: SingleChildScrollView(
-                          physics: const BouncingScrollPhysics(),
-                          padding: const EdgeInsets.only(top: 22, bottom: 85),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
+                        child: RefreshIndicator(
+                          color: const Color(0xFFF97316),
+                          backgroundColor: Colors.white,
+                          onRefresh: () async {
+                            DashboardScreen.clearStaticCache();
+                            ApiService.clearApiCache();
+                            await Future.any([
+                              _loadDashboardData(),
+                              Future.delayed(const Duration(milliseconds: 500)),
+                            ]);
+                          },
+                          child: SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                            padding: const EdgeInsets.only(top: 22, bottom: 85),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
                               // 1. Active Trip Card (Only shown when active trip is assigned to THIS driver)
                               if (_hasActiveTrip) ...[
                                 _buildActiveTripCard(context),
@@ -867,6 +883,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ),
+          ),
           ],
         ),
       ),

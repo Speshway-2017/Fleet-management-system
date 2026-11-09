@@ -16,35 +16,58 @@ class CompletedTripsScreen extends StatefulWidget {
 }
 
 class _CompletedTripsScreenState extends State<CompletedTripsScreen> {
+  static List<Map<String, dynamic>>? _cachedCompletedTrips;
+
   bool _isLoading = false;
   List<Map<String, dynamic>> _completedTrips = [];
 
   @override
   void initState() {
     super.initState();
+    if (_cachedCompletedTrips != null) {
+      _completedTrips = _cachedCompletedTrips!;
+      _isLoading = false;
+    } else {
+      _isLoading = true;
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _isLoading) setState(() => _isLoading = false);
+      });
+    }
     _fetchCompletedTrips();
   }
 
   Future<void> _fetchCompletedTrips() async {
     if (!mounted) return;
+    if (_cachedCompletedTrips == null) {
+      setState(() => _isLoading = true);
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _isLoading) setState(() => _isLoading = false);
+      });
+    }
     try {
       final res = await ApiService.get('/driver/trips?status=Completed');
       if (res != null && res['data'] is List) {
         final List list = res['data'];
-        setState(() {
-          _completedTrips = List<Map<String, dynamic>>.from(list);
-          _isLoading = false;
-        });
+        final typedList = List<Map<String, dynamic>>.from(list);
+        _cachedCompletedTrips = typedList;
+        if (mounted) {
+          setState(() {
+            _completedTrips = typedList;
+            _isLoading = false;
+          });
+        }
       } else {
-        setState(() {
-          _completedTrips = [];
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _completedTrips = [];
+            _isLoading = false;
+          });
+        }
       }
     } catch (_) {
       if (mounted) {
         setState(() {
-          _completedTrips = [];
+          _completedTrips = _cachedCompletedTrips ?? [];
           _isLoading = false;
         });
       }
@@ -67,7 +90,14 @@ class _CompletedTripsScreenState extends State<CompletedTripsScreen> {
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: _fetchCompletedTrips,
+          onRefresh: () async {
+            _cachedCompletedTrips = null;
+            ApiService.clearApiCache('/driver/trips?status=Completed');
+            await Future.any([
+              _fetchCompletedTrips(),
+              Future.delayed(const Duration(milliseconds: 500)),
+            ]);
+          },
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
               : _completedTrips.isEmpty

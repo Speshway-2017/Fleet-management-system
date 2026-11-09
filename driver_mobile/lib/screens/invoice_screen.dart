@@ -43,6 +43,9 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       _isLoading = true;
       _noInvoiceExists = false;
     });
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted && _isLoading) setState(() => _isLoading = false);
+    });
 
     try {
       String? invId = widget.invoiceId;
@@ -245,7 +248,13 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: _fetchInvoiceDetails,
+          onRefresh: () async {
+            ApiService.clearApiCache();
+            await Future.any([
+              _fetchInvoiceDetails(),
+              Future.delayed(const Duration(milliseconds: 500)),
+            ]);
+          },
           color: AppColors.primary,
           child: _isLoading
               ? const Center(

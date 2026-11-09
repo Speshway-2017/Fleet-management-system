@@ -17,6 +17,8 @@ class FuelOverviewScreen extends StatefulWidget {
 }
 
 class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
+  static Map<String, dynamic>? _cachedFuelData;
+
   bool _isLoading = true;
   bool _isAssigned = false;
   bool _hasActiveTrip = false;
@@ -29,75 +31,104 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
   @override
   void initState() {
     super.initState();
+    if (_cachedFuelData != null) {
+      _isAssigned = _cachedFuelData!['isAssigned'] ?? false;
+      _vehicleNumber = _cachedFuelData!['vehicleNumber'] ?? 'Assigned Vehicle';
+      _hasActiveTrip = _cachedFuelData!['hasActiveTrip'] ?? false;
+      _lastRefillCost = _cachedFuelData!['lastRefillCost'] ?? 0.0;
+      _lastRefillLiters = _cachedFuelData!['lastRefillLiters'] ?? 0.0;
+      _totalLiters = _cachedFuelData!['totalLiters'] ?? 0.0;
+      _totalEntries = _cachedFuelData!['totalEntries'] ?? 0;
+      _isLoading = false;
+    } else {
+      _isLoading = true;
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _isLoading) setState(() => _isLoading = false);
+      });
+    }
     _fetchOverviewData();
   }
 
   Future<void> _fetchOverviewData() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (_cachedFuelData == null) {
+      setState(() {
+        _isLoading = true;
+      });
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _isLoading) setState(() => _isLoading = false);
+      });
+    }
 
     try {
+      final results = await Future.wait([
+        ApiService.getAssignedVehicle().catchError((_) => null),
+        ApiService.getCurrentTrip().catchError((_) => null),
+        ApiService.getDriverFuelRecords().catchError((_) => null),
+      ]);
+
+      final vehRes = results[0];
+      final tripRes = results[1];
+      final fuelRes = results[2];
+
       bool assigned = false;
       String vehNum = 'No Vehicle Assigned';
-      try {
-        final vehRes = await ApiService.getAssignedVehicle();
-        if (vehRes != null && vehRes['success'] == true) {
-          final vData = vehRes['data'];
-          if (vData != null && vData['assigned'] == true && vData['vehicle'] != null) {
-            final v = vData['vehicle'];
-            assigned = true;
-            vehNum = v['vehicleNumber'] ?? v['plateNumber'] ?? 'Assigned Vehicle';
-          }
+      if (vehRes != null && vehRes['success'] == true) {
+        final vData = vehRes['data'];
+        if (vData != null && vData['assigned'] == true && vData['vehicle'] != null) {
+          final v = vData['vehicle'];
+          assigned = true;
+          vehNum = v['vehicleNumber'] ?? v['plateNumber'] ?? 'Assigned Vehicle';
         }
-      } catch (e) {
-        debugPrint('Error fetching assigned vehicle: $e');
       }
 
       bool hasActive = false;
-      try {
-        final tripRes = await ApiService.getCurrentTrip();
-        if (tripRes != null && tripRes['success'] == true && tripRes['data'] != null) {
-          final tData = tripRes['data'];
-          if (tData is Map && tData.isNotEmpty && tData['tripNumber'] != null) {
-            final st = (tData['status'] ?? '').toString().toLowerCase();
-            final activeStatuses = ['assigned', 'scheduled', 'in progress', 'accepted', 'on transit', 'enroute', 'reach pickup', 'pickup completed', 'pending driver acceptance', 'ready to dispatch', 'start trip'];
-            if (activeStatuses.contains(st)) {
-              hasActive = true;
-            }
+      if (tripRes != null && tripRes['success'] == true && tripRes['data'] != null) {
+        final tData = tripRes['data'];
+        if (tData is Map && tData.isNotEmpty && tData['tripNumber'] != null) {
+          final st = (tData['status'] ?? '').toString().toLowerCase();
+          final activeStatuses = ['assigned', 'scheduled', 'in progress', 'accepted', 'on transit', 'enroute', 'reach pickup', 'pickup completed', 'pending driver acceptance', 'ready to dispatch', 'start trip'];
+          if (activeStatuses.contains(st)) {
+            hasActive = true;
           }
         }
-      } catch (e) {
-        debugPrint('Error fetching current trip: $e');
       }
 
-      // ALWAYS fetch fuel records regardless of vehicle assignment to display history!
-      try {
-        final fuelRes = await ApiService.getDriverFuelRecords();
-        if (fuelRes != null && fuelRes['success'] == true) {
-          final List<dynamic> logs = fuelRes['data'] ?? [];
-          double sumLiters = 0.0;
-          for (var l in logs) {
-            sumLiters += (_parseNumber(l['liters']) ?? 0.0);
-          }
-          _totalEntries = logs.length;
-          _totalLiters = sumLiters;
-
-          if (logs.isNotEmpty) {
-            final latest = logs[0];
-            _lastRefillCost = (_parseNumber(latest['amount']) ?? 0.0);
-            _lastRefillLiters = (_parseNumber(latest['liters']) ?? 0.0);
-          }
+      double sumLiters = 0.0;
+      int entries = 0;
+      double refillCost = 0.0;
+      double refillLiters = 0.0;
+      if (fuelRes != null && fuelRes['success'] == true) {
+        final List<dynamic> logs = fuelRes['data'] ?? [];
+        for (var l in logs) {
+          sumLiters += (_parseNumber(l['liters']) ?? 0.0);
         }
-      } catch (e) {
-        debugPrint('Error fetching fuel records: $e');
+        entries = logs.length;
+        if (logs.isNotEmpty) {
+          final latest = logs[0];
+          refillCost = (_parseNumber(latest['amount']) ?? 0.0);
+          refillLiters = (_parseNumber(latest['liters']) ?? 0.0);
+        }
       }
+
+      _cachedFuelData = {
+        'isAssigned': assigned,
+        'vehicleNumber': vehNum,
+        'hasActiveTrip': hasActive,
+        'totalEntries': entries,
+        'totalLiters': sumLiters,
+        'lastRefillCost': refillCost,
+        'lastRefillLiters': refillLiters,
+      };
 
       if (mounted) {
         setState(() {
           _isAssigned = assigned;
           _vehicleNumber = vehNum;
           _hasActiveTrip = hasActive;
+          _totalEntries = entries;
+          _totalLiters = sumLiters;
+          _lastRefillCost = refillCost;
+          _lastRefillLiters = refillLiters;
           _isLoading = false;
         });
       }
@@ -154,7 +185,16 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
                 ),
               )
             : RefreshIndicator(
-                onRefresh: _fetchOverviewData,
+                onRefresh: () async {
+                  _cachedFuelData = null;
+                  ApiService.clearApiCache('/driver/fuel');
+                  ApiService.clearApiCache('/driver/vehicle');
+                  ApiService.clearApiCache('/driver/trips/current');
+                  await Future.any([
+                    _fetchOverviewData(),
+                    Future.delayed(const Duration(milliseconds: 500)),
+                  ]);
+                },
                 color: primaryOrange,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),

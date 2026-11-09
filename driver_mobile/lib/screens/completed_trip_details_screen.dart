@@ -27,14 +27,21 @@ class CompletedTripDetailsScreen extends StatefulWidget {
 }
 
 class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen> {
+  static final Map<String, Map<String, dynamic>> _cachedCompletedDetails = {};
+
   bool _isLoading = true;
   Map<String, dynamic>? _trip;
 
   @override
   void initState() {
     super.initState();
+    final cleanId = widget.tripId.replaceAll('#', '').trim();
     if (widget.tripData != null) {
       _trip = widget.tripData;
+      _cachedCompletedDetails[cleanId] = widget.tripData!;
+      _isLoading = false;
+    } else if (_cachedCompletedDetails.containsKey(cleanId)) {
+      _trip = _cachedCompletedDetails[cleanId];
       _isLoading = false;
     }
     _fetchTripDetails();
@@ -45,14 +52,21 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
     setState(() {
       _isLoading = _trip == null;
     });
+    if (_isLoading) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _isLoading) setState(() => _isLoading = false);
+      });
+    }
     try {
       final cleanId = widget.tripId.replaceAll('#', '').trim();
       final res = await ApiService.getTripDetails(cleanId);
       debugPrint('[DEBUG] [GET Trip Details API response] res: $res');
       if (res != null && res['data'] != null) {
         if (mounted) {
+          final tripMap = Map<String, dynamic>.from(res['data']);
+          _cachedCompletedDetails[cleanId] = tripMap;
           setState(() {
-            _trip = res['data'];
+            _trip = tripMap;
             _isLoading = false;
           });
         }
@@ -357,7 +371,14 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: _fetchTripDetails,
+          onRefresh: () async {
+            _cachedCompletedDetails.remove(widget.tripId.replaceAll('#', '').trim());
+            ApiService.clearApiCache('/driver/trips/${widget.tripId.replaceAll('#', '').trim()}');
+            await Future.any([
+              _fetchTripDetails(),
+              Future.delayed(const Duration(milliseconds: 500)),
+            ]);
+          },
           color: AppColors.primary,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),

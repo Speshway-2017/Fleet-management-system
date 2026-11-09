@@ -56,6 +56,8 @@ class TicketDetailsScreen extends StatefulWidget {
 }
 
 class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
+  static final Map<String, Map<String, dynamic>> _cachedTicketDetails = {};
+
   bool _isLoading = true;
   Map<String, dynamic>? _ticketData;
   String _currentStatus = 'Open';
@@ -67,6 +69,25 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
   @override
   void initState() {
     super.initState();
+    final tid = widget.ticketId.trim();
+    if (_cachedTicketDetails.containsKey(tid)) {
+      final data = _cachedTicketDetails[tid]!;
+      _ticketData = data;
+      _currentStatus = data['status'] ?? 'Open';
+      _canContinueTrip = data['canContinueTrip'] ?? 'After Repair';
+      if (data['assignedMechanic'] != null && data['assignedMechanic'] is Map) {
+        _assignedMechanic = Map<String, dynamic>.from(data['assignedMechanic']);
+      }
+      if (data['repairTimeline'] != null && data['repairTimeline'] is List) {
+        _repairTimeline = List.from(data['repairTimeline']);
+      }
+      _isLoading = false;
+    } else {
+      _isLoading = true;
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _isLoading) setState(() => _isLoading = false);
+      });
+    }
     _fetchTicketDetails();
   }
 
@@ -76,8 +97,11 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
       final data = (res is Map && res['data'] != null) ? res['data'] : (res is Map ? res : null);
 
       if (data != null && mounted) {
+        final ticketMap = Map<String, dynamic>.from(data);
+        _cachedTicketDetails[widget.ticketId.trim()] = ticketMap;
         setState(() {
-          _ticketData = Map<String, dynamic>.from(data);
+          _ticketData = ticketMap;
+          _isLoading = false;
           _currentStatus = data['status'] ?? 'Open';
           _canContinueTrip = data['canContinueTrip'] ?? 'After Repair';
           if (data['assignedMechanic'] != null && data['assignedMechanic'] is Map) {
@@ -248,9 +272,20 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator(color: primaryOrange))
-            : SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.all(16.0),
+            : RefreshIndicator(
+                color: primaryOrange,
+                backgroundColor: Colors.white,
+                onRefresh: () async {
+                  _cachedTicketDetails.remove(widget.ticketId.trim());
+                  ApiService.clearApiCache('/driver/tickets/${widget.ticketId.trim()}');
+                  await Future.any([
+                    _fetchTicketDetails(),
+                    Future.delayed(const Duration(milliseconds: 500)),
+                  ]);
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -556,6 +591,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
                   ],
                 ),
               ),
+            ),
       ),
     );
   }

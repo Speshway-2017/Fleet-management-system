@@ -11,6 +11,7 @@ import 'upcoming_trips_screen.dart';
 import 'completed_trips_screen.dart';
 import 'completed_trip_details_screen.dart';
 import 'main_navigation_screen.dart';
+import 'dashboard_screen.dart';
 import '../services/api_service.dart';
 import '../services/socket_service.dart';
 
@@ -34,12 +35,17 @@ class _TripsScreenState extends State<TripsScreen> {
   void initState() {
     super.initState();
     MainNavigationScreen.selectedTabNotifier.addListener(_onTabChanged);
+    _cachedDashboardMetrics ??= DashboardScreen.cachedDashboardData;
+    _cachedCurrentTrip ??= DashboardScreen.cachedCurrentTrip;
     if (_cachedDashboardMetrics != null || _cachedCurrentTrip != null) {
       _dashboardMetrics = _cachedDashboardMetrics;
       _currentTrip = _cachedCurrentTrip;
       _isLoading = false;
     } else {
       _isLoading = true;
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _isLoading) setState(() => _isLoading = false);
+      });
     }
     _loadTripsData();
     _setupSocketListeners();
@@ -52,7 +58,7 @@ class _TripsScreenState extends State<TripsScreen> {
   }
 
   void _onTabChanged() {
-    if (mounted && MainNavigationScreen.selectedTabNotifier.value == 1) {
+    if (mounted && MainNavigationScreen.selectedTabNotifier.value == 3) {
       _loadTripsData(silent: true);
     }
   }
@@ -67,6 +73,9 @@ class _TripsScreenState extends State<TripsScreen> {
     if (!mounted) return;
     if (!silent && _dashboardMetrics == null && _currentTrip == null) {
       setState(() => _isLoading = true);
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _isLoading) setState(() => _isLoading = false);
+      });
     }
 
     try {
@@ -156,16 +165,27 @@ class _TripsScreenState extends State<TripsScreen> {
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: _loadTripsData,
+          color: const Color(0xFFF97316),
+          backgroundColor: Colors.white,
+          onRefresh: () async {
+            _cachedDashboardMetrics = null;
+            _cachedCurrentTrip = null;
+            ApiService.clearApiCache('/driver/dashboard');
+            ApiService.clearApiCache('/driver/trips/current');
+            await Future.any([
+              _loadTripsData(),
+              Future.delayed(const Duration(milliseconds: 500)),
+            ]);
+          },
           child: _isLoading
               ? const Center(
                   child: Padding(
                     padding: EdgeInsets.all(40.0),
-                    child: CircularProgressIndicator(),
+                    child: CircularProgressIndicator(color: Color(0xFFF97316)),
                   ),
                 )
               : SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [

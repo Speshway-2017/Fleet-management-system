@@ -14,6 +14,7 @@ import '../services/fcm_service.dart';
 import '../services/localization_service.dart';
 
 import '../services/socket_service.dart';
+import '../services/api_service.dart';
 import '../utils/date_formatter.dart';
 
 class MainNavigationScreen extends StatefulWidget {
@@ -39,6 +40,24 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     _setupSocketNotificationListeners();
     // Initialize Firebase Cloud Messaging when entering MainNavigationScreen
     FcmService.initialize(context);
+    _prewarmAppData();
+  }
+
+  void _prewarmAppData() {
+    Future.microtask(() async {
+      try {
+        await Future.wait([
+          ApiService.getAssignedVehicle().catchError((_) => null),
+          ApiService.getCurrentTrip().catchError((_) => null),
+          ApiService.get('/driver/dashboard').catchError((_) => null),
+          ApiService.getDriverMaintenance().catchError((_) => null),
+          ApiService.getDriverTickets().catchError((_) => null),
+          ApiService.getDriverFuelRecords().catchError((_) => null),
+          ApiService.getDriverNotifications().catchError((_) => null),
+          ApiService.get('/driver/trips?status=Completed').catchError((_) => null),
+        ]);
+      } catch (_) {}
+    });
   }
 
   void _setupSocketNotificationListeners() {
@@ -195,17 +214,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             await SystemNavigator.pop();
           },
           child: Scaffold(
-            key: ValueKey('main_scaffold_${currentLanguage}_$_currentIndex'),
+            key: ValueKey('main_scaffold_$currentLanguage'),
             backgroundColor: Colors.white,
             body: IndexedStack(
               key: ValueKey('main_stack_$currentLanguage'),
               index: _currentIndex,
-              children: [
-                _activatedTabs.contains(0) ? const VehicleOverviewScreen() : const SizedBox.shrink(),
-                _activatedTabs.contains(1) ? const FuelOverviewScreen() : const SizedBox.shrink(),
-                const DashboardScreen(),
-                _activatedTabs.contains(3) ? const TripsScreen() : const SizedBox.shrink(),
-                _activatedTabs.contains(4) ? const ProfileScreen() : const SizedBox.shrink(),
+              children: const [
+                VehicleOverviewScreen(),
+                FuelOverviewScreen(),
+                DashboardScreen(),
+                TripsScreen(),
+                ProfileScreen(),
               ],
             ),
             bottomNavigationBar: Container(

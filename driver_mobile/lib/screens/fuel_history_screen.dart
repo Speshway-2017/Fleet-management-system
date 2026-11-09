@@ -17,42 +17,64 @@ class FuelHistoryScreen extends StatefulWidget {
 }
 
 class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
+  static List<dynamic>? _cachedFuelEntries;
+  static bool? _cachedIsAssigned;
+
   bool _isLoading = true;
   List<dynamic> _fuelEntries = [];
   int _selectedFilterIndex = 0;
   final List<String> _filters = ['All', 'Approved', 'Pending', 'Rejected'];
+  bool _isAssigned = false;
 
   @override
   void initState() {
     super.initState();
+    if (_cachedFuelEntries != null) {
+      _fuelEntries = _cachedFuelEntries!;
+      _isAssigned = _cachedIsAssigned ?? false;
+      _isLoading = false;
+    } else {
+      _isLoading = true;
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _isLoading) setState(() => _isLoading = false);
+      });
+    }
     _fetchFuelRecords();
   }
 
-  bool _isAssigned = false;
-
   Future<void> _fetchFuelRecords() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (_cachedFuelEntries == null) {
+      setState(() {
+        _isLoading = true;
+      });
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _isLoading) setState(() => _isLoading = false);
+      });
+    }
 
     try {
-      bool assigned = false;
-      try {
-        final vehRes = await ApiService.getAssignedVehicle();
-        if (vehRes != null && vehRes['success'] == true) {
-          final vData = vehRes['data'];
-          if (vData != null && vData['assigned'] == true && vData['vehicle'] != null) {
-            assigned = true;
-          }
-        }
-      } catch (_) {}
+      final results = await Future.wait([
+        ApiService.getAssignedVehicle().catchError((_) => null),
+        ApiService.getDriverFuelRecords().catchError((_) => null),
+      ]);
 
-      // ALWAYS fetch fuel records regardless of assigned status (Requirement 5)
-      final res = await ApiService.getDriverFuelRecords();
+      final vehRes = results[0];
+      final res = results[1];
+
+      bool assigned = false;
+      if (vehRes != null && vehRes['success'] == true) {
+        final vData = vehRes['data'];
+        if (vData != null && vData['assigned'] == true && vData['vehicle'] != null) {
+          assigned = true;
+        }
+      }
+
       if (mounted) {
         if (res != null && res['success'] == true) {
           final data = res['data'];
           if (data != null && data is List) {
+            _cachedFuelEntries = data;
+            _cachedIsAssigned = assigned;
             setState(() {
               _isAssigned = assigned;
               _fuelEntries = data;
@@ -66,7 +88,6 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
 
     if (mounted) {
       setState(() {
-        _fuelEntries = [];
         _isLoading = false;
       });
     }
@@ -135,7 +156,16 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                 ),
               )
             : RefreshIndicator(
-                onRefresh: _fetchFuelRecords,
+                onRefresh: () async {
+                  _cachedFuelEntries = null;
+                  _cachedIsAssigned = null;
+                  ApiService.clearApiCache('/driver/fuel');
+                  ApiService.clearApiCache('/driver/vehicle');
+                  await Future.any([
+                    _fetchFuelRecords(),
+                    Future.delayed(const Duration(milliseconds: 500)),
+                  ]);
+                },
                 color: primaryOrange,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),

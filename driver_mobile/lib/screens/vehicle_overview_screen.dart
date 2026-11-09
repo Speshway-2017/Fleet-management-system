@@ -17,11 +17,17 @@ import 'vehicle_status_screen.dart';
 class VehicleOverviewScreen extends StatefulWidget {
   const VehicleOverviewScreen({super.key});
 
+  static Map<String, dynamic>? get cachedVehicle => _VehicleOverviewScreenState._cachedVehicle;
+  static bool? get cachedIsAssigned => _VehicleOverviewScreenState._cachedIsAssigned;
+
   @override
   State<VehicleOverviewScreen> createState() => _VehicleOverviewScreenState();
 }
 
 class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
+  static Map<String, dynamic>? _cachedVehicle;
+  static bool? _cachedIsAssigned;
+
   bool _isLoading = false;
   bool _isAssigned = false;
   Map<String, dynamic>? _vehicle;
@@ -29,6 +35,10 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
   @override
   void initState() {
     super.initState();
+    if (_cachedVehicle != null) {
+      _vehicle = _cachedVehicle;
+      _isAssigned = _cachedIsAssigned ?? true;
+    }
     _fetchVehicleData();
   }
 
@@ -39,12 +49,17 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
         if (response != null && response['success'] == true) {
           final data = response['data'];
           if (data != null && data['assigned'] == true && data['vehicle'] != null) {
+            final vehMap = Map<String, dynamic>.from(data['vehicle']);
+            _cachedVehicle = vehMap;
+            _cachedIsAssigned = true;
             setState(() {
               _isAssigned = true;
-              _vehicle = Map<String, dynamic>.from(data['vehicle']);
+              _vehicle = vehMap;
               _isLoading = false;
             });
           } else {
+            _cachedVehicle = null;
+            _cachedIsAssigned = false;
             setState(() {
               _isAssigned = false;
               _vehicle = null;
@@ -52,6 +67,8 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
             });
           }
         } else {
+          _cachedVehicle = null;
+          _cachedIsAssigned = false;
           setState(() {
             _isAssigned = false;
             _vehicle = null;
@@ -62,8 +79,8 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
     } catch (_) {
       if (mounted) {
         setState(() {
-          _isAssigned = false;
-          _vehicle = null;
+          _isAssigned = _cachedIsAssigned ?? false;
+          _vehicle = _cachedVehicle;
           _isLoading = false;
         });
       }
@@ -116,7 +133,15 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
                 ),
               )
             : RefreshIndicator(
-                onRefresh: _fetchVehicleData,
+                onRefresh: () async {
+                  _cachedVehicle = null;
+                  _cachedIsAssigned = null;
+                  ApiService.clearApiCache('/driver/vehicle');
+                  await Future.any([
+                    _fetchVehicleData(),
+                    Future.delayed(const Duration(milliseconds: 500)),
+                  ]);
+                },
                 color: primaryOrange,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),

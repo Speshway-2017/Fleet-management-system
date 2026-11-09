@@ -18,12 +18,17 @@ class UpcomingTripsScreen extends StatefulWidget {
 }
 
 class _UpcomingTripsScreenState extends State<UpcomingTripsScreen> {
+  static Map<String, dynamic>? _cachedUpcomingTrip;
+
   bool _isLoading = false;
   Map<String, dynamic>? _currentTrip;
 
   @override
   void initState() {
     super.initState();
+    if (_cachedUpcomingTrip != null) {
+      _currentTrip = _cachedUpcomingTrip;
+    }
     _fetchTripData();
     _setupSocketListeners();
   }
@@ -73,17 +78,20 @@ class _UpcomingTripsScreenState extends State<UpcomingTripsScreen> {
         final isUpcomingOrPending = status.contains('pending') ||
             ['assigned', 'scheduled', 'accepted', 'upcoming'].contains(status);
         if (isUpcomingOrPending) {
+          _cachedUpcomingTrip = trip;
           setState(() {
             _currentTrip = trip;
             _isLoading = false;
           });
         } else {
+          _cachedUpcomingTrip = null;
           setState(() {
             _currentTrip = null;
             _isLoading = false;
           });
         }
       } else {
+        _cachedUpcomingTrip = null;
         setState(() {
           _currentTrip = null;
           _isLoading = false;
@@ -186,7 +194,15 @@ class _UpcomingTripsScreenState extends State<UpcomingTripsScreen> {
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: _fetchTripData,
+          onRefresh: () async {
+            _cachedUpcomingTrip = null;
+            ApiService.clearApiCache('/driver/trips');
+            ApiService.clearApiCache('/driver/trips/current');
+            await Future.any([
+              _fetchTripData(),
+              Future.delayed(const Duration(milliseconds: 500)),
+            ]);
+          },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
