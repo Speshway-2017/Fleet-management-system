@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
+import '../services/localization_service.dart';
+import '../utils/navigation_helper.dart';
 
 /// Data representation of a timeline update item in Ticket Details.
 class TicketUpdateItem {
@@ -210,17 +212,25 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
 
     final currentStep = _getStepIndex(_currentStatus);
 
-    return Scaffold(
-      backgroundColor: bgLight,
-      appBar: AppBar(
-        backgroundColor: primaryDark,
-        elevation: 0,
-        centerTitle: false,
-        titleSpacing: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(true),
-        ),
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLanguage, _) {
+        return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) SafeNavigation.pop(context, fallbackTab: 2, result: true);
+      },
+      child: Scaffold(
+        backgroundColor: bgLight,
+        appBar: AppBar(
+          backgroundColor: primaryDark,
+          elevation: 0,
+          centerTitle: false,
+          titleSpacing: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            onPressed: () => SafeNavigation.pop(context, fallbackTab: 2, result: true),
+          ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -234,7 +244,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
               ),
             ),
             Text(
-              displayCategory.toUpperCase(),
+              displayCategory.toString().tr.toUpperCase(),
               style: GoogleFonts.poppins(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
@@ -256,7 +266,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                _currentStatus.toUpperCase(),
+                _currentStatus.toString().tr.toUpperCase(),
                 style: GoogleFonts.poppins(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -307,21 +317,21 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
                     if (_currentStatus == 'Mechanic Assigned') ...[
                       const SizedBox(height: 14.0),
                       _buildActionButton(
-                        label: 'Confirm Mechanic Arrived 📍',
+                        label: '${'Confirm Mechanic Arrived'.tr} 📍',
                         color: const Color(0xFF2563EB),
                         onPressed: () => _updateStatus('Mechanic Arrived', 'Mechanic arrived at location'),
                       ),
                     ] else if (_currentStatus == 'Mechanic Arrived') ...[
                       const SizedBox(height: 14.0),
                       _buildActionButton(
-                        label: 'Start Repair 🔧',
+                        label: '${'Start Repair'.tr} 🔧',
                         color: primaryOrange,
                         onPressed: () => _updateStatus('Repair In Progress', 'Repair started by mechanic'),
                       ),
                     ] else if (_currentStatus == 'Repair In Progress') ...[
                       const SizedBox(height: 14.0),
                       _buildActionButton(
-                        label: 'Mark Repair Completed ✅',
+                        label: '${'Mark Repair Completed'.tr} ✅',
                         color: const Color(0xFF16A34A),
                         onPressed: () => _updateStatus('Repair Completed', 'Repair finished successfully'),
                       ),
@@ -344,7 +354,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Ticket Resolved - Continue Trip 🚚',
+                                    '${'Ticket Resolved - Continue Trip'.tr} 🚚',
                                     style: GoogleFonts.poppins(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w700,
@@ -353,7 +363,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    'Vehicle status is active. Manager has approved resolution.',
+                                    'Vehicle status is active. Manager has approved resolution.'.tr,
                                     style: GoogleFonts.nunito(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
@@ -393,7 +403,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'Issue Details',
+                                'Issue Details'.tr,
                                 style: GoogleFonts.poppins(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
@@ -440,7 +450,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
                           // Attachments Section
                           if (displayAttachment != null && displayAttachment.isNotEmpty) ...[
                             Text(
-                              'ATTACHED PHOTO',
+                              'ATTACHED PHOTO'.tr,
                               style: GoogleFonts.poppins(
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w600,
@@ -500,7 +510,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
 
                     // 6. Repair History Timeline
                     Text(
-                      'Repair Activity Timeline',
+                      'Repair Activity Timeline'.tr,
                       style: GoogleFonts.poppins(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -550,7 +560,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
-                                            statusStr,
+                                            statusStr.toString().tr,
                                             style: GoogleFonts.poppins(
                                               fontSize: 13,
                                               fontWeight: FontWeight.w700,
@@ -583,7 +593,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
                       )
                     else
                       Text(
-                        'No progress updates logged yet.',
+                        'No progress updates logged yet.'.tr,
                         style: GoogleFonts.nunito(fontSize: 13, color: textSecondary),
                       ),
 
@@ -593,6 +603,9 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
               ),
             ),
       ),
+    ),
+    );
+      },
     );
   }
 
@@ -601,23 +614,23 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
     Color border = const Color(0xFFBFDBFE);
     Color textColor = const Color(0xFF1D4ED8);
     IconData icon = Icons.info_rounded;
-    String title = 'Trip Flow: Allowed';
-    String desc = 'You can continue your trip safely while support handles this ticket.';
+    String title = 'Trip Flow: Allowed'.tr;
+    String desc = 'You can continue your trip safely while support handles this ticket.'.tr;
 
     if (rule == 'No') {
       bg = const Color(0xFFFEF2F2);
       border = const Color(0xFFFECACA);
       textColor = const Color(0xFFDC2626);
       icon = Icons.warning_rounded;
-      title = 'Trip Flow: Park & Wait (Breakdown)';
-      desc = 'Vehicle requires immediate repair. Do not drive until resolved.';
+      title = 'Trip Flow: Park & Wait (Breakdown)'.tr;
+      desc = 'Vehicle requires immediate repair. Do not drive until resolved.'.tr;
     } else if (rule == 'After Repair') {
       bg = const Color(0xFFFFFBEB);
       border = const Color(0xFFFDE68A);
       textColor = const Color(0xFFD97706);
       icon = Icons.handyman_rounded;
-      title = 'Trip Flow: Wait For Repair';
-      desc = 'Please park safely and wait for mechanic arrival to complete repair.';
+      title = 'Trip Flow: Wait For Repair'.tr;
+      desc = 'Please park safely and wait for mechanic arrival to complete repair.'.tr;
     }
 
     return Container(
@@ -676,7 +689,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Repair Stage Progress',
+            'Repair Stage Progress'.tr,
             style: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.w700,
@@ -719,7 +732,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          steps[index],
+                          steps[index].tr,
                           style: GoogleFonts.poppins(
                             fontSize: 9.5,
                             fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
@@ -747,7 +760,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
   }
 
   Widget _buildMechanicCard(Map<String, dynamic> mechanic) {
-    final name = mechanic['name'] ?? 'Assigned Mechanic';
+    final name = mechanic['name'] ?? 'Assigned Mechanic'.tr;
     final phone = mechanic['phone'] ?? '';
     final location = mechanic['location'] ?? 'Nearest Service Spot';
 
@@ -785,7 +798,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
                   ),
                 ),
                 Text(
-                  'Location: $location',
+                  '${'Location'.tr}: $location',
                   style: GoogleFonts.nunito(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -794,7 +807,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
                 ),
                 if (phone.isNotEmpty)
                   Text(
-                    'Phone: $phone',
+                    '${'Phone'.tr}: $phone',
                     style: GoogleFonts.nunito(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,

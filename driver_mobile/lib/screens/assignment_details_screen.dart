@@ -5,6 +5,7 @@ import '../constants/app_spacing.dart';
 import '../constants/app_radius.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
+import '../utils/navigation_helper.dart';
 
 class AssignmentDetailsScreen extends StatelessWidget {
   final String? tripId;
@@ -19,18 +20,24 @@ class AssignmentDetailsScreen extends StatelessWidget {
     final statusColor = isCompleted ? AppColors.success : AppColors.secondary;
     final dateText = isCompleted ? 'Tuesday, Oct 24' : 'Wednesday, Oct 25';
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
-        centerTitle: false,
-        title: Text(
-          'Assignment Details',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) SafeNavigation.pop(context, fallbackTab: 3);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: CustomAppBar(
+          centerTitle: false,
+          fallbackTab: 3,
+          title: Text(
+            'Assignment Details',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.md),
@@ -351,6 +358,7 @@ class AssignmentDetailsScreen extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 

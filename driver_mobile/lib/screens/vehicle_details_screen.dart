@@ -1,6 +1,8 @@
 import '../services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/localization_service.dart';
+import '../utils/navigation_helper.dart';
 
 /// Driver Module - Vehicle Details Screen
 /// 
@@ -142,19 +144,20 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
     const textSecondary = Color(0xFF6B7280);
     const successGreen = Color(0xFF16A34A);
 
+    final Widget page;
     final currentVehicle = _vehicle ?? widget.vehicle;
     if (currentVehicle == null) {
-      return Scaffold(
+      page = Scaffold(
         backgroundColor: bgLight,
         appBar: AppBar(
           backgroundColor: primaryDark,
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => SafeNavigation.pop(context, fallbackTab: 0),
           ),
           title: Text(
-            'Vehicle Details',
+            'Vehicle Details'.tr,
             style: GoogleFonts.poppins(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -171,7 +174,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                 const Icon(Icons.no_transfer_outlined, size: 64, color: textSecondary),
                 const SizedBox(height: 16),
                 Text(
-                  'No Vehicle Assigned',
+                  'No Vehicle Assigned'.tr,
                   style: GoogleFonts.poppins(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -180,7 +183,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'No vehicle has been assigned yet. Vehicle-related features will become available once your manager assigns a vehicle.',
+                  'No vehicle has been assigned yet. Vehicle-related features will become available once your manager assigns a vehicle.'.tr,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.nunito(fontSize: 14, color: textSecondary),
                 ),
@@ -189,40 +192,39 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
           ),
         ),
       );
-    }
+    } else {
+      final veh = currentVehicle;
+      final vehicleNumber = veh['vehicleNumber'] ?? veh['registrationNumber'] ?? 'N/A';
+      final registrationNumber = veh['registrationNumber'] ?? veh['vehicleNumber'] ?? 'N/A';
+      final vehicleType = veh['vehicleType'] ?? 'Truck';
+      final brand = veh['brand'] ?? 'N/A';
+      final model = veh['model'] ?? 'N/A';
+      final mfgYear = veh['manufactureYear']?.toString() ?? veh['manufacturingYear']?.toString() ?? 'N/A';
+      final payloadCap = veh['loadCapacity'] != null ? '${veh['loadCapacity']} Tons' : 'N/A';
+      final gvw = veh['gvw'] ?? 'N/A';
+      final fuelType = veh['fuelType'] ?? 'Diesel';
+      final status = veh['currentStatus'] ?? 'Assigned';
+      final currentLocation = veh['currentLocation'] ?? veh['branchDepot'] ?? 'N/A';
+      final driverName = veh['assignedDriverName'] ?? 'Driver';
+      final driverEmpId = veh['assignedDriverEmpId'] ?? 'N/A';
+      final driverMobile = veh['assignedDriverPhone'] ?? 'N/A';
+      final driverLicense = veh['assignedDriverLicense'] ?? 'N/A';
+      final engineNumber = veh['engineNumber'] ?? 'N/A';
+      final chassisNumber = veh['chassisNumber'] ?? 'N/A';
+      final odometer = veh['odometer'] != null ? '${veh['odometer']} km' : '0 km';
 
-    final veh = currentVehicle;
-    final vehicleNumber = veh['vehicleNumber'] ?? veh['registrationNumber'] ?? 'N/A';
-    final registrationNumber = veh['registrationNumber'] ?? veh['vehicleNumber'] ?? 'N/A';
-    final vehicleType = veh['vehicleType'] ?? 'Truck';
-    final brand = veh['brand'] ?? 'N/A';
-    final model = veh['model'] ?? 'N/A';
-    final mfgYear = veh['manufactureYear']?.toString() ?? veh['manufacturingYear']?.toString() ?? 'N/A';
-    final payloadCap = veh['loadCapacity'] != null ? '${veh['loadCapacity']} Tons' : 'N/A';
-    final gvw = veh['gvw'] ?? 'N/A';
-    final fuelType = veh['fuelType'] ?? 'Diesel';
-    final status = veh['currentStatus'] ?? 'Assigned';
-    final currentLocation = veh['currentLocation'] ?? veh['branchDepot'] ?? 'N/A';
-    final driverName = veh['assignedDriverName'] ?? 'Driver';
-    final driverEmpId = veh['assignedDriverEmpId'] ?? 'N/A';
-    final driverMobile = veh['assignedDriverPhone'] ?? 'N/A';
-    final driverLicense = veh['assignedDriverLicense'] ?? 'N/A';
-    final engineNumber = veh['engineNumber'] ?? 'N/A';
-    final chassisNumber = veh['chassisNumber'] ?? 'N/A';
-    final odometer = veh['odometer'] != null ? '${veh['odometer']} km' : '0 km';
-
-    return Scaffold(
-      backgroundColor: bgLight,
-      appBar: AppBar(
-        backgroundColor: primaryDark,
-        elevation: 0,
-        centerTitle: false,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+      page = Scaffold(
+        backgroundColor: bgLight,
+        appBar: AppBar(
+          backgroundColor: primaryDark,
+          elevation: 0,
+          centerTitle: false,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            onPressed: () => SafeNavigation.pop(context, fallbackTab: 0),
+          ),
         title: Text(
-          'Vehicle Details',
+          'Vehicle Details'.tr,
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -267,7 +269,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionHeader(Icons.local_shipping_outlined, 'Basic Information'),
+                    _buildSectionHeader(Icons.local_shipping_outlined, 'Basic Information'.tr),
                     
                     // Top Header Row: Vehicle Number, Registration & Vehicle Type Badge
                     Row(
@@ -321,8 +323,8 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                     // Specs Grid - Row 1: Brand & Model
                     Row(
                       children: [
-                        Expanded(child: _buildSpecCell('Brand', brand)),
-                        Expanded(child: _buildSpecCell('Model', model)),
+                        Expanded(child: _buildSpecCell('Brand'.tr, brand)),
+                        Expanded(child: _buildSpecCell('Model'.tr, model)),
                       ],
                     ),
                     const SizedBox(height: 16.0),
@@ -330,8 +332,8 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                     // Specs Grid - Row 2: Mfg Year & Payload Capacity
                     Row(
                       children: [
-                        Expanded(child: _buildSpecCell('Manufacturing Year', mfgYear)),
-                        Expanded(child: _buildSpecCell('Payload Capacity', payloadCap)),
+                        Expanded(child: _buildSpecCell('Manufacturing Year'.tr, mfgYear)),
+                        Expanded(child: _buildSpecCell('Payload Capacity'.tr, payloadCap)),
                       ],
                     ),
                     const SizedBox(height: 16.0),
@@ -339,8 +341,8 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                     // Specs Grid - Row 3: GVW & Fuel Type
                     Row(
                       children: [
-                        Expanded(child: _buildSpecCell('GVW', gvw)),
-                        Expanded(child: _buildSpecCell('Fuel Type', fuelType)),
+                        Expanded(child: _buildSpecCell('GVW'.tr, gvw)),
+                        Expanded(child: _buildSpecCell('Fuel Type'.tr, fuelType)),
                       ],
                     ),
                   ],
@@ -375,7 +377,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildSectionHeader(Icons.sensors_rounded, 'Vehicle Status'),
+                        _buildSectionHeader(Icons.sensors_rounded, 'Vehicle Status'.tr),
                         
                         // Status Header Row: Active indicator on Left, Last Updated on Right
                         Row(
@@ -393,7 +395,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  status,
+                                  status.toString().tr,
                                   style: GoogleFonts.poppins(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
@@ -403,7 +405,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                               ],
                             ),
                             Text(
-                              'Updated Live',
+                              'Updated Live'.tr,
                               style: GoogleFonts.nunito(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -431,7 +433,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Operational State',
+                                          'Operational State'.tr,
                                           style: GoogleFonts.poppins(
                                             fontSize: 11,
                                             fontWeight: FontWeight.w500,
@@ -440,7 +442,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                                         ),
                                         const SizedBox(height: 3),
                                         Text(
-                                          status,
+                                          status.toString().tr,
                                           style: GoogleFonts.poppins(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w800,
@@ -455,7 +457,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Odometer Reading',
+                                          'Odometer Reading'.tr,
                                           style: GoogleFonts.poppins(
                                             fontSize: 11,
                                             fontWeight: FontWeight.w500,
@@ -528,7 +530,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionHeader(Icons.person_outline_rounded, 'Driver Information'),
+                    _buildSectionHeader(Icons.person_outline_rounded, 'Driver Information'.tr),
                     
                     // Driver Info Row: Avatar + Name & Emp ID
                     Row(
@@ -583,7 +585,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Mobile Number',
+                                'Mobile Number'.tr,
                                 style: GoogleFonts.poppins(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w500,
@@ -607,7 +609,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'License Number',
+                                'License Number'.tr,
                                 style: GoogleFonts.poppins(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w500,
@@ -652,18 +654,18 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionHeader(Icons.precision_manufacturing_outlined, 'Technical Specifications'),
-                    _buildTechSpecRow('Engine Number', engineNumber),
+                    _buildSectionHeader(Icons.precision_manufacturing_outlined, 'Technical Specifications'.tr),
+                    _buildTechSpecRow('Engine Number'.tr, engineNumber),
                     const Divider(color: borderGray, height: 1.0),
-                    _buildTechSpecRow('Chassis Number', chassisNumber),
+                    _buildTechSpecRow('Chassis Number'.tr, chassisNumber),
                     const Divider(color: borderGray, height: 1.0),
-                    _buildTechSpecRow('Current Odometer', odometer),
+                    _buildTechSpecRow('Current Odometer'.tr, odometer),
                     const Divider(color: borderGray, height: 1.0),
-                    _buildTechSpecRow('Gross Vehicle Weight (GVW)', gvw),
+                    _buildTechSpecRow('Gross Vehicle Weight (GVW)'.tr, gvw),
                     const Divider(color: borderGray, height: 1.0),
-                    _buildTechSpecRow('Payload Capacity', payloadCap),
+                    _buildTechSpecRow('Payload Capacity'.tr, payloadCap),
                     const Divider(color: borderGray, height: 1.0),
-                    _buildTechSpecRow('Fuel Type', fuelType),
+                    _buildTechSpecRow('Fuel Type'.tr, fuelType),
                   ],
                 ),
               ),
@@ -674,6 +676,20 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
         ),
       ),
       ),
+    );
+    }
+
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLang, _) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop) SafeNavigation.pop(context, fallbackTab: 0);
+          },
+          child: page,
+        );
+      },
     );
   }
 }

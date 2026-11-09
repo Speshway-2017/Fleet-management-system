@@ -4,6 +4,7 @@ import '../constants/app_radius.dart';
 import '../constants/app_spacing.dart';
 import '../services/api_service.dart';
 import '../widgets/custom_app_bar.dart';
+import '../utils/navigation_helper.dart';
 import '../widgets/custom_card.dart';
 
 class UpdateTripStatusScreen extends StatefulWidget {
@@ -49,18 +50,24 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
-        centerTitle: false,
-        title: Text(
-          'Update Trip status',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: AppColors.background,
-            fontWeight: FontWeight.bold,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) SafeNavigation.pop(context, fallbackTab: 3);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: CustomAppBar(
+          centerTitle: false,
+          fallbackTab: 3,
+          title: Text(
+            'Update Trip status',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppColors.background,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
@@ -108,6 +115,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 

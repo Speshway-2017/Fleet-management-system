@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/localization_service.dart';
 import '../auth/login_screen.dart';
 import '../profile/profile_screen.dart';
 import '../profile/help_support_screen.dart';
@@ -16,6 +17,7 @@ import 'notification_settings_screen.dart';
 import '../../widgets/legal_modal.dart';
 import '../../services/api_service.dart';
 import '../../main.dart';
+import '../../utils/navigation_helper.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -90,20 +92,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       );
 
                       final auth = Provider.of<AuthProvider>(context, listen: false);
-                      final success = await auth.updateProfile({'language': lang});
+                      final success = await auth.setLanguage(lang);
 
                       if (mounted) {
                         navigator.pop(); // Close loading indicator
                       }
 
                       if (success) {
+                        final normalized = LocalizationService.normalizeLanguage(lang);
                         setState(() {
-                          _selectedLanguage = lang;
+                          _selectedLanguage = normalized;
                         });
                         if (mounted) {
                           messenger.showSnackBar(
                             SnackBar(
-                              content: Text('Language changed to $lang.'),
+                              content: Text('${'Language changed to'.tr} $lang.'),
                               backgroundColor: AppColors.success,
                               behavior: SnackBarBehavior.floating,
                             ),
@@ -381,330 +384,342 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final bool isSmallScreen = screenWidth < 375;
     final double paddingValue = isSmallScreen ? 16.0 : 20.0;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
-        centerTitle: false,
-        titleSpacing: 0.0,
-        backgroundColor: AppColors.primary,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Settings',
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        actions: const [],
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.symmetric(horizontal: paddingValue, vertical: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Profile Header Card
-              Row(
-                children: [
-                  ValueListenableBuilder<String>(
-                    valueListenable: ProfileState.profilePhotoUrlNotifier,
-                    builder: (context, photoUrl, child) {
-                      final activeUrl = photoUrl.isNotEmpty
-                          ? photoUrl
-                          : (driver?.profileImage ?? '');
-                      return DriverAvatar(
-                        photoUrl: activeUrl,
-                        name: driver?.fullName ?? 'Driver',
-                        size: 72,
-                        fontSize: 26,
-                        shape: BoxShape.rectangle,
-                        borderRadius: BorderRadius.circular(16.0),
-                        borderColor: AppColors.secondary,
-                        borderWidth: 2.0,
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 18),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, activeLanguage, _) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop) SafeNavigation.pop(context, fallbackTab: 4);
+          },
+          child: Scaffold(
+            backgroundColor: AppColors.background,
+            appBar: CustomAppBar(
+              centerTitle: false,
+              titleSpacing: 0.0,
+              backgroundColor: AppColors.primary,
+              fallbackTab: 4,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => SafeNavigation.pop(context, fallbackTab: 4),
+              ),
+              title: Text(
+                'Settings'.tr,
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              actions: const [],
+            ),
+            body: SafeArea(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.symmetric(horizontal: paddingValue, vertical: 24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Profile Header Card
+                    Row(
                       children: [
-                        Text(
-                          driver?.fullName ?? 'Driver Profile',
-                          style: GoogleFonts.poppins(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
+                        ValueListenableBuilder<String>(
+                          valueListenable: ProfileState.profilePhotoUrlNotifier,
+                          builder: (context, photoUrl, child) {
+                            final activeUrl = photoUrl.isNotEmpty
+                                ? photoUrl
+                                : (driver?.profileImage ?? '');
+                            return DriverAvatar(
+                              photoUrl: activeUrl,
+                              name: driver?.fullName ?? 'Driver',
+                              size: 72,
+                              fontSize: 26,
+                              shape: BoxShape.rectangle,
+                              borderRadius: BorderRadius.circular(16.0),
+                              borderColor: AppColors.secondary,
+                              borderWidth: 2.0,
+                            );
+                          },
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Driver',
-                          style: GoogleFonts.nunito(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.textSecondary,
+                        const SizedBox(width: 18),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                driver?.fullName ?? 'Driver Profile',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Driver',
+                                style: GoogleFonts.nunito(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
+                    const SizedBox(height: 8),
 
-              // ACCOUNT & SECURITY
-              _buildSection(
-                'Account & Security',
-                _buildItemList([
-                  _buildRowItem(
-                    icon: Icons.lock_outline,
-                    title: 'Change Password',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ChangePasswordScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildRowItem(
-                    icon: Icons.verified_user_outlined,
-                    title: 'Two-Factor Authentication',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const TwoFactorAuthScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildRowItem(
-                    icon: Icons.delete_outline_rounded,
-                    title: 'Delete Account',
-                    isDestructive: true,
-                    onTap: _showDeleteAccountDialog,
-                  ),
-                ]),
-              ),
-
-              // APP PREFERENCES
-              _buildSection(
-                'App Preferences',
-                _buildItemList([
-                  _buildRowItem(
-                    icon: Icons.language,
-                    title: 'Language',
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _selectedLanguage,
-                          style: GoogleFonts.nunito(
-                            color: AppColors.textSecondary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.keyboard_arrow_down,
-                          color: AppColors.textSecondary,
-                          size: 20,
-                        ),
-                      ],
-                    ),
-                    onTap: _showLanguageSelector,
-                  ),
-                  _buildRowItem(
-                    icon: Icons.dark_mode_outlined,
-                    title: 'Dark Mode',
-                    trailing: Switch.adaptive(
-                      value: _isDarkMode,
-                      activeTrackColor: AppColors.secondary,
-                      onChanged: (bool value) async {
-                        final messenger = ScaffoldMessenger.of(context);
-                        final navigator = Navigator.of(context);
-
-                        showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          builder: (BuildContext context) {
-                            return const Center(
-                              child: CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(AppColors.secondary),
+                    // ACCOUNT & SECURITY
+                    _buildSection(
+                      'Account & Security'.tr,
+                      _buildItemList([
+                        _buildRowItem(
+                          icon: Icons.lock_outline,
+                          title: 'Change Password'.tr,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ChangePasswordScreen(),
                               ),
                             );
                           },
-                        );
-
-                        final auth = Provider.of<AuthProvider>(context, listen: false);
-                        final success = await auth.updateProfile({'isDarkMode': value});
-
-                        if (mounted) {
-                          navigator.pop(); // Close loader
-                        }
-
-                        if (success) {
-                          setState(() {
-                            _isDarkMode = value;
-                          });
-                          if (mounted) {
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Text('Dark Mode ${value ? "enabled" : "disabled"}.'),
-                                backgroundColor: AppColors.success,
-                                behavior: SnackBarBehavior.floating,
+                        ),
+                        _buildRowItem(
+                          icon: Icons.verified_user_outlined,
+                          title: 'Two-Factor Authentication'.tr,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const TwoFactorAuthScreen(),
                               ),
                             );
-                          }
-                        } else {
-                          if (mounted) {
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Text(auth.errorMessage ?? 'Failed to update theme preference.'),
-                                backgroundColor: AppColors.error,
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          }
-                        }
-                      },
+                          },
+                        ),
+                        _buildRowItem(
+                          icon: Icons.delete_outline_rounded,
+                          title: 'Delete Account'.tr,
+                          isDestructive: true,
+                          onTap: _showDeleteAccountDialog,
+                        ),
+                      ]),
                     ),
-                  ),
-                ]),
-              ),
 
-              // NOTIFICATIONS
-              _buildSection(
-                'Notifications',
-                _buildItemList([
-                  _buildRowItem(
-                    icon: Icons.notifications_none_outlined,
-                    title: 'Notification Settings',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const NotificationSettingsScreen(),
+                    // APP PREFERENCES
+                    _buildSection(
+                      'App Preferences'.tr,
+                      _buildItemList([
+                        _buildRowItem(
+                          icon: Icons.language,
+                          title: 'Language'.tr,
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                LocalizationService.normalizeLanguage(_selectedLanguage),
+                                style: GoogleFonts.nunito(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.keyboard_arrow_down,
+                                color: AppColors.textSecondary,
+                                size: 20,
+                              ),
+                            ],
+                          ),
+                          onTap: _showLanguageSelector,
                         ),
-                      );
-                    },
-                  ),
-                ]),
-              ),
+                        _buildRowItem(
+                          icon: Icons.dark_mode_outlined,
+                          title: 'Dark Mode'.tr,
+                          trailing: Switch.adaptive(
+                            value: _isDarkMode,
+                            activeTrackColor: AppColors.secondary,
+                            onChanged: (bool value) async {
+                              final messenger = ScaffoldMessenger.of(context);
+                              final navigator = Navigator.of(context);
 
-              // LEGAL & SUPPORT
-              _buildSection(
-                'Legal & Support',
-                _buildItemList([
-                  _buildAccordionRowItem(
-                    icon: Icons.privacy_tip_outlined,
-                    title: 'Privacy Policy',
-                    description: 'We value your privacy. Fleet Driver Mobile collects location data to provide real-time route updates, track trip progress, and calculate driver safety scores. Your data is encrypted and never shared with third parties without your consent.',
-                    actionLabel: 'Read Full Privacy Policy',
-                    onActionTap: () => LegalModal.showPrivacy(context),
-                  ),
-                  _buildAccordionRowItem(
-                    icon: Icons.gavel,
-                    title: 'Terms of Service',
-                    description: 'By using Fleet Driver Mobile, you agree to comply with safe driving standards, maintain an active commercial driver\'s license, and report vehicle issues promptly. Fleetflow reserves the right to suspend accounts violating safety regulations.',
-                    actionLabel: 'Read Full Terms of Service',
-                    onActionTap: () => LegalModal.showTerms(context),
-                  ),
-                  _buildAccordionRowItem(
-                    icon: Icons.delete_outline_rounded,
-                    title: 'Account Deletion Policy',
-                    description: 'Learn how to request driver account termination, data retention periods, telemetry deactivation, and the administrative offboarding steps.',
-                    actionLabel: 'Read Deletion Policy & Steps',
-                    onActionTap: () => LegalModal.showAccountDeletion(context),
-                  ),
-                  _buildRowItem(
-                    icon: Icons.help_outline,
-                    title: 'Help Center',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const HelpSupportScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildRowItem(
-                    icon: Icons.auto_stories_outlined,
-                    title: 'App Tour & Onboarding',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const OnboardingScreen(isReplay: true),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildAccordionRowItem(
-                    icon: Icons.info_outline,
-                    title: 'About App',
-                    description: 'Fleet Driver Mobile is a premium companion application for fleet operations management, built with modern design principles and robust telemetry tools. Designed to optimize routes, track vehicle status, and enhance driver safety.',
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'v2.4.12',
-                          style: GoogleFonts.nunito(
-                            color: AppColors.textSecondary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (BuildContext context) {
+                                  return const Center(
+                                    child: CircularProgressIndicator(
+                                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.secondary),
+                                    ),
+                                  );
+                                },
+                              );
+
+                              final auth = Provider.of<AuthProvider>(context, listen: false);
+                              final success = await auth.updateProfile({'isDarkMode': value});
+
+                              if (mounted) {
+                                navigator.pop(); // Close loader
+                              }
+
+                              if (success) {
+                                setState(() {
+                                  _isDarkMode = value;
+                                });
+                                if (mounted) {
+                                  messenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text('Dark Mode ${value ? "enabled" : "disabled"}.'),
+                                      backgroundColor: AppColors.success,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              } else {
+                                if (mounted) {
+                                  messenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text(auth.errorMessage ?? 'Failed to update theme preference.'),
+                                      backgroundColor: AppColors.error,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.keyboard_arrow_down,
-                          color: AppColors.textSecondary,
-                          size: 20,
-                        ),
-                      ],
+                      ]),
                     ),
-                  ),
-                ]),
-              ),
-              const SizedBox(height: 28),
 
-              // Standalone Logout Button
-              OutlinedButton.icon(
-                onPressed: _showLogoutDialog,
-                icon: const Icon(Icons.logout, color: AppColors.error, size: 20),
-                label: Text(
-                  'Logout',
-                  style: GoogleFonts.poppins(
-                    color: AppColors.error,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF9FAFB),
-                  side: const BorderSide(color: AppColors.error, width: 1.2),
-                  padding: const EdgeInsets.symmetric(vertical: 14.0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.0),
-                  ),
-                  elevation: 0,
+                    // NOTIFICATIONS
+                    _buildSection(
+                      'Notifications'.tr,
+                      _buildItemList([
+                        _buildRowItem(
+                          icon: Icons.notifications_none_outlined,
+                          title: 'Notification Settings'.tr,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const NotificationSettingsScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ]),
+                    ),
+
+                    // LEGAL & SUPPORT
+                    _buildSection(
+                      'Legal & Support'.tr,
+                      _buildItemList([
+                        _buildAccordionRowItem(
+                          icon: Icons.privacy_tip_outlined,
+                          title: 'Privacy Policy'.tr,
+                          description: 'We value your privacy. Fleet Driver Mobile collects location data to provide real-time route updates, track trip progress, and calculate driver safety scores. Your data is encrypted and never shared with third parties without your consent.',
+                          actionLabel: 'Read Full Privacy Policy',
+                          onActionTap: () => LegalModal.showPrivacy(context),
+                        ),
+                        _buildAccordionRowItem(
+                          icon: Icons.gavel,
+                          title: 'Terms of Service'.tr,
+                          description: 'By using Fleet Driver Mobile, you agree to comply with safe driving standards, maintain an active commercial driver\'s license, and report vehicle issues promptly. Fleetflow reserves the right to suspend accounts violating safety regulations.',
+                          actionLabel: 'Read Full Terms of Service',
+                          onActionTap: () => LegalModal.showTerms(context),
+                        ),
+                        _buildAccordionRowItem(
+                          icon: Icons.delete_outline_rounded,
+                          title: 'Account Deletion Policy',
+                          description: 'Learn how to request driver account termination, data retention periods, telemetry deactivation, and the administrative offboarding steps.',
+                          actionLabel: 'Read Deletion Policy & Steps',
+                          onActionTap: () => LegalModal.showAccountDeletion(context),
+                        ),
+                        _buildRowItem(
+                          icon: Icons.help_outline,
+                          title: 'Help Center'.tr,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const HelpSupportScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildRowItem(
+                          icon: Icons.auto_stories_outlined,
+                          title: 'App Tour & Onboarding',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const OnboardingScreen(isReplay: true),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildAccordionRowItem(
+                          icon: Icons.info_outline,
+                          title: 'About App'.tr,
+                          description: 'Fleet Driver Mobile is a premium companion application for fleet operations management, built with modern design principles and robust telemetry tools. Designed to optimize routes, track vehicle status, and enhance driver safety.',
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'v2.4.12',
+                                style: GoogleFonts.nunito(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.keyboard_arrow_down,
+                                color: AppColors.textSecondary,
+                                size: 20,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ]),
+                    ),
+                    const SizedBox(height: 28),
+
+                    // Standalone Logout Button
+                    OutlinedButton.icon(
+                      onPressed: _showLogoutDialog,
+                      icon: const Icon(Icons.logout, color: AppColors.error, size: 20),
+                      label: Text(
+                        'Logout'.tr,
+                        style: GoogleFonts.poppins(
+                          color: AppColors.error,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF9FAFB),
+                        side: const BorderSide(color: AppColors.error, width: 1.2),
+                        padding: const EdgeInsets.symmetric(vertical: 14.0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                        elevation: 0,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

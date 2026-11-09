@@ -2,6 +2,7 @@ import '../services/localization_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
+import '../utils/navigation_helper.dart';
 import 'raise_ticket_screen.dart';
 import 'ticket_details_screen.dart';
 import 'contact_fleet_manager_screen.dart';
@@ -51,6 +52,8 @@ class SupportHistoryScreen extends StatefulWidget {
 class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
   int _selectedFilterIndex = 0;
   final List<String> _filters = ['All', 'Open', 'In Progress', 'Resolved', 'Rejected'];
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   // Static cache for instantaneous 0ms screen loading (Stale-While-Revalidate pattern)
   static List<SupportTicketItem>? _cachedTickets;
@@ -74,6 +77,12 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
       });
     }
     _loadTickets();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadTickets() async {
@@ -221,10 +230,23 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
   }
 
   List<SupportTicketItem> get _filteredTickets {
-    final list = _tickets;
-    if (_selectedFilterIndex == 0) return list;
-    final filterName = _filters[_selectedFilterIndex];
-    return list.where((t) => t.status == filterName).toList();
+    var list = _tickets;
+    if (_selectedFilterIndex != 0) {
+      final filterName = _filters[_selectedFilterIndex];
+      list = list.where((t) => t.status == filterName).toList();
+    }
+    if (_searchQuery.trim().isNotEmpty) {
+      final q = _searchQuery.trim().toLowerCase();
+      list = list.where((t) {
+        return t.ticketId.toLowerCase().contains(q) ||
+            t.issueCategory.toLowerCase().contains(q) ||
+            t.vehicleNumber.toLowerCase().contains(q) ||
+            t.priority.toLowerCase().contains(q) ||
+            t.description.toLowerCase().contains(q) ||
+            t.tripId.toLowerCase().contains(q);
+      }).toList();
+    }
+    return list;
   }
 
   @override
@@ -236,23 +258,25 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
     const textSecondary = Color(0xFF6B7280);
     const primaryOrange = Color(0xFFFF7A1A);
 
-    return Scaffold(
-      backgroundColor: bgLight,
-      appBar: AppBar(
-        backgroundColor: primaryDark,
-        elevation: 0,
-        centerTitle: false,
-        titleSpacing: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () {
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            } else {
-              MainNavigationScreen.selectedTabNotifier.value = 2;
-            }
-          },
-        ),
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLanguage, _) {
+        return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) SafeNavigation.pop(context, fallbackTab: 2);
+      },
+      child: Scaffold(
+        backgroundColor: bgLight,
+        appBar: AppBar(
+          backgroundColor: primaryDark,
+          elevation: 0,
+          centerTitle: false,
+          titleSpacing: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            onPressed: () => SafeNavigation.pop(context, fallbackTab: 2),
+          ),
         title: Text(
           'Support & Tickets'.tr,
           style: GoogleFonts.poppins(
@@ -319,7 +343,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
               ],
               // Subtitle Banner Description
               Text(
-                'Track and manage your vehicle issues and support requests.',
+                'Track and manage your vehicle issues and support requests.'.tr,
                 style: GoogleFonts.nunito(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -328,47 +352,75 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
               ),
               const SizedBox(height: 16.0),
 
-              // 1. Search Bar
-              Container(
-                height: 48,
-                padding: const EdgeInsets.symmetric(horizontal: 14.0),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12.0),
-                  border: Border.all(color: borderGray, width: 1.0),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(6),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.search_rounded,
-                      color: textSecondary,
-                      size: 22,
-                    ),
-                    const SizedBox(width: 10.0),
-                    Expanded(
-                      child: TextField(
-                        readOnly: true,
-                        decoration: InputDecoration(
-                          hintText: 'Search Ticket ID or Issue...',
-                          hintStyle: GoogleFonts.poppins(
-                            fontSize: 13.5,
-                            color: textSecondary,
+              // 1. Search Bar & Filter Bar
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 48,
+                      padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12.0),
+                        border: Border.all(color: borderGray, width: 1.0),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withAlpha(6),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
                           ),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: EdgeInsets.zero,
-                        ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.search_rounded,
+                            color: textSecondary,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 10.0),
+                          Expanded(
+                            child: TextField(
+                              controller: _searchController,
+                              onChanged: (val) {
+                                setState(() {
+                                  _searchQuery = val;
+                                });
+                              },
+                              decoration: InputDecoration(
+                                hintText: 'Search Ticket ID or Issue...'.tr,
+                                hintStyle: GoogleFonts.poppins(
+                                  fontSize: 13.5,
+                                  color: textSecondary,
+                                ),
+                                border: InputBorder.none,
+                                isDense: true,
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                            ),
+                          ),
+                          if (_searchQuery.isNotEmpty)
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _searchController.clear();
+                                  _searchQuery = '';
+                                });
+                              },
+                              child: const Icon(
+                                Icons.close_rounded,
+                                size: 18,
+                                color: textSecondary,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 10.0),
+                  // Filter Bar beside right to search bar
+                  _buildFilterBar(context, primaryDark, primaryOrange, borderGray, textPrimary, textSecondary),
+                ],
               ),
 
               const SizedBox(height: 12.0),
@@ -408,57 +460,6 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                 ],
               ),
 
-              const SizedBox(height: 16.0),
-
-              // Filter Chips Row
-              SizedBox(
-                height: 36,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  itemCount: _filters.length,
-                  separatorBuilder: (context, index) => const SizedBox(width: 8.0),
-                  itemBuilder: (context, index) {
-                    final isSelected = _selectedFilterIndex == index;
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedFilterIndex = index;
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isSelected ? primaryDark : Colors.white,
-                          borderRadius: BorderRadius.circular(20.0),
-                          border: Border.all(
-                            color: isSelected ? primaryDark : borderGray,
-                            width: 1.0,
-                          ),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: primaryDark.withAlpha(40),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: Text(
-                          _filters[index],
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                            color: isSelected ? Colors.white : textPrimary,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-
               const SizedBox(height: 20.0),
 
               // 3. Ticket List
@@ -492,7 +493,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  'You haven\'t raised any support requests yet.',
+                                  'You haven\'t raised any support requests yet.'.tr,
                                   style: GoogleFonts.nunito(
                                     fontSize: 13,
                                     color: textSecondary,
@@ -510,7 +511,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                                       size: 18,
                                     ),
                                     label: Text(
-                                      _isVehicleAssigned ? 'Report Vehicle Issue' : 'Report Vehicle Issue (Locked)',
+                                      _isVehicleAssigned ? 'Report Vehicle Issue'.tr : 'Report Vehicle Issue (Locked)'.tr,
                                       style: GoogleFonts.poppins(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w700,
@@ -547,7 +548,9 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
         ),
       ),
     ),
-
+    ),
+    );
+      },
     );
   }
 
@@ -626,7 +629,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  ticket.status,
+                  ticket.status.tr,
                   style: GoogleFonts.poppins(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
@@ -645,7 +648,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
             children: [
               Expanded(
                 child: Text(
-                  ticket.issueCategory,
+                  ticket.issueCategory.tr,
                   style: GoogleFonts.poppins(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -661,7 +664,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  ticket.priority,
+                  ticket.priority.tr,
                   style: GoogleFonts.poppins(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
@@ -684,7 +687,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'VEHICLE',
+                      'VEHICLE'.tr,
                       style: GoogleFonts.poppins(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w600,
@@ -709,7 +712,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'TRIP ID',
+                      'TRIP ID'.tr,
                       style: GoogleFonts.poppins(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w600,
@@ -734,7 +737,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'RAISED DATE',
+                      'RAISED DATE'.tr,
                       style: GoogleFonts.poppins(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w600,
@@ -778,6 +781,7 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
       onTap: onTap,
       child: Container(
         height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 10.0),
         decoration: BoxDecoration(
           color: color.withAlpha(20),
           borderRadius: BorderRadius.circular(12.0),
@@ -791,14 +795,139 @@ class _SupportHistoryScreenState extends State<SupportHistoryScreen> {
               color: color,
               size: 18,
             ),
-            const SizedBox(width: 8.0),
-            Text(
-              label,
-              style: GoogleFonts.poppins(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: color,
+            const SizedBox(width: 6.0),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.poppins(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterBar(
+    BuildContext context,
+    Color primaryDark,
+    Color primaryOrange,
+    Color borderGray,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
+    final isFiltered = _selectedFilterIndex != 0;
+    final currentFilter = _filters[_selectedFilterIndex];
+
+    return PopupMenuButton<int>(
+      initialValue: _selectedFilterIndex,
+      tooltip: 'Filter Tickets',
+      offset: const Offset(0, 52),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14.0),
+        side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.0),
+      ),
+      color: Colors.white,
+      elevation: 6,
+      onSelected: (int index) {
+        setState(() {
+          _selectedFilterIndex = index;
+        });
+      },
+      itemBuilder: (BuildContext context) => <PopupMenuEntry<int>>[
+        PopupMenuItem<int>(
+          enabled: false,
+          height: 32,
+          child: Text(
+            'FILTER BY STATUS'.tr,
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: textSecondary,
+              letterSpacing: 0.8,
+            ),
+          ),
+        ),
+        const PopupMenuDivider(height: 1),
+        ...List.generate(_filters.length, (index) {
+          final isSelected = _selectedFilterIndex == index;
+          return PopupMenuItem<int>(
+            value: index,
+            height: 42,
+            child: Row(
+              children: [
+                Icon(
+                  isSelected
+                      ? Icons.check_circle_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  color: isSelected ? primaryOrange : const Color(0xFF94A3B8),
+                  size: 18,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  _filters[index].tr,
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected ? primaryDark : textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 12.0),
+        decoration: BoxDecoration(
+          color: isFiltered ? primaryDark : Colors.white,
+          borderRadius: BorderRadius.circular(12.0),
+          border: Border.all(
+            color: isFiltered ? primaryDark : borderGray,
+            width: 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isFiltered ? primaryDark.withAlpha(30) : Colors.black.withAlpha(6),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.tune_rounded,
+              size: 18,
+              color: isFiltered ? Colors.white : primaryOrange,
+            ),
+            const SizedBox(width: 6),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 80),
+              child: Text(
+                currentFilter.tr,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isFiltered ? Colors.white : textPrimary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 2),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 18,
+              color: isFiltered ? Colors.white70 : textSecondary,
             ),
           ],
         ),

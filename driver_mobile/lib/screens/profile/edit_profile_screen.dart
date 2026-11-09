@@ -6,6 +6,8 @@ import 'package:file_picker/file_picker.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/localization_service.dart';
+import '../../utils/navigation_helper.dart';
 import 'profile_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../widgets/driver_avatar.dart';
@@ -350,26 +352,35 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: CustomAppBar(
-        centerTitle: false,
-        titleSpacing: 0.0,
-        backgroundColor: AppColors.primary,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Edit Profile',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        actions: const [],
-      ),
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLang, _) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop) SafeNavigation.pop(context, fallbackTab: 4);
+          },
+          child: Scaffold(
+            backgroundColor: Colors.white,
+            appBar: CustomAppBar(
+              centerTitle: false,
+              titleSpacing: 0.0,
+              backgroundColor: AppColors.primary,
+              fallbackTab: 4,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => SafeNavigation.pop(context, fallbackTab: 4),
+              ),
+              title: Text(
+                'Edit Profile'.tr,
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              actions: const [],
+            ),
       body: SafeArea(
         child: Form(
           key: _formKey,
@@ -636,7 +647,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           elevation: 0,
                         ),
                         child: Text(
-                          'Save Changes',
+                          'Save Changes'.tr,
                           style: GoogleFonts.poppins(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -653,6 +664,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
         ),
       ),
+    ),
+    );
+      },
     );
   }
 

@@ -7,6 +7,7 @@ import '../constants/app_spacing.dart';
 import '../services/api_service.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
+import '../utils/navigation_helper.dart';
 
 class TollFeeReceiptScreen extends StatefulWidget {
   final String receiptNumber;
@@ -164,18 +165,24 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width > 768;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
-        centerTitle: false,
-        title: Text(
-          'Toll Fee Receipts',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: AppColors.background,
-            fontWeight: FontWeight.bold,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) SafeNavigation.pop(context, fallbackTab: 3);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: CustomAppBar(
+          centerTitle: false,
+          fallbackTab: 3,
+          title: Text(
+            'Toll Fee Receipts',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppColors.background,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
-      ),
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -249,6 +256,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
                 ],
               ),
       ),
+    ),
     );
   }
 

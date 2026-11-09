@@ -7,6 +7,7 @@ import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
 import '../widgets/document_preview_dialog.dart';
 import '../services/api_service.dart';
+import '../utils/navigation_helper.dart';
 
 class InvoiceScreen extends StatefulWidget {
   final String? invoiceId;
@@ -234,18 +235,24 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
-        centerTitle: false,
-        title: Text(
-          'Trip Invoice',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: AppColors.background,
-            fontWeight: FontWeight.bold,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) SafeNavigation.pop(context, fallbackTab: 3);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: CustomAppBar(
+          centerTitle: false,
+          fallbackTab: 3,
+          title: Text(
+            'Trip Invoice',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppColors.background,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
-      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
@@ -274,6 +281,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                   : _buildInvoiceContent(context),
         ),
       ),
+    ),
     );
   }
 

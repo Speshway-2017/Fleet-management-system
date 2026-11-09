@@ -3,8 +3,10 @@ import '../constants/app_colors.dart';
 import '../constants/app_radius.dart';
 import '../constants/app_spacing.dart';
 import '../services/api_service.dart';
+import '../services/localization_service.dart';
 import '../services/socket_service.dart';
 import '../widgets/custom_app_bar.dart';
+import '../utils/navigation_helper.dart';
 import '../utils/date_formatter.dart';
 import '../widgets/custom_card.dart';
 import 'active_trips_screen.dart';
@@ -180,51 +182,63 @@ class _UpcomingTripsScreenState extends State<UpcomingTripsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
-        centerTitle: false,
-        title: Text(
-          'Upcoming Trips',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: AppColors.background,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            _cachedUpcomingTrip = null;
-            ApiService.clearApiCache('/driver/trips');
-            ApiService.clearApiCache('/driver/trips/current');
-            await Future.any([
-              _fetchTripData(),
-              Future.delayed(const Duration(milliseconds: 500)),
-            ]);
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLang, _) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop) SafeNavigation.pop(context, fallbackTab: 3);
           },
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-            child: _isLoading
-                ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(40.0),
-                      child: CircularProgressIndicator(),
-                    ),
-                  )
-                : _currentTrip == null
-                    ? _buildEmptyState()
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _buildTripCard(context, _currentTrip!),
-                          const SizedBox(height: 16),
-                        ],
-                      ),
+          child: Scaffold(
+            backgroundColor: AppColors.background,
+            appBar: CustomAppBar(
+              centerTitle: false,
+              fallbackTab: 3,
+              title: Text(
+                'Upcoming Trips'.tr,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppColors.background,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          body: SafeArea(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                _cachedUpcomingTrip = null;
+                ApiService.clearApiCache('/driver/trips');
+                ApiService.clearApiCache('/driver/trips/current');
+                await Future.any([
+                  _fetchTripData(),
+                  Future.delayed(const Duration(milliseconds: 500)),
+                ]);
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                child: _isLoading
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(40.0),
+                          child: CircularProgressIndicator(),
+                        ),
+                      )
+                    : _currentTrip == null
+                        ? _buildEmptyState()
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildTripCard(context, _currentTrip!),
+                              const SizedBox(height: 16),
+                            ],
+                          ),
+              ),
+            ),
           ),
         ),
-      ),
+        );
+      },
     );
   }
 
@@ -237,7 +251,7 @@ class _UpcomingTripsScreenState extends State<UpcomingTripsScreen> {
             const Icon(Icons.event_available_outlined, size: 64, color: AppColors.secondaryText),
             const SizedBox(height: 16),
             Text(
-              'No Upcoming Trips',
+              'No Upcoming Trips'.tr,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: AppColors.primaryText,
@@ -299,7 +313,7 @@ class _UpcomingTripsScreenState extends State<UpcomingTripsScreen> {
                   borderRadius: BorderRadius.circular(AppRadius.round),
                 ),
                 child: Text(
-                  isAssigned ? 'Pending Action' : 'Upcoming',
+                  isAssigned ? 'Pending Action'.tr : 'Upcoming'.tr,
                   style: TextStyle(
                     color: isAssigned ? Colors.deepOrange : AppColors.secondary,
                     fontWeight: FontWeight.bold,

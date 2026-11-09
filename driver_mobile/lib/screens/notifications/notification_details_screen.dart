@@ -5,6 +5,7 @@ import '../../constants/app_spacing.dart';
 import '../../constants/app_radius.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../main_navigation_screen.dart';
+import '../../utils/navigation_helper.dart';
 
 class NotificationDetailsScreen extends StatefulWidget {
   final String title;
@@ -60,21 +61,31 @@ class _NotificationDetailsScreenState extends State<NotificationDetailsScreen> {
   Widget build(BuildContext context) {
     final typeColor = _getTypeColor(widget.type);
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: CustomAppBar(
-        backgroundColor: AppColors.primary,
-        centerTitle: false,
-        titleSpacing: 0.0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            if (widget.comingFromDashboard) {
-              MainNavigationScreen.selectedTabNotifier.value = 3;
-            }
-            Navigator.pop(context);
-          },
-        ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (widget.comingFromDashboard) {
+          MainNavigationScreen.selectedTabNotifier.value = 3;
+        }
+        SafeNavigation.pop(context, fallbackTab: 2);
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: CustomAppBar(
+          backgroundColor: AppColors.primary,
+          centerTitle: false,
+          titleSpacing: 0.0,
+          fallbackTab: 2,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              if (widget.comingFromDashboard) {
+                MainNavigationScreen.selectedTabNotifier.value = 3;
+              }
+              SafeNavigation.pop(context, fallbackTab: 2);
+            },
+          ),
         title: Text(
           'Notification Details',
           style: GoogleFonts.poppins(
@@ -234,6 +245,7 @@ class _NotificationDetailsScreenState extends State<NotificationDetailsScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 }

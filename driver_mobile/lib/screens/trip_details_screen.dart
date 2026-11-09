@@ -14,6 +14,8 @@ import '../services/socket_service.dart';
 import '../utils/date_formatter.dart';
 import 'add_fuel_entry_screen.dart';
 import 'invoice_screen.dart';
+import '../services/localization_service.dart';
+import '../utils/navigation_helper.dart';
 
 class TripDetailsScreen extends StatefulWidget {
   final String tripId;
@@ -238,7 +240,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          'View',
+                          'View'.tr,
                           style: GoogleFonts.poppins(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
@@ -330,7 +332,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               ),
               const SizedBox(width: 4),
               Text(
-                'View',
+                'View'.tr,
                 style: GoogleFonts.poppins(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
@@ -364,7 +366,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               ),
               const SizedBox(width: 4),
               Text(
-                'Download',
+                'Download'.tr,
                 style: GoogleFonts.poppins(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
@@ -859,32 +861,40 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     final weight = _trip?['cargoWeight'] != null ? '${_trip!['cargoWeight']} kg' : 'N/A';
     final managerName = _trip?['manager'] != null ? _trip!['manager']['name'] : 'N/A';
 
-    // Manifest nodes
-    final manifestNodes = isCompleted
-        ? [
-            _ManifestNode('Regional Logistics Hub', '$origin • 06:00 AM', true),
-            _ManifestNode('Warehouse B', 'Midway Point • 08:30 AM', true),
-            _ManifestNode('Distribution Center', 'Final Checkpoint • 12:00 PM', true),
-            _ManifestNode('Destination Terminal', '$destination • 02:30 PM', true),
-          ]
-        : [
-            _ManifestNode('Logistics Hub', '$origin • Departure', isInProgress || isCompleted),
-            _ManifestNode('Midway Checkpoint', 'Enroute Terminal • Scheduled', isCompleted),
-            _ManifestNode('Destination Terminal', '$destination • Arrival', isCompleted),
-          ];
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLang, _) {
+        // Manifest nodes
+        final manifestNodes = isCompleted
+            ? [
+                _ManifestNode('Logistics Hub'.tr, '$origin • 06:00 AM', true),
+                _ManifestNode('Midway Checkpoint'.tr, 'Midway Point • 08:30 AM', true),
+                _ManifestNode('Destination Terminal'.tr, '$destination • 02:30 PM', true),
+              ]
+            : [
+                _ManifestNode('Logistics Hub'.tr, '$origin • Departure', isInProgress || isCompleted),
+                _ManifestNode('Midway Checkpoint'.tr, 'Enroute Terminal • Scheduled', isCompleted),
+                _ManifestNode('Destination Terminal'.tr, '$destination • Arrival', isCompleted),
+              ];
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
-        centerTitle: false,
-        title: Text(
-          'Trip Details',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop) SafeNavigation.pop(context, fallbackTab: 3);
+          },
+          child: Scaffold(
+            backgroundColor: AppColors.background,
+            appBar: CustomAppBar(
+              centerTitle: false,
+              fallbackTab: 3,
+              title: Text(
+                'Trip Details'.tr,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator(color: Color(0xFFF97316)))
@@ -922,7 +932,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Completed Trip - Read Only View',
+                                    'Completed Trip - Read Only View'.tr,
                                     style: GoogleFonts.poppins(
                                       fontSize: 13,
                                       fontWeight: FontWeight.bold,
@@ -930,7 +940,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                     ),
                                   ),
                                   Text(
-                                    'This trip has been completed. Details are locked and viewable only.',
+                                    'This trip has been completed. Details are locked and viewable only.'.tr,
                                     style: GoogleFonts.nunito(
                                       fontSize: 11,
                                       color: Colors.white70,
@@ -959,7 +969,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'TRIP ID',
+                                      'TRIP ID'.tr,
                                       style: GoogleFonts.poppins(
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
@@ -986,7 +996,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
-                                  statusText,
+                                  statusText.tr,
                                   style: GoogleFonts.poppins(
                                     color: statusColor,
                                     fontSize: 11,
@@ -1012,7 +1022,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                           Expanded(
                             child: _buildMetricCard(
                               icon: Icons.alt_route_outlined,
-                              label: 'Distance',
+                              label: 'Distance'.tr,
                               value: distance,
                             ),
                           ),
@@ -1020,7 +1030,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                           Expanded(
                             child: _buildMetricCard(
                               icon: Icons.access_time,
-                              label: 'Est. Time',
+                              label: 'Est. Time'.tr,
                               value: estTime,
                             ),
                           ),
@@ -1067,7 +1077,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                       ),
                                     ),
                                     Text(
-                                      'VEHICLE: $truckId',
+                                      '${'VEHICLE'.tr}: $truckId',
                                       style: GoogleFonts.nunito(
                                         fontSize: 12,
                                         color: Colors.white60,
@@ -1113,7 +1123,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                               const Icon(Icons.inventory_2_outlined, color: AppColors.secondary, size: 18),
                               const SizedBox(width: 8),
                               Text(
-                                'CARGO & SHIPMENT',
+                                'CARGO & SHIPMENT'.tr,
                                 style: GoogleFonts.poppins(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
@@ -1124,15 +1134,15 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                             ],
                           ),
                           const Divider(height: 24, color: AppColors.divider),
-                          _buildDetailRow('Cargo Type', _trip?['cargoType'] ?? 'General Cargo'),
-                          _buildDetailRow('Cargo Weight', weight),
+                          _buildDetailRow('Cargo Type'.tr, _trip?['cargoType'] ?? 'General Cargo'),
+                          _buildDetailRow('Cargo Weight'.tr, weight),
                           const SizedBox(height: 16),
                           Row(
                             children: [
                               const Icon(Icons.contact_phone_outlined, color: AppColors.secondary, size: 18),
                               const SizedBox(width: 8),
                               Text(
-                                'CONTACT & MANAGER',
+                                'CONTACT & MANAGER'.tr,
                                 style: GoogleFonts.poppins(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
@@ -1143,16 +1153,16 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                             ],
                           ),
                           const Divider(height: 24, color: AppColors.divider),
-                          _buildDetailRow('Dispatch Manager', managerName),
-                          _buildDetailRow('Manager Phone', _trip?['manager']?['phone'] ?? 'N/A'),
-                          _buildDetailRow('Manager Email', _trip?['manager']?['email'] ?? 'N/A'),
+                          _buildDetailRow('Dispatch Manager'.tr, managerName),
+                          _buildDetailRow('Manager Phone'.tr, _trip?['manager']?['phone'] ?? 'N/A'),
+                          _buildDetailRow('Manager Email'.tr, _trip?['manager']?['email'] ?? 'N/A'),
                           const SizedBox(height: 16),
                           Row(
                             children: [
                               const Icon(Icons.description_outlined, color: AppColors.secondary, size: 18),
                               const SizedBox(width: 8),
                               Text(
-                                'DOCUMENTS STATUS',
+                                'DOCUMENTS STATUS'.tr,
                                 style: GoogleFonts.poppins(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
@@ -1181,24 +1191,24 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                               return Column(
                                 children: [
                                   _buildDocumentStatusRow(
-                                    'Proof of Delivery (POD)',
+                                    'Proof of Delivery (POD)'.tr,
                                     podStatusStr,
                                     onView: (isPodUploaded && podUrl.isNotEmpty && !podUrl.contains('via.placeholder'))
-                                        ? () => DocumentPreviewDialog.open(context, title: 'Proof of Delivery (POD)', documentUrl: podUrl)
+                                        ? () => DocumentPreviewDialog.open(context, title: 'Proof of Delivery (POD)'.tr, documentUrl: podUrl)
                                         : null,
                                   ),
                                   _buildDocumentStatusRow(
-                                    'Weighbridge Slip',
+                                    'Weighbridge Slip'.tr,
                                     wbStatusStr,
                                     onView: (isWbUploaded && wbUrl.isNotEmpty && !wbUrl.contains('via.placeholder'))
-                                        ? () => DocumentPreviewDialog.open(context, title: 'Weighbridge Slip', documentUrl: wbUrl)
+                                        ? () => DocumentPreviewDialog.open(context, title: 'Weighbridge Slip'.tr, documentUrl: wbUrl)
                                         : null,
                                   ),
                                 ],
                               );
                             },
                           ),
-                          _buildInvoiceDetailRow('Trip Invoice', _trip?['invoiceNumber'] ?? 'N/A'),
+                          _buildInvoiceDetailRow('Trip Invoice'.tr, _trip?['invoiceNumber'] ?? 'N/A'),
                           if (_trip?['tripNotes'] != null && _trip!['tripNotes'].toString().isNotEmpty) ...[
                             const SizedBox(height: 16),
                             Row(
@@ -1206,7 +1216,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                 const Icon(Icons.note_alt_outlined, color: AppColors.secondary, size: 18),
                                 const SizedBox(width: 8),
                                 Text(
-                                  'TRIP NOTES',
+                                  'TRIP NOTES'.tr,
                                   style: GoogleFonts.poppins(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
@@ -1232,7 +1242,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
                     // TRIP MANIFEST Title
                     Text(
-                      'TRIP MANIFEST',
+                      'TRIP MANIFEST'.tr,
                       style: GoogleFonts.poppins(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -1276,7 +1286,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                 ),
                               ),
                               child: Text(
-                                'Reject',
+                                'Reject'.tr,
                                 style: GoogleFonts.poppins(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
@@ -1304,7 +1314,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                                     )
                                   : Text(
-                                      'Accept Trip',
+                                      'Accept Trip'.tr,
                                       style: GoogleFonts.poppins(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 14,
@@ -1338,7 +1348,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                         child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                                       )
                                     : Text(
-                                        canStart ? 'Start Trip' : 'Start Trip (Locked until 15m before departure)',
+                                        canStart ? 'Start Trip'.tr : 'Start Trip (Locked until 15m before departure)'.tr,
                                         style: GoogleFonts.poppins(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 14,
@@ -1357,7 +1367,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                               if (!canStart) ...[
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Departure window opens 15 minutes before scheduled start.',
+                                  'Departure window opens 15 minutes before scheduled start.'.tr,
                                   style: GoogleFonts.nunito(
                                     fontSize: 11,
                                     color: AppColors.secondaryText,
@@ -1397,7 +1407,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                 },
                                 icon: const Icon(Icons.local_gas_station_rounded, color: Colors.white),
                                 label: Text(
-                                  'Record Fuel Purchase',
+                                  'Record Fuel Purchase'.tr,
                                   style: GoogleFonts.poppins(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
@@ -1423,7 +1433,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                                         )
                                       : Text(
-                                          'End Trip',
+                                          'End Trip'.tr,
                                           style: GoogleFonts.poppins(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 15,
@@ -1439,7 +1449,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Note: Click "End Trip" upon arrival at destination to unlock POD & Weighbridge slip uploads.',
+                                  'Note: Click "End Trip" upon arrival at destination to unlock POD & Weighbridge slip uploads.'.tr,
                                   style: GoogleFonts.nunito(
                                     fontSize: 11,
                                     color: AppColors.secondaryText,
@@ -1466,7 +1476,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                             const SizedBox(width: 8),
                                             Expanded(
                                               child: Text(
-                                                'Mandatory Uploads Required',
+                                                'Mandatory Uploads Required'.tr,
                                                 style: GoogleFonts.poppins(
                                                   fontSize: 13,
                                                   fontWeight: FontWeight.bold,
@@ -1486,7 +1496,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                             ),
                                             const SizedBox(width: 8),
                                             Text(
-                                              '• Proof of Delivery (POD)${hasPod ? ' (Uploaded)' : ''}',
+                                              '• ${'Proof of Delivery (POD)'.tr}${hasPod ? ' (${'Uploaded'.tr})' : ''}',
                                               style: GoogleFonts.nunito(
                                                 fontSize: 12,
                                                 fontWeight: hasPod ? FontWeight.bold : FontWeight.w600,
@@ -1505,7 +1515,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                             ),
                                             const SizedBox(width: 8),
                                             Text(
-                                              '• Weighbridge Slip${hasWb ? ' (Uploaded)' : ''}',
+                                              '• ${'Weighbridge Slip'.tr}${hasWb ? ' (${'Uploaded'.tr})' : ''}',
                                               style: GoogleFonts.nunito(
                                                 fontSize: 12,
                                                 fontWeight: hasWb ? FontWeight.bold : FontWeight.w600,
@@ -1531,7 +1541,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                                         )
                                       : Text(
-                                          'Complete Trip',
+                                          'Complete Trip'.tr,
                                           style: GoogleFonts.poppins(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 14,
@@ -1570,7 +1580,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
-                                    'Waiting for Manager Approval',
+                                    'Waiting for Manager Approval'.tr,
                                     style: GoogleFonts.poppins(
                                       fontSize: 15,
                                       fontWeight: FontWeight.bold,
@@ -1582,7 +1592,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                             ),
                             const SizedBox(height: 10),
                             Text(
-                              'Your trip completion request has been submitted.\n\nThe Fleet Manager is reviewing your uploaded documents. You will be notified once the review is complete.',
+                              'Your trip completion request has been submitted.\n\nThe Fleet Manager is reviewing your uploaded documents. You will be notified once the review is complete.'.tr,
                               style: GoogleFonts.nunito(
                                 fontSize: 13,
                                 height: 1.4,
@@ -1599,6 +1609,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               ),
             ),
       ),
+    ),
+    );
+      },
     );
   }
 
@@ -1710,7 +1723,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      node.isCompleted ? 'COMPLETED' : 'PENDING',
+                      node.isCompleted ? 'COMPLETED'.tr : 'PENDING'.tr,
                       style: GoogleFonts.poppins(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -1824,7 +1837,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             const Icon(Icons.alt_route_rounded, color: AppColors.secondary, size: 18),
             const SizedBox(width: 8),
             Text(
-              'ONGOING TRIP ROUTE & FUEL STOPS',
+              'ONGOING TRIP ROUTE & FUEL STOPS'.tr,
               style: GoogleFonts.poppins(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
@@ -1891,7 +1904,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                   const SizedBox(width: 4),
                                   Expanded(
                                     child: Text(
-                                      '🟢 Fuel Purchased – ${node.city}',
+                                      '🟢 ${'Fuel Purchased'.tr} – ${node.city}',
                                       style: GoogleFonts.poppins(
                                         fontSize: 13,
                                         fontWeight: FontWeight.bold,
@@ -1919,7 +1932,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                   const SizedBox(width: 4),
                                   Expanded(
                                     child: Text(
-                                      isFirst ? 'Origin (${node.city})' : (isLast ? 'Destination (${node.city})' : node.city),
+                                      isFirst ? '${'Origin'.tr} (${node.city})' : (isLast ? '${'Destination'.tr} (${node.city})' : node.city),
                                       style: GoogleFonts.poppins(
                                         fontSize: 13.5,
                                         fontWeight: isFirst || isLast ? FontWeight.bold : FontWeight.w600,

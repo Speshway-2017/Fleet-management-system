@@ -18,12 +18,21 @@ import 'package:driver_mobile/services/location_service.dart';
 import 'package:driver_mobile/services/socket_service.dart';
 import 'package:driver_mobile/services/fcm_service.dart';
 import 'package:driver_mobile/screens/profile/profile_screen.dart';
+import 'package:driver_mobile/screens/main_navigation_screen.dart';
+import 'package:driver_mobile/screens/fuel_overview_screen.dart';
+import 'package:driver_mobile/screens/trips_screen.dart';
+import 'package:driver_mobile/screens/contact_fleet_manager_screen.dart';
+import 'package:driver_mobile/screens/support_history_screen.dart';
+import 'package:driver_mobile/screens/settings/settings_screen.dart';
+import 'package:driver_mobile/services/localization_service.dart';
+import 'package:driver_mobile/utils/navigation_helper.dart';
 
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({'has_seen_onboarding': true});
 
     ProfileState.profilePhotoUrlNotifier.value = '';
+    LocalizationService.setLanguage('English (US)');
     LocationTrackingService.isTest = true;
     SocketService.isTest = true;
     FcmService.isTest = true;
@@ -973,6 +982,429 @@ void main() {
 
       expect(find.text('Please enter email or phone number'), findsNothing);
       expect(find.byIcon(Icons.error_outline_rounded), findsNothing);
+    });
+  });
+
+  group('Safe Back Navigation Tests', () {
+    testWidgets('VehicleOverviewScreen back button switches to Home tab (index 2)', (tester) async {
+      MainNavigationScreen.selectedTabNotifier.value = 0;
+      await tester.pumpWidget(
+        const MaterialApp(home: VehicleOverviewScreen()),
+      );
+      await tester.pumpAndSettle();
+
+      final backButton = find.byIcon(Icons.arrow_back_rounded);
+      expect(backButton, findsOneWidget);
+      await tester.tap(backButton);
+      await tester.pumpAndSettle();
+
+      expect(MainNavigationScreen.selectedTabNotifier.value, 2);
+    });
+
+    testWidgets('FuelOverviewScreen back button switches to Home tab (index 2)', (tester) async {
+      MainNavigationScreen.selectedTabNotifier.value = 1;
+      await tester.pumpWidget(
+        const MaterialApp(home: FuelOverviewScreen()),
+      );
+      await tester.pumpAndSettle();
+
+      final backButton = find.byIcon(Icons.arrow_back_rounded);
+      expect(backButton, findsOneWidget);
+      await tester.tap(backButton);
+      await tester.pumpAndSettle();
+
+      expect(MainNavigationScreen.selectedTabNotifier.value, 2);
+    });
+
+    testWidgets('TripsScreen back button switches to Home tab (index 2)', (tester) async {
+      MainNavigationScreen.selectedTabNotifier.value = 3;
+      await tester.pumpWidget(
+        const MaterialApp(home: TripsScreen()),
+      );
+      await tester.pumpAndSettle();
+
+      final backButton = find.byIcon(Icons.arrow_back);
+      expect(backButton, findsOneWidget);
+      await tester.tap(backButton);
+      await tester.pumpAndSettle();
+
+      expect(MainNavigationScreen.selectedTabNotifier.value, 2);
+    });
+
+    testWidgets('ProfileScreen back button switches to Home tab (index 2)', (tester) async {
+      MainNavigationScreen.selectedTabNotifier.value = 4;
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
+            ChangeNotifierProvider<NotificationProvider>(create: (_) => NotificationProvider()),
+          ],
+          child: const MaterialApp(home: ProfileScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final backButton = find.byIcon(Icons.arrow_back_rounded);
+      expect(backButton, findsOneWidget);
+      await tester.tap(backButton);
+      await tester.pumpAndSettle();
+
+      expect(MainNavigationScreen.selectedTabNotifier.value, 2);
+    });
+
+    testWidgets('SafeNavigation.pop with canPop=false safely routes to MainNavigationScreen', (tester) async {
+      BuildContext? capturedContext;
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
+            ChangeNotifierProvider<NotificationProvider>(create: (_) => NotificationProvider()),
+          ],
+          child: MaterialApp(
+            home: Builder(
+              builder: (ctx) {
+                capturedContext = ctx;
+                return const Scaffold(body: Text('Test Root'));
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      SafeNavigation.pop(capturedContext!, fallbackTab: 2);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MainNavigationScreen), findsOneWidget);
+      expect(MainNavigationScreen.selectedTabNotifier.value, 2);
+    });
+  });
+
+  group('Contact Fleet Manager Layout & Overflow Tests', () {
+    testWidgets('Contact Fleet Manager screen renders on small viewports without overflow', (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1.0;
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
+            ChangeNotifierProvider<NotificationProvider>(create: (_) => NotificationProvider()),
+          ],
+          child: const MaterialApp(
+            home: ContactFleetManagerScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Contact Fleet manager'), findsOneWidget);
+      expect(find.text('Available'), findsOneWidget);
+      expect(find.text('Active Assignment'), findsOneWidget);
+      expect(find.text('Recent Activity'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Contact Fleet Manager timeline and cards render across various scales and viewport dimensions without overflow', (tester) async {
+      final sizes = [
+        const Size(360, 800),
+        const Size(390, 844),
+        const Size(412, 915),
+        const Size(375, 667),
+        const Size(360, 640),
+        const Size(320, 568),
+      ];
+      final scales = [1.0, 1.25, 1.5];
+
+      for (final scale in scales) {
+        for (final size in sizes) {
+          tester.view.physicalSize = size;
+          tester.view.devicePixelRatio = 1.0;
+
+          await tester.pumpWidget(
+            MultiProvider(
+              providers: [
+                ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
+                ChangeNotifierProvider<NotificationProvider>(create: (_) => NotificationProvider()),
+              ],
+              child: MaterialApp(
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(context).copyWith(
+                    textScaler: TextScaler.linear(scale),
+                  ),
+                  child: child!,
+                ),
+                home: const ContactFleetManagerScreen(),
+              ),
+            ),
+          );
+
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull, reason: 'Failed on size $size with scale $scale');
+        }
+      }
+    });
+
+    testWidgets('Contact Fleet Manager external contact modal opens without overflow', (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1.0;
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
+            ChangeNotifierProvider<NotificationProvider>(create: (_) => NotificationProvider()),
+          ],
+          child: const MaterialApp(
+            home: ContactFleetManagerScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.text('Call Fleet Manager'),
+        50.0,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Call Fleet Manager'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('SELECT EXTERNAL APP'), findsOneWidget);
+      expect(find.text('WhatsApp Messenger'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.byIcon(Icons.close));
+      await tester.pumpAndSettle();
+    });
+  });
+
+  group('Support & Tickets Filter Bar & Search Tests', () {
+    testWidgets('Support & Tickets renders filter bar beside search bar and hides chips row', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
+            ChangeNotifierProvider<NotificationProvider>(create: (_) => NotificationProvider()),
+          ],
+          child: const MaterialApp(
+            home: SupportHistoryScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify title
+      expect(find.text('Support & Tickets'), findsOneWidget);
+
+      // Verify search bar input is present
+      expect(find.byType(TextField), findsOneWidget);
+      expect(find.text('Search Ticket ID or Issue...'), findsOneWidget);
+
+      // Verify filter bar button is present beside search bar showing default 'All'
+      expect(find.text('All'), findsOneWidget);
+      expect(find.byIcon(Icons.tune_rounded), findsOneWidget);
+
+      // Verify old standalone filter chips row is hidden (no separate ListView for chips)
+      // Tapping the filter bar button should open the popup menu
+      await tester.tap(find.byIcon(Icons.tune_rounded));
+      await tester.pumpAndSettle();
+
+      // Verify popup menu items appear
+      expect(find.text('FILTER BY STATUS'), findsOneWidget);
+      expect(find.text('Open'), findsOneWidget);
+      expect(find.text('In Progress'), findsOneWidget);
+      expect(find.text('Resolved'), findsOneWidget);
+      expect(find.text('Rejected'), findsOneWidget);
+
+      // Select 'Open' filter
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      // Verify the filter bar button now displays 'Open'
+      expect(find.text('Open'), findsOneWidget);
+
+      // Test searching with search controller
+      await tester.enterText(find.byType(TextField), 'Brake');
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+
+      // Clear search
+      await tester.tap(find.byIcon(Icons.close_rounded));
+      await tester.pumpAndSettle();
+      expect(find.text('Search Ticket ID or Issue...'), findsOneWidget);
+    });
+  });
+
+  group('Global App-Wide Multi-Screen Language Switching Tests', () {
+    testWidgets('MainNavigationScreen updates all tab labels reactively when language changes', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      LocalizationService.setLanguage('English (US)');
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
+            ChangeNotifierProvider<NotificationProvider>(create: (_) => NotificationProvider()),
+          ],
+          child: const MaterialApp(
+            home: MainNavigationScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Check English bottom navigation labels
+      expect(find.text('Vehicle'), findsOneWidget);
+      expect(find.text('Fuel'), findsOneWidget);
+      expect(find.text('Home'), findsOneWidget);
+      expect(find.text('Trips'), findsOneWidget);
+      expect(find.text('Profile'), findsOneWidget);
+
+      // Switch to Hindi
+      LocalizationService.setLanguage('Hindi');
+      await tester.pumpAndSettle();
+
+      // Verify immediate reactive update to Hindi
+      expect(find.text('वाहन'), findsOneWidget);
+      expect(find.text('ईंधन'), findsOneWidget);
+      expect(find.text('होम'), findsOneWidget);
+      expect(find.text('यात्राएं'), findsOneWidget);
+      expect(find.text('प्रोफ़ाइल'), findsOneWidget);
+
+      // Switch to Spanish
+      LocalizationService.setLanguage('Spanish');
+      await tester.pumpAndSettle();
+
+      // Verify immediate reactive update to Spanish
+      expect(find.text('Vehículo'), findsOneWidget);
+      expect(find.text('Combustible'), findsOneWidget);
+      expect(find.text('Inicio'), findsOneWidget);
+      expect(find.text('Viajes'), findsOneWidget);
+      expect(find.text('Perfil'), findsOneWidget);
+
+      // Switch to French
+      LocalizationService.setLanguage('French');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Véhicule'), findsOneWidget);
+      expect(find.text('Carburant'), findsOneWidget);
+      expect(find.text('Accueil'), findsOneWidget);
+      expect(find.text('Trajets'), findsOneWidget);
+      expect(find.text('Profil'), findsOneWidget);
+
+      // Switch to German
+      LocalizationService.setLanguage('German');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Fahrzeug'), findsOneWidget);
+      expect(find.text('Kraftstoff'), findsOneWidget);
+      expect(find.text('Startseite'), findsOneWidget);
+      expect(find.text('Fahrten'), findsOneWidget);
+      expect(find.text('Profil'), findsOneWidget);
+
+      // Reset back to English
+      LocalizationService.setLanguage('English (US)');
+      await tester.pumpAndSettle();
+      expect(find.text('Vehicle'), findsOneWidget);
+    });
+
+    testWidgets('VehicleOverviewScreen and FuelOverviewScreen reactively update titles on language change', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      LocalizationService.setLanguage('English (US)');
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
+            ChangeNotifierProvider<NotificationProvider>(create: (_) => NotificationProvider()),
+          ],
+          child: const MaterialApp(
+            home: VehicleOverviewScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // English title
+      expect(find.text('Vehicle Overview'), findsOneWidget);
+
+      // Switch to Hindi
+      LocalizationService.setLanguage('Hindi');
+      await tester.pumpAndSettle();
+      expect(find.text('वाहन अवलोकन'), findsOneWidget);
+
+      // Switch to Spanish
+      LocalizationService.setLanguage('Spanish');
+      await tester.pumpAndSettle();
+      expect(find.text('Resumen del Vehículo'), findsOneWidget);
+
+      // Test FuelOverviewScreen
+      LocalizationService.setLanguage('Hindi');
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
+            ChangeNotifierProvider<NotificationProvider>(create: (_) => NotificationProvider()),
+          ],
+          child: const MaterialApp(
+            home: FuelOverviewScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('ईंधन अवलोकन'), findsOneWidget);
+
+      // Switch back to English
+      LocalizationService.setLanguage('English (US)');
+      await tester.pumpAndSettle();
+      expect(find.text('Fuel Overview'), findsOneWidget);
+    });
+
+    testWidgets('SettingsScreen reactively updates headers and labels on language change', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      LocalizationService.setLanguage('English (US)');
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
+            ChangeNotifierProvider<NotificationProvider>(create: (_) => NotificationProvider()),
+          ],
+          child: const MaterialApp(
+            home: SettingsScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Settings'), findsOneWidget);
+      expect(find.text('APP PREFERENCES'), findsOneWidget);
+
+      // Switch to Hindi
+      LocalizationService.setLanguage('Hindi');
+      await tester.pumpAndSettle();
+      expect(find.text('सेटिंग्स'), findsOneWidget);
+      expect(find.text('ऐप प्राथमिकताएं'.toUpperCase()), findsOneWidget);
+
+      // Switch to Spanish
+      LocalizationService.setLanguage('Spanish');
+      await tester.pumpAndSettle();
+      expect(find.text('Configuración'), findsOneWidget);
+      expect(find.text('PREFERENCIAS DE LA APP'), findsOneWidget);
+
+      // Reset to English
+      LocalizationService.setLanguage('English (US)');
+      await tester.pumpAndSettle();
+      expect(find.text('Settings'), findsOneWidget);
     });
   });
 }

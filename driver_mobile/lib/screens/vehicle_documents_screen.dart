@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../widgets/document_preview_dialog.dart';
 import '../services/api_service.dart';
+import '../services/localization_service.dart';
+import '../utils/navigation_helper.dart';
 
 /// Represents a Vehicle Document item data structure.
 class VehicleDocumentItem {
@@ -235,55 +237,55 @@ class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
 
     return [
       VehicleDocumentItem(
-        title: 'Registration Certificate (RC)',
+        title: 'Registration Certificate (RC)'.tr,
         icon: Icons.card_membership_rounded,
         expiryDate: formatDate(rcDate),
-        status: rcStatus['status'],
+        status: (rcStatus['status'] as String).tr,
         statusBg: rcStatus['bg'],
         statusTextColor: rcStatus['text'],
         fileUrl: rcUrl,
       ),
       VehicleDocumentItem(
-        title: 'Insurance Certificate',
+        title: 'Insurance Certificate'.tr,
         icon: Icons.verified_user_outlined,
         expiryDate: formatDate(insDate),
-        status: insStatus['status'],
+        status: (insStatus['status'] as String).tr,
         statusBg: insStatus['bg'],
         statusTextColor: insStatus['text'],
         fileUrl: insUrl,
       ),
       VehicleDocumentItem(
-        title: 'Pollution Under Control (PUC)',
+        title: 'Pollution Under Control (PUC)'.tr,
         icon: Icons.eco_outlined,
         expiryDate: formatDate(pucDate),
-        status: pucStatus['status'],
+        status: (pucStatus['status'] as String).tr,
         statusBg: pucStatus['bg'],
         statusTextColor: pucStatus['text'],
         fileUrl: pucUrl,
       ),
       VehicleDocumentItem(
-        title: 'Fitness Certificate',
+        title: 'Fitness Certificate'.tr,
         icon: Icons.health_and_safety_outlined,
         expiryDate: formatDate(fitDate),
-        status: fitStatus['status'],
+        status: (fitStatus['status'] as String).tr,
         statusBg: fitStatus['bg'],
         statusTextColor: fitStatus['text'],
         fileUrl: fitUrl,
       ),
       VehicleDocumentItem(
-        title: 'Permit Document',
+        title: 'Permit Document'.tr,
         icon: Icons.assignment_outlined,
         expiryDate: formatDate(permitDate),
-        status: permitStatus['status'],
+        status: (permitStatus['status'] as String).tr,
         statusBg: permitStatus['bg'],
         statusTextColor: permitStatus['text'],
         fileUrl: permitUrl,
       ),
       VehicleDocumentItem(
-        title: 'Road Tax Receipt',
+        title: 'Road Tax Receipt'.tr,
         icon: Icons.receipt_long_outlined,
         expiryDate: formatDate(taxDate),
-        status: taxStatus['status'],
+        status: (taxStatus['status'] as String).tr,
         statusBg: taxStatus['bg'],
         statusTextColor: taxStatus['text'],
         fileUrl: taxUrl,
@@ -328,18 +330,19 @@ class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
     const textSecondary = Color(0xFF6B7280);
     const secondaryOrange = Color(0xFFF97316);
 
+    Widget page;
     if (_isLoading && _vehicle == null) {
-      return Scaffold(
+      page = Scaffold(
         backgroundColor: bgLight,
         appBar: AppBar(
           backgroundColor: primaryDark,
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => SafeNavigation.pop(context, fallbackTab: 0),
           ),
           title: Text(
-            'Vehicle Documents',
+            'Vehicle Documents'.tr,
             style: GoogleFonts.poppins(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -351,20 +354,18 @@ class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
           child: CircularProgressIndicator(color: secondaryOrange),
         ),
       );
-    }
-
-    if (_vehicle == null) {
-      return Scaffold(
+    } else if (_vehicle == null) {
+      page = Scaffold(
         backgroundColor: bgLight,
         appBar: AppBar(
           backgroundColor: primaryDark,
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => SafeNavigation.pop(context, fallbackTab: 0),
           ),
           title: Text(
-            'Vehicle Documents',
+            'Vehicle Documents'.tr,
             style: GoogleFonts.poppins(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -381,7 +382,7 @@ class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
                 const Icon(Icons.folder_off_outlined, size: 64, color: textSecondary),
                 const SizedBox(height: 16),
                 Text(
-                  'No Vehicle Assigned',
+                  'No Vehicle Assigned'.tr,
                   style: GoogleFonts.poppins(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -390,7 +391,7 @@ class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'No vehicle has been assigned yet. Vehicle-related features will become available once your manager assigns a vehicle.',
+                  'No vehicle has been assigned yet. Vehicle-related features will become available once your manager assigns a vehicle.'.tr,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.nunito(fontSize: 14, color: textSecondary),
                 ),
@@ -399,23 +400,22 @@ class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
           ),
         ),
       );
-    }
+    } else {
+      final documents = _buildDocumentList(_vehicle!);
 
-    final documents = _buildDocumentList(_vehicle!);
-
-    return Scaffold(
-      backgroundColor: bgLight,
-      appBar: AppBar(
-        backgroundColor: primaryDark,
-        elevation: 0,
-        centerTitle: false,
-        titleSpacing: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+      page = Scaffold(
+        backgroundColor: bgLight,
+        appBar: AppBar(
+          backgroundColor: primaryDark,
+          elevation: 0,
+          centerTitle: false,
+          titleSpacing: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            onPressed: () => SafeNavigation.pop(context, fallbackTab: 0),
+          ),
         title: Text(
-          'Vehicle Documents',
+          'Vehicle Documents'.tr,
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -442,7 +442,7 @@ class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'All Vehicle Documents',
+                  'All Vehicle Documents'.tr,
                   style: GoogleFonts.poppins(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -451,7 +451,7 @@ class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
                 ),
                 const SizedBox(height: 6.0),
                 Text(
-                  'View official compliance certificates and licenses for ${_vehicle!['vehicleNumber'] ?? _vehicle!['registrationNumber'] ?? 'Assigned Vehicle'}.',
+                  '${'View official compliance certificates and licenses for'.tr} ${_vehicle!['vehicleNumber'] ?? _vehicle!['registrationNumber'] ?? 'Assigned Vehicle'.tr}.',
                   style: GoogleFonts.nunito(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
@@ -558,7 +558,7 @@ class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
                               OutlinedButton.icon(
                                 onPressed: () => _showDocumentAction(context, 'Viewing', doc),
                                 icon: const Icon(Icons.visibility_outlined, size: 16),
-                                label: const Text('View'),
+                                label: Text('View'.tr),
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: primaryDark,
                                   side: const BorderSide(color: borderGray),
@@ -579,7 +579,7 @@ class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
                               ElevatedButton.icon(
                                 onPressed: () => _showDocumentAction(context, 'Downloading', doc),
                                 icon: const Icon(Icons.file_download_outlined, size: 16),
-                                label: const Text('Download'),
+                                label: Text('Download'.tr),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: secondaryOrange,
                                   foregroundColor: Colors.white,
@@ -611,6 +611,20 @@ class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
           ),
         ),
       ),
+    );
+    }
+
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLang, _) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop) SafeNavigation.pop(context, fallbackTab: 0);
+          },
+          child: page,
+        );
+      },
     );
   }
 }

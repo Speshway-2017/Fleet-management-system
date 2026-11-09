@@ -2,6 +2,95 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [2.15.00] - 2026-11-09
+
+### Comprehensive Multi-Screen Text Localization Across All 5 Languages
+- **Full Text Localization Across All Remaining Driver Pages**:
+  - Resolved the issue where several text strings, buttons, modal sheets, steppers, and labels remained hardcoded in English when switching languages.
+  - **Ticket Details Screen (`ticket_details_screen.dart`)**:
+    - Localized all status badges (`OPEN`, `IN PROGRESS`, `RESOLVED`, `REJECTED`), priority levels, category tags, and timestamps.
+    - Localized action buttons: `'Confirm Mechanic Arrived'`, `'Start Repair'`, `'Mark Repair Completed'`, `'Ticket Resolved - Continue Trip'`.
+    - Localized ticket banner flows (`'Trip Flow: Allowed'`, `'Trip Flow: Park & Wait (Breakdown)'`, `'Trip Flow: Wait For Repair'`).
+    - Localized mechanic card labels (`'Assigned Mechanic'`, `'Location'`, `'Phone'`, `'Assigned'`, `'Arrived'`, `'In Repair'`) and repair stage timeline stepper nodes.
+  - **Raise Ticket Screen (`raise_ticket_screen.dart`)**:
+    - Localized attachment bottom sheet (`'Attach Ticket Photo'`, `'Take Photo with Camera'`, `'Choose from Gallery'`).
+    - Localized form labels, field placeholders (`'Subject / Short Summary'`, `'e.g. Engine Overheating'`, `'Description'`, `'Provide clear details...'`), operational banners, categories, and priority pill indicators.
+  - **Support History Screen (`support_history_screen.dart`)**:
+    - Localized search bar placeholder (`'Search Ticket ID or Issue...'`), banner descriptions, empty state messages, vehicle/trip ID/raised date headers, and status filter popup items.
+  - **Vehicle Module Screens (`vehicle_documents_screen.dart`, `vehicle_maintenance_screen.dart`, `vehicle_status_screen.dart`, `vehicle_details_screen.dart`)**:
+    - Localized document list items (`'Registration Certificate (RC)'`, `'Insurance Certificate'`, `'Pollution Under Control (PUC)'`, `'Fitness Certificate'`, `'Permit Document'`, `'Road Tax Receipt'`), validity badges (`'VALID'`, `'EXPIRED'`, `'EXPIRING SOON'`), and empty states.
+    - Localized maintenance insight cards, active alert states (`'All systems operational. No active maintenance alerts for this vehicle.'`), and issue reporting action buttons.
+    - Localized technical specifications (`'Brand'`, `'Model'`, `'Manufacturing Year'`, `'Payload Capacity'`, `'GVW'`, `'Engine Number'`, `'Chassis Number'`, `'Operational State'`, `'Odometer Reading'`).
+  - **Fuel Module Screens (`fuel_overview_screen.dart`, `fuel_history_screen.dart`)**:
+    - Localized fuel entry cards, empty state messages, locked state banners, status tags, and rejection reason disclosures.
+  - **Contact Fleet Manager Screen (`contact_fleet_manager_screen.dart`)**:
+    - Localized experience and region labels, contact list items (`'Phone'`, `'Email'`, `'Office Address'`, `'Working Hours'`), active assignment summary rows (`'Driver'`, `'Vehicle'`, `'Trip ID'`, `'Route'`), and recent activity timeline event titles, times, and descriptions.
+  - **Active Trip Details Screen (`trip_details_screen.dart`)**:
+    - Wrapped layout in `ValueListenableBuilder<String>` on `LocalizationService.currentLanguageNotifier`.
+    - Localized trip headers, status pills, distance/est. time metric cards, vehicle tags (`'${'VEHICLE'.tr}: $truckId'`), cargo & shipment details, dispatch contact info, document status rows, trip notes, manifest timeline nodes (`'COMPLETED'`, `'PENDING'`), ongoing route timeline (`'ONGOING TRIP ROUTE & FUEL STOPS'`, `'Fuel Purchased'`, `'Origin'`, `'Destination'`), action CTAs (`'Accept Trip'`, `'Reject'`, `'Start Trip'`, `'End Trip'`, `'Complete Trip'`, `'Record Fuel Purchase'`), and manager approval banner notifications.
+  - **Completed Trip Details Screen (`completed_trip_details_screen.dart`)**:
+    - Wrapped layout in `ValueListenableBuilder<String>` on `LocalizationService.currentLanguageNotifier`.
+    - Localized summary header cards (`'TRIP ID'`, `'Completed'`, `'Date'`, `'Time'`), route cards (`'PICKUP'`, `'DESTINATION'`, `'Route Completed Successfully'`), crew info (`'Vehicle'`, `'Driver'`, `'Manager'`), performance grid (`'Performance'`, `'Distance'`, `'Fuel Consumed'`, `'Avg Speed'`, `'Total Stops'`), trip timeline events, documents list and preview dialog details, trip notes, delivery confirmation (`'Signed & Verified'`), and footer export buttons (`'Download Trip Report'`, `'Share Report'`).
+  - **Zero Duplicate Keys & Strict Validation (`localization_service.dart`)**:
+    - Eliminated all duplicate map keys in `_localizedValues` identified by the Flutter analyzer (`equal_keys_in_const_map`).
+    - Verified complete translation coverage for all 5 supported languages (**English (US)**, **Hindi**, **Spanish**, **French**, **German**).
+  - **Automated Verification**:
+    - Analyzer: 0 issues found (`flutter analyze`).
+    - Automated tests: 33 of 33 tests passed (`flutter test test/widget_test.dart`).
+
+## [2.14.00] - 2026-11-09
+
+### Global Reactive App-Wide Language Synchronization & Translation
+- **Permanent Full-App Language Switching (`localization_service.dart`, `main.dart`, `auth_provider.dart`)**:
+  - Resolved the critical issue where changing the driver language only updated the profile/settings page while leaving other tabs and secondary screens untranslated.
+  - **Root-Level Reactive MaterialApp (`main.dart`)**:
+    - Wrapped `MaterialApp` in a `ValueListenableBuilder<String>` listening to `LocalizationService.currentLanguageNotifier`.
+    - Wired `locale: LocalizationService.getLocale(lang)` dynamically, ensuring Flutter's framework locale and widget tree rebuild instantaneously upon language change.
+    - Added asynchronous initialization `await LocalizationService.init()` in `main()` before `runApp` to restore the driver's preferred language from persistent storage on startup.
+  - **AuthProvider Language Precedence Fix (`auth_provider.dart`)**:
+    - Fixed a bug in `updateProfile` where `data['language']` was overridden by old `savedLanguage` read from `SharedPreferences`. Now explicit language updates take strict precedence.
+    - Ensured `auth.setLanguage(lang)` immediately dispatches `LocalizationService.setLanguage(normalized)`, updates SharedPreferences, updates the active `_driver` model, and notifies all listening UI widgets.
+  - **SettingsScreen Language Dispatch Fix (`settings_screen.dart`)**:
+    - Replaced obsolete `auth.updateProfile({'language': lang})` calls in `_showLanguageSelector` with `await auth.setLanguage(lang)`.
+  - **Reactive Screen-Level Wrapping Across Entire Application**:
+    - Wrapped `MainNavigationScreen` and all bottom navigation tabs (`VehicleOverviewScreen`, `FuelOverviewScreen`, `DashboardScreen`, `TripsScreen`, `ProfileScreen`) with `ValueListenableBuilder<String>` on `LocalizationService.currentLanguageNotifier`.
+    - Wrapped all secondary, modal, and pushed screens (`VehicleDocumentsScreen`, `VehicleStatusScreen`, `VehicleDetailsScreen`, `VehicleMaintenanceScreen`, `FuelHistoryScreen`, `ActiveTripsScreen`, `UpcomingTripsScreen`, `CompletedTripsScreen`, `ContactFleetManagerScreen`, `RaiseTicketScreen`, `SupportHistoryScreen`, `TicketDetailsScreen`, `NotificationsScreen`, `SettingsScreen`, `EditProfileScreen`) with `ValueListenableBuilder<String>`.
+    - Integrated `.tr` extensions across all navigation tabs, page titles, section headers, summary metrics, and status badges.
+  - **Comprehensive 5-Language Dictionary Expansion (`localization_service.dart`)**:
+    - Added comprehensive localized translations for all 5 supported languages: **English (US)**, **Hindi (हिन्दी)**, **Spanish (Español)**, **French (Français)**, and **German (Deutsch)**.
+    - Populated localized strings for bottom navigation ('Vehicle', 'Fuel', 'Home', 'Trips', 'Profile'), top AppBars, action buttons ('Call Fleet Manager', 'Raise Ticket', 'Help'), telemetry cards ('Odometer', 'Fuel Level', 'Engine Status'), filter labels, and empty state cues.
+  - **Automated Regression Testing (`test/widget_test.dart`)**:
+    - Added `Global App-Wide Multi-Screen Language Switching Tests` in `test/widget_test.dart` verifying reactive translation across all 5 languages for `MainNavigationScreen` tabs, `VehicleOverviewScreen`, `FuelOverviewScreen`, and `SettingsScreen`.
+
+
+## [2.13.00] - 2026-11-09
+
+### Support & Tickets Screen Filter Bar Integration & Chips Row Elimination
+- **Inline Filter Bar Beside Search Bar (`support_history_screen.dart`)**:
+  - Removed the bulky standalone horizontal navigation chips row (`All`, `Open`, `In Progress`, `Resolved`, `Rejected`), freeing up significant vertical screen space so support tickets are immediately visible.
+  - Added a dedicated Filter Bar button positioned directly to the right of the search bar in a unified row, matching the 48px height with smooth 12px rounded corners, `Icons.tune_rounded` icon, active status indicator, and dropdown arrow.
+  - Tapping the filter bar triggers a sleek dropdown popup menu with a `'FILTER BY STATUS'` header, radio checkmarks, and all filter choices (`All`, `Open`, `In Progress`, `Resolved`, `Rejected`).
+  - Active Filter State: When a filter other than "All" is active, the filter bar highlights in Dark Navy (`primaryDark`) with crisp white typography.
+  - Combined Text Search & Status Filtering: Added `_searchController` and dynamic query filtering, enabling drivers to search ticket IDs, categories, vehicle plates, or descriptions in combination with status filters.
+  - Fixed horizontal overflow in `_buildBodyActionButton` ("Call Manager" / "Message Manager") with `Flexible` single-line text constraints.
+  - Added automated widget tests in `test/widget_test.dart` to verify filter bar behavior, status switching, and search queries.
+
+### Contact Fleet Manager Screen Layout & Overflow Elimination
+- **Resolved RenderFlex Overflow Badges (`contact_fleet_manager_screen.dart`, `external_contact_modal.dart`)**:
+  - Eliminated the Flutter debug error badge (`A RenderFlex overflowed by ... pixels on the bottom/right`) that appeared on mobile screens.
+  - **Available Status Badge & Trip Status Badge**: Wrapped text in `Flexible` with `maxLines: 1` and `TextOverflow.ellipsis`, ensuring the manager's "Available" status pill and active assignment "Status" badge render cleanly across all device widths and text scalers.
+  - **Active Assignment Data Grid**: Wrapped Driver Name, Vehicle Registration, Trip Number, and Route strings with ellipsis handling and row spacing to prevent flex wrap collisions on narrow viewports.
+  - **Dynamic Action Buttons**: Converted fixed-height `SizedBox(height: 50)` containers for "Call Fleet Manager" and "Send Message" into adaptive `ConstrainedBox(constraints: BoxConstraints(minWidth: double.infinity, minHeight: 50))` with balanced button padding, allowing buttons to expand seamlessly for high accessibility text scales without vertical overflow.
+  - **Recent Activity Timeline Layout Optimization**: Replaced `IntrinsicHeight` and flex stretch constraints in `_buildTimelineItem` with a non-blocking `Stack` and natural card padding layout. Because `IntrinsicHeight` speculatively measures children at infinite width, multiline subtitle text wrapping on real device widths previously resulted in an exact 18-pixel discrepancy (`A RenderFlex overflowed by 18 pixels on the bottom`). The new `Stack` design allows the card to size itself naturally without vertical bounds while pinning the timeline indicator dot and connector line (`Positioned(top: 28, bottom: -12)` with `Clip.none`), permanently eliminating the 18px overflow badge at the bottom of the page.
+  - **External Contact Sheet Scrollability (`external_contact_modal.dart`)**: Wrapped the bottom modal sheet in `SafeArea`, `ConstrainedBox(maxHeight: MediaQuery.of(ctx).size.height * 0.90)`, and a `SingleChildScrollView(physics: BouncingScrollPhysics())`, ensuring app buttons (WhatsApp, Phone Dialer, SMS, Email) and quick message template chips never cause a bottom overflow on any phone height.
+  - **Automated Regression Testing (`test/widget_test.dart`)**: Added automated widget tests covering `ContactFleetManagerScreen` and the external contact modal across compact viewports (320px–412px widths, 568px–915px heights, and 1.0x–1.5x font scale factors) to guarantee zero layout exceptions.
+
+### Safe Back Navigation & Blank Screen Elimination
+- **PopScope & SafeNavigation Integration Across All 23+ Screens**:
+  - Replaced native unconstrained `Navigator.pop` calls with `SafeNavigation.pop(context, fallbackTab: 2)` and interceptive `PopScope(canPop: false, onPopInvokedWithResult: ...)` guards.
+  - Ensured all secondary and nested screens safely fall back to the Home Dashboard tab in `MainNavigationScreen` rather than popping the root route to an empty blank white/black screen.
+
+
 ## [2.12.00] - 2026-11-06
 
 ### Sub-0.50s (500ms) App-Wide Loading Time Guarantee

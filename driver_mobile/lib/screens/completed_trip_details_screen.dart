@@ -9,8 +9,10 @@ import '../widgets/custom_card.dart';
 import '../services/api_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../widgets/document_preview_dialog.dart';
+import '../services/localization_service.dart';
 import 'invoice_screen.dart';
 import 'toll_fee_receipt_screen.dart';
+import '../utils/navigation_helper.dart';
 
 class CompletedTripDetailsScreen extends StatefulWidget {
   final String tripId;
@@ -191,50 +193,53 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading && _trip == null) {
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: CustomAppBar(
-          centerTitle: false,
-          title: Text(
-            'Completed Trip Details',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppColors.background,
-              fontWeight: FontWeight.bold,
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLang, _) {
+        Widget page;
+        if (_isLoading && _trip == null) {
+          page = Scaffold(
+            backgroundColor: AppColors.background,
+            appBar: CustomAppBar(
+              centerTitle: false,
+              fallbackTab: 3,
+              title: Text(
+                'Completed Trip Details'.tr,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppColors.background,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
-          ),
-        ),
-        body: const Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-          ),
-        ),
-      );
-    }
-
-    if (_trip == null) {
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: CustomAppBar(
-          centerTitle: false,
-          title: Text(
-            'Completed Trip Details',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppColors.background,
-              fontWeight: FontWeight.bold,
+            body: const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+              ),
             ),
-          ),
-        ),
-        body: const Center(
-          child: Text(
-            'Trip not found',
-            style: TextStyle(color: AppColors.primaryText, fontSize: 16),
-          ),
-        ),
-      );
-    }
-
-    final trip = _trip!;
+          );
+        } else if (_trip == null) {
+          page = Scaffold(
+            backgroundColor: AppColors.background,
+            appBar: CustomAppBar(
+              centerTitle: false,
+              fallbackTab: 3,
+              title: Text(
+                'Completed Trip Details'.tr,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppColors.background,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            body: Center(
+              child: Text(
+                'Trip not found'.tr,
+                style: const TextStyle(color: AppColors.primaryText, fontSize: 16),
+              ),
+            ),
+          );
+        } else {
+      final trip = _trip!;
     final rawTripNumber = trip['tripNumber'] ?? widget.tripId;
     final displayId = rawTripNumber.toString().startsWith('#') ? rawTripNumber.toString() : '#$rawTripNumber';
     
@@ -357,18 +362,19 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
 
     final timelineEvents = _buildTimelineEvents(trip);
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
-        centerTitle: false,
-        title: Text(
-          'Completed Trip Details',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: AppColors.background,
-            fontWeight: FontWeight.bold,
+      page = Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: CustomAppBar(
+          centerTitle: false,
+          fallbackTab: 3,
+          title: Text(
+            'Completed Trip Details'.tr,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppColors.background,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
-      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
@@ -399,17 +405,17 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
                 AppSpacing.verticalSm,
 
                 // 4. Performance Grid
-                _buildSectionTitle(context, 'Performance'),
+                _buildSectionTitle(context, 'Performance'.tr),
                 _buildPerformanceGrid(context, distanceStr, fuelTotal, avgSpeed, stopsCount),
                 AppSpacing.verticalSm,
 
                 // 5. Trip Timeline Card
-                _buildSectionTitle(context, 'Trip Timeline'),
+                _buildSectionTitle(context, 'Trip Timeline'.tr),
                 _buildTimelineCard(context, timelineEvents),
                 AppSpacing.verticalSm,
 
                 // 6. Documents Section
-                _buildSectionTitle(context, 'Documents'),
+                _buildSectionTitle(context, 'Documents'.tr),
                 _buildDocumentsCard(context, trip, displayId),
                 AppSpacing.verticalSm,
 
@@ -429,6 +435,17 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
           ),
         ),
       ),
+    );
+    }
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) SafeNavigation.pop(context, fallbackTab: 3);
+      },
+      child: page,
+    );
+      },
     );
   }
 
@@ -458,9 +475,9 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'TRIP ID',
-                    style: TextStyle(
+                  Text(
+                    'TRIP ID'.tr,
+                    style: const TextStyle(
                       color: AppColors.secondaryText,
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
@@ -483,9 +500,9 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
                   color: const Color(0xFFE8F5E9),
                   borderRadius: BorderRadius.circular(AppRadius.round),
                 ),
-                child: const Text(
-                  'Completed',
-                  style: TextStyle(
+                child: Text(
+                  'Completed'.tr,
+                  style: const TextStyle(
                     color: Color(0xFF2E7D32),
                     fontWeight: FontWeight.bold,
                     fontSize: 11,
@@ -501,8 +518,8 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoItem('Date', date),
-              _buildInfoItem('Time', time, alignRight: true),
+              _buildInfoItem('Date'.tr, date),
+              _buildInfoItem('Time'.tr, time, alignRight: true),
             ],
           ),
         ],
@@ -565,9 +582,9 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'PICKUP',
-                      style: TextStyle(
+                    Text(
+                      'PICKUP'.tr,
+                      style: const TextStyle(
                         color: AppColors.secondaryText,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -583,9 +600,9 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
                       ),
                     ),
                     const SizedBox(height: 18),
-                    const Text(
-                      'DESTINATION',
-                      style: TextStyle(
+                    Text(
+                      'DESTINATION'.tr,
+                      style: const TextStyle(
                         color: AppColors.secondaryText,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -609,20 +626,20 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoItem('Distance', distance),
-              _buildInfoItem('Duration', duration, alignRight: true),
+              _buildInfoItem('Distance'.tr, distance),
+              _buildInfoItem('Duration'.tr, duration, alignRight: true),
             ],
           ),
           const SizedBox(height: 12),
           const Divider(color: AppColors.divider),
           const SizedBox(height: 8),
-          const Row(
+          Row(
             children: [
-              Icon(Icons.check_circle_outline, color: AppColors.success, size: 18),
-              SizedBox(width: 8),
+              const Icon(Icons.check_circle_outline, color: AppColors.success, size: 18),
+              const SizedBox(width: 8),
               Text(
-                'Route Completed Successfully',
-                style: TextStyle(
+                'Route Completed Successfully'.tr,
+                style: const TextStyle(
                   color: AppColors.success,
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
@@ -662,9 +679,9 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Vehicle',
-                      style: TextStyle(
+                    Text(
+                      'Vehicle'.tr,
+                      style: const TextStyle(
                         color: AppColors.secondaryText,
                         fontSize: 10,
                         fontWeight: FontWeight.w500,
@@ -690,9 +707,9 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoItem('Driver', driver),
+              _buildInfoItem('Driver'.tr, driver),
               const SizedBox(width: 12),
-              _buildInfoItem('Manager', manager, alignRight: true),
+              _buildInfoItem('Manager'.tr, manager, alignRight: true),
             ],
           ),
         ],
@@ -716,10 +733,10 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
       crossAxisSpacing: 12,
       mainAxisSpacing: 12,
       children: [
-        _buildPerformanceCard(Icons.map_outlined, 'Distance', distance),
-        _buildPerformanceCard(Icons.local_gas_station_outlined, 'Fuel Consumed', fuel),
-        _buildPerformanceCard(Icons.speed, 'Avg Speed', avgSpeed),
-        _buildPerformanceCard(Icons.gps_fixed, 'Total Stops', stops),
+        _buildPerformanceCard(Icons.map_outlined, 'Distance'.tr, distance),
+        _buildPerformanceCard(Icons.local_gas_station_outlined, 'Fuel Consumed'.tr, fuel),
+        _buildPerformanceCard(Icons.speed, 'Avg Speed'.tr, avgSpeed),
+        _buildPerformanceCard(Icons.gps_fixed, 'Total Stops'.tr, stops),
       ],
     );
   }
@@ -802,7 +819,7 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          event['title'] as String,
+                          (event['title'] as String).tr,
                           style: const TextStyle(
                             color: AppColors.primaryText,
                             fontWeight: FontWeight.bold,
@@ -863,7 +880,7 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      doc['name'] as String,
+                      (doc['name'] as String).tr,
                       style: const TextStyle(
                         color: AppColors.primaryText,
                         fontWeight: FontWeight.bold,
@@ -993,7 +1010,7 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
                   child: Row(
                     children: [
                       Text(
-                        doc['action'] as String,
+                        (doc['action'] as String).tr,
                         style: const TextStyle(
                           color: AppColors.secondary,
                           fontWeight: FontWeight.bold,
@@ -1029,9 +1046,9 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'TRIP NOTES',
-            style: TextStyle(
+          Text(
+            'TRIP NOTES'.tr,
+            style: const TextStyle(
               color: AppColors.secondaryText,
               fontSize: 10,
               fontWeight: FontWeight.bold,
@@ -1064,26 +1081,26 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Delivery Confirmation',
-                style: TextStyle(
+                'Delivery Confirmation'.tr,
+                style: const TextStyle(
                   color: AppColors.primaryText,
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),
               ),
-              Icon(Icons.check_circle, color: AppColors.success, size: 18),
+              const Icon(Icons.check_circle, color: AppColors.success, size: 18),
             ],
           ),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoItem('Receiver', receiver),
-              _buildInfoItem('Status', status, alignRight: true),
+              _buildInfoItem('Receiver'.tr, receiver),
+              _buildInfoItem('Status'.tr, status.tr, alignRight: true),
             ],
           ),
         ],
@@ -1187,9 +1204,9 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
         ElevatedButton.icon(
           onPressed: _downloadTripReport,
           icon: const Icon(Icons.download_outlined, color: Colors.white, size: 20),
-          label: const Text(
-            'Download Trip Report',
-            style: TextStyle(
+          label: Text(
+            'Download Trip Report'.tr,
+            style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,
               color: Colors.white,
@@ -1210,9 +1227,9 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
         OutlinedButton.icon(
           onPressed: _shareTripReport,
           icon: const Icon(Icons.share_outlined, color: AppColors.secondary, size: 20),
-          label: const Text(
-            'Share Report',
-            style: TextStyle(
+          label: Text(
+            'Share Report'.tr,
+            style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,
               color: AppColors.secondary,
@@ -1312,25 +1329,25 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
                     ),
                     const SizedBox(height: 16),
                     if (!isUploaded) ...[
-                      const Center(
+                      Center(
                         child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24.0),
+                          padding: const EdgeInsets.symmetric(vertical: 24.0),
                           child: Column(
                             children: [
-                              Icon(Icons.hourglass_empty_outlined, size: 48, color: AppColors.secondaryText),
-                              SizedBox(height: 12),
+                              const Icon(Icons.hourglass_empty_outlined, size: 48, color: AppColors.secondaryText),
+                              const SizedBox(height: 12),
                               Text(
-                                'No Document Uploaded',
-                                style: TextStyle(
+                                'No Document Uploaded'.tr,
+                                style: const TextStyle(
                                   color: AppColors.secondaryText,
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Text(
-                                'This document details are not available yet.',
-                                style: TextStyle(
+                                'This document details are not available yet.'.tr,
+                                style: const TextStyle(
                                   color: AppColors.secondaryText,
                                   fontSize: 12,
                                 ),
@@ -1363,7 +1380,7 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
                                 children: [
                                   Flexible(
                                     child: Text(
-                                      key,
+                                      key.tr,
                                       style: const TextStyle(color: AppColors.secondaryText, fontSize: 13),
                                     ),
                                   ),
@@ -1375,7 +1392,7 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
                                       border: Border.all(color: statusColor.withValues(alpha: 0.2)),
                                     ),
                                     child: Text(
-                                      val.toUpperCase(),
+                                      val.toUpperCase().tr,
                                       style: TextStyle(
                                         color: statusColor,
                                         fontWeight: FontWeight.bold,
@@ -1395,7 +1412,7 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
                               children: [
                                 Flexible(
                                   child: Text(
-                                    key,
+                                    key.tr,
                                     style: const TextStyle(color: AppColors.secondaryText, fontSize: 13),
                                   ),
                                 ),
@@ -1431,7 +1448,7 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
                           );
                         },
                         icon: const Icon(Icons.open_in_new, size: 16, color: Colors.white),
-                        label: Text('View $documentName Document'),
+                        label: Text('${'View'.tr} $documentName'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.secondary,
                           foregroundColor: Colors.white,
@@ -1443,13 +1460,13 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
                       ),
                     ),
                   ] else ...[
-                    const SizedBox(
+                    SizedBox(
                       width: double.infinity,
                       child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8.0),
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
                         child: Text(
-                          'No document file url available.',
-                          style: TextStyle(color: AppColors.secondaryText, fontSize: 12, fontStyle: FontStyle.italic),
+                          'No document file url available.'.tr,
+                          style: const TextStyle(color: AppColors.secondaryText, fontSize: 12, fontStyle: FontStyle.italic),
                           textAlign: TextAlign.center,
                         ),
                       ),

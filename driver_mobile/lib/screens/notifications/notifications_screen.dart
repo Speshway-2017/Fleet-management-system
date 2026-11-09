@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../utils/navigation_helper.dart';
 import '../../services/api_service.dart';
 import '../../services/socket_service.dart';
 import '../../repositories/notification_repository.dart';
@@ -284,12 +285,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final todayNotifications = filteredNotifications.where((n) => n.category == 'TODAY').toList();
     final yesterdayNotifications = filteredNotifications.where((n) => n.category != 'TODAY').toList();
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: CustomAppBar(
-        centerTitle: false,
-        backgroundColor: AppColors.primary,
-        actions: const [],
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLanguage, _) {
+        return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) SafeNavigation.pop(context, fallbackTab: 2);
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: CustomAppBar(
+          centerTitle: false,
+          backgroundColor: AppColors.primary,
+          fallbackTab: 2,
+          actions: const [],
         title: Text(
           'Notifications'.tr,
           style: GoogleFonts.poppins(
@@ -408,6 +418,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ],
         ),
       ),
+    ),
+    );
+      },
     );
   }
 

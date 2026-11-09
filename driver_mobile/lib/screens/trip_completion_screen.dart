@@ -7,6 +7,7 @@ import '../constants/app_spacing.dart';
 import '../services/api_service.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
+import '../utils/navigation_helper.dart';
 
 class TripCompletionScreen extends StatefulWidget {
   final String tripId;
@@ -114,18 +115,24 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
         : (_weighbridgeData != null ? 'Completed' : 'Pending');
     final tollStatus = _tollData != null ? 'Completed' : 'Pending';
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
-        centerTitle: false,
-        title: Text(
-          'Trip Completion',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: AppColors.background,
-            fontWeight: FontWeight.bold,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) SafeNavigation.pop(context, fallbackTab: 3);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: CustomAppBar(
+          centerTitle: false,
+          fallbackTab: 3,
+          title: Text(
+            'Trip Completion',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppColors.background,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
-      ),
       body: SafeArea(
         child: Stack(
           children: [
@@ -487,6 +494,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 

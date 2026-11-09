@@ -424,8 +424,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF071426), // Deep Navy Matching Reference Header
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLanguage, _) {
+        return Scaffold(
+          backgroundColor: const Color(0xFF071426), // Deep Navy Matching Reference Header
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -812,12 +815,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Text(
-                                'Dashboard Overview'.tr,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16.5,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF0F1E38),
+                              Expanded(
+                                child: Text(
+                                  'Dashboard Overview'.tr,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF0F1E38),
+                                  ),
                                 ),
                               ),
                             ],
@@ -834,31 +841,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(5),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF0F1E38),
-                                      borderRadius: BorderRadius.circular(7),
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(5),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF0F1E38),
+                                        borderRadius: BorderRadius.circular(7),
+                                      ),
+                                      child: const Icon(
+                                        Icons.business_center_rounded,
+                                        color: Colors.white,
+                                        size: 15,
+                                      ),
                                     ),
-                                    child: const Icon(
-                                      Icons.business_center_rounded,
-                                      color: Colors.white,
-                                      size: 15,
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        'Recent Trips'.tr,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 16.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: const Color(0xFF0F1E38),
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Recent Trips'.tr,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 16.5,
-                                      fontWeight: FontWeight.bold,
-                                      color: const Color(0xFF0F1E38),
-                                    ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
+                              const SizedBox(width: 12),
                               InkWell(
                                 onTap: () {
                                   MainNavigationScreen.selectedTabNotifier.value = 3;
@@ -965,6 +979,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    );
+      },
     );
   }
 

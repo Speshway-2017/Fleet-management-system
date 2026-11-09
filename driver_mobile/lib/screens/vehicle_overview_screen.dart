@@ -1,3 +1,4 @@
+import 'main_navigation_screen.dart';
 import '../services/localization_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -104,54 +105,59 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
     const bgLight = Color(0xFFF7F8FA);
     const primaryOrange = Color(0xFFF97316);
 
-    return Scaffold(
-      backgroundColor: bgLight,
-      appBar: AppBar(
-        backgroundColor: primaryDark,
-        elevation: 0,
-        centerTitle: false,
-        titleSpacing: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          'Vehicle Overview',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-        ),
-        actions: const [],
-      ),
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(primaryOrange),
-                ),
-              )
-            : RefreshIndicator(
-                onRefresh: () async {
-                  _cachedVehicle = null;
-                  _cachedIsAssigned = null;
-                  ApiService.clearApiCache('/driver/vehicle');
-                  await Future.any([
-                    _fetchVehicleData(),
-                    Future.delayed(const Duration(milliseconds: 500)),
-                  ]);
-                },
-                color: primaryOrange,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                  padding: const EdgeInsets.all(16.0),
-                  child: !_isAssigned || _vehicle == null
-                      ? _buildNoVehicleAssignedState(context)
-                      : _buildVehicleContent(context),
-                ),
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, lang, _) {
+        return Scaffold(
+          backgroundColor: bgLight,
+          appBar: AppBar(
+            backgroundColor: primaryDark,
+            elevation: 0,
+            centerTitle: false,
+            titleSpacing: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+              onPressed: () => MainNavigationScreen.selectedTabNotifier.value = 2,
+            ),
+            title: Text(
+              'Vehicle Overview'.tr,
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
               ),
-      ),
+            ),
+            actions: const [],
+          ),
+          body: SafeArea(
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(primaryOrange),
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: () async {
+                      _cachedVehicle = null;
+                      _cachedIsAssigned = null;
+                      ApiService.clearApiCache('/driver/vehicle');
+                      await Future.any([
+                        _fetchVehicleData(),
+                        Future.delayed(const Duration(milliseconds: 500)),
+                      ]);
+                    },
+                    color: primaryOrange,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                      padding: const EdgeInsets.all(16.0),
+                      child: !_isAssigned || _vehicle == null
+                          ? _buildNoVehicleAssignedState(context)
+                          : _buildVehicleContent(context),
+                    ),
+                  ),
+          ),
+        );
+      },
     );
   }
 
@@ -205,7 +211,7 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                'A Fleet Manager has not assigned a vehicle to you yet.',
+                'A Fleet Manager has not assigned a vehicle to you yet.'.tr,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.nunito(
                   fontSize: 14,
@@ -219,7 +225,7 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
                 onPressed: _fetchVehicleData,
                 icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 18),
                 label: Text(
-                  'Check Again',
+                  'Check Again'.tr,
                   style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.white),
                 ),
                 style: ElevatedButton.styleFrom(
@@ -269,7 +275,7 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
 
         // 2. Actions & Details Section Header
         Text(
-          'Actions & Details',
+          'Actions & Details'.tr,
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -338,7 +344,7 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
 
         // 4. Quick Info Section Header
         Text(
-          'Quick Info',
+          'Quick Info'.tr,
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w700,
