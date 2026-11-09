@@ -228,7 +228,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               ],
             ),
             bottomNavigationBar: Container(
-              height: 64.0 + MediaQuery.of(context).padding.bottom,
+              height: 66.0 + MediaQuery.of(context).padding.bottom,
               decoration: const BoxDecoration(
                 color: AppColors.primary,
                 boxShadow: [
@@ -275,18 +275,21 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         },
         borderRadius: BorderRadius.circular(12.0),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 6.0),
+          padding: const EdgeInsets.symmetric(vertical: 2.0),
           alignment: Alignment.center,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               iconWidget,
-              const SizedBox(height: 3),
+              const SizedBox(height: 2),
               Text(
                 label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.poppins(
                   color: isSelected ? AppColors.secondary : AppColors.textDisabled,
                   fontSize: 10,
+                  height: 1.15,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                 ),
               ),

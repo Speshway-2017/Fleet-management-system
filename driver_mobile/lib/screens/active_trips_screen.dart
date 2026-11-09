@@ -5,10 +5,12 @@ import '../constants/app_colors.dart';
 import '../constants/app_spacing.dart';
 import '../constants/app_radius.dart';
 import '../services/api_service.dart';
+import '../services/localization_service.dart';
 import '../services/socket_service.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
 import '../widgets/live_tracking_map_widget.dart';
+import '../utils/navigation_helper.dart';
 import 'completed_trips_screen.dart';
 import 'trip_details_screen.dart';
 
@@ -322,50 +324,62 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
-        centerTitle: false,
-        title: Text(
-          'Active Trips',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: AppColors.background,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            _cachedActiveTrip = null;
-            ApiService.clearApiCache('/driver/trips/current');
-            await Future.any([
-              _fetchActiveTrip(),
-              Future.delayed(const Duration(milliseconds: 500)),
-            ]);
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLang, _) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop) SafeNavigation.pop(context, fallbackTab: 3);
           },
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-            child: _isLoading
-                ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(40.0),
-                      child: CircularProgressIndicator(),
-                    ),
-                  )
-                : _activeTrip == null
-                    ? _buildNoActiveTripState()
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _buildInProgressCard(context),
-                          const SizedBox(height: 16),
-                        ],
-                      ),
+          child: Scaffold(
+            backgroundColor: AppColors.background,
+            appBar: CustomAppBar(
+              centerTitle: false,
+              fallbackTab: 3,
+              title: Text(
+                'Active Trips'.tr,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppColors.background,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          body: SafeArea(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                _cachedActiveTrip = null;
+                ApiService.clearApiCache('/driver/trips/current');
+                await Future.any([
+                  _fetchActiveTrip(),
+                  Future.delayed(const Duration(milliseconds: 500)),
+                ]);
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                child: _isLoading
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(40.0),
+                          child: CircularProgressIndicator(),
+                        ),
+                      )
+                    : _activeTrip == null
+                        ? _buildNoActiveTripState()
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildInProgressCard(context),
+                              const SizedBox(height: 16),
+                            ],
+                          ),
+              ),
+            ),
           ),
         ),
-      ),
+        );
+      },
     );
   }
 
@@ -378,7 +392,7 @@ class _ActiveTripsScreenState extends State<ActiveTripsScreen> {
             const Icon(Icons.navigation_outlined, size: 64, color: AppColors.secondaryText),
             const SizedBox(height: 16),
             Text(
-              'No Active Trips',
+              'No Active Trips'.tr,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: AppColors.primaryText,

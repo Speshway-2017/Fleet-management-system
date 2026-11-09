@@ -4,7 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import '../services/localization_service.dart';
 import '../widgets/external_contact_modal.dart';
+import '../utils/navigation_helper.dart';
 
 /// Driver Module - Contact Fleet Manager Screen (Indian Fleet Data Context)
 ///
@@ -87,30 +89,38 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
     const successBg = Color(0xFFDCFCE7);
     const successText = Color(0xFF15803D);
 
-    return Scaffold(
-      backgroundColor: bgLight,
-      appBar: AppBar(
-        backgroundColor: primaryDark,
-        elevation: 0,
-        centerTitle: false,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          'Contact Fleet manager',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-        ),
-        actions: const [],
-      ),
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLang, _) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop) SafeNavigation.pop(context, fallbackTab: 2);
+          },
+          child: Scaffold(
+            backgroundColor: bgLight,
+            appBar: AppBar(
+              backgroundColor: primaryDark,
+              elevation: 0,
+              centerTitle: false,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                onPressed: () => SafeNavigation.pop(context, fallbackTab: 2),
+              ),
+              title: Text(
+                'Contact Fleet manager'.tr,
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              actions: const [],
+            ),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 32.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -179,6 +189,8 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                             children: [
                               Text(
                                 _managerName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.poppins(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w700,
@@ -187,7 +199,9 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                               ),
                               const SizedBox(height: 2.0),
                               Text(
-                                'Fleet Manager • ID: FM-IN-2045',
+                                '${'Fleet Manager'.tr} • ID: FM-IN-2045',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.nunito(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
@@ -217,12 +231,16 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: 6),
-                                    Text(
-                                      'Available',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: successText,
+                                    Flexible(
+                                      child: Text(
+                                        'Available'.tr,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: successText,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -245,7 +263,7 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'EXPERIENCE',
+                                'EXPERIENCE'.tr,
                                 style: GoogleFonts.poppins(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
@@ -256,6 +274,8 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                               const SizedBox(height: 2.0),
                               Text(
                                 '12 Years',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -265,12 +285,13 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                             ],
                           ),
                         ),
+                        const SizedBox(width: 8.0),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'REGION',
+                                'REGION'.tr,
                                 style: GoogleFonts.poppins(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
@@ -281,6 +302,8 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                               const SizedBox(height: 2.0),
                               Text(
                                 'West & South Corridor',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -318,7 +341,7 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                   children: [
                     _buildContactItem(
                       icon: Icons.phone_outlined,
-                      label: 'Phone',
+                      label: 'Phone'.tr,
                       value: _managerPhone,
                       subValue: 'Office: +91 22 6123 4567',
                     ),
@@ -328,7 +351,7 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                     ),
                     _buildContactItem(
                       icon: Icons.mail_outline_rounded,
-                      label: 'Email',
+                      label: 'Email'.tr,
                       value: _managerEmail,
                     ),
                     const Padding(
@@ -337,7 +360,7 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                     ),
                     _buildContactItem(
                       icon: Icons.location_on_outlined,
-                      label: 'Office Address',
+                      label: 'Office Address'.tr,
                       value:
                           'Fleet Operations Hub, Plot 42, Nhava Sheva Logistics Park, Navi Mumbai, Maharashtra - 400707',
                     ),
@@ -347,7 +370,7 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                     ),
                     _buildContactItem(
                       icon: Icons.access_time_rounded,
-                      label: 'Working Hours',
+                      label: 'Working Hours'.tr,
                       value: '08:00 AM – 07:00 PM',
                     ),
                   ],
@@ -358,7 +381,7 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
 
               // 3. Active Assignment Section
               Text(
-                'Active Assignment',
+                'Active Assignment'.tr,
                 style: GoogleFonts.poppins(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -388,31 +411,38 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Status',
-                          style: GoogleFonts.nunito(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: textSecondary,
+                        Flexible(
+                          child: Text(
+                            'Status'.tr,
+                            style: GoogleFonts.nunito(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: textSecondary,
+                            ),
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _tripStatus == 'NO ACTIVE TRIP'
-                                ? Colors.grey
-                                : successGreen,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            _tripStatus,
-                            style: GoogleFonts.poppins(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
+                        const SizedBox(width: 8.0),
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _tripStatus == 'NO ACTIVE TRIP'
+                                  ? Colors.grey
+                                  : successGreen,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              _tripStatus.tr,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),
@@ -429,7 +459,7 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Driver',
+                                'Driver'.tr,
                                 style: GoogleFonts.nunito(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
@@ -438,6 +468,8 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                               ),
                               Text(
                                 _driverName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -447,12 +479,13 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                             ],
                           ),
                         ),
+                        const SizedBox(width: 8.0),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Vehicle',
+                                'Vehicle'.tr,
                                 style: GoogleFonts.nunito(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
@@ -461,6 +494,8 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                               ),
                               Text(
                                 _vehiclePlate,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -480,7 +515,7 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Trip ID',
+                                'Trip ID'.tr,
                                 style: GoogleFonts.nunito(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
@@ -489,6 +524,8 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                               ),
                               Text(
                                 _tripId,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -498,12 +535,13 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                             ],
                           ),
                         ),
+                        const SizedBox(width: 8.0),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Route',
+                                'Route'.tr,
                                 style: GoogleFonts.nunito(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
@@ -512,6 +550,8 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                               ),
                               Text(
                                 _route,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -530,9 +570,11 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
               const SizedBox(height: 20.0),
 
               // 4. Action Buttons (Call & Send Message)
-              SizedBox(
-                width: double.infinity,
-                height: 50,
+              ConstrainedBox(
+                constraints: const BoxConstraints(
+                  minWidth: double.infinity,
+                  minHeight: 50,
+                ),
                 child: ElevatedButton.icon(
                   onPressed: () {
                     showExternalContactOptionsModal(
@@ -543,11 +585,12 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                     );
                   },
                   icon: const Icon(Icons.phone_in_talk_rounded, size: 20),
-                  label: const Text('Call Fleet Manager'),
+                  label: Text('Call Fleet Manager'.tr),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryOrange,
                     foregroundColor: Colors.white,
                     elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12.0),
                     ),
@@ -559,9 +602,11 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                 ),
               ),
               const SizedBox(height: 12.0),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
+              ConstrainedBox(
+                constraints: const BoxConstraints(
+                  minWidth: double.infinity,
+                  minHeight: 50,
+                ),
                 child: OutlinedButton.icon(
                   onPressed: () {
                     showExternalContactOptionsModal(
@@ -572,10 +617,11 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                     );
                   },
                   icon: const Icon(Icons.chat_bubble_outline_rounded, size: 20),
-                  label: const Text('Send Message'),
+                  label: Text('Send Message'.tr),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: textPrimary,
                     side: const BorderSide(color: primaryDark, width: 1.5),
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12.0),
                     ),
@@ -591,7 +637,7 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
 
               // 5. Recent Activity Section (Timeline)
               Text(
-                'Recent Activity',
+                'Recent Activity'.tr,
                 style: GoogleFonts.poppins(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -604,26 +650,26 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
                 isFirst: true,
                 isLast: false,
                 isOrangeDot: true,
-                title: 'Call Completed',
-                subtitle: 'Discussed route adjustments near Hub corridors.',
-                timestamp: 'Today',
+                title: 'Call Completed'.tr,
+                subtitle: 'Discussed route adjustments near Hub corridors.'.tr,
+                timestamp: 'Today'.tr,
               ),
               _buildTimelineItem(
                 isFirst: false,
                 isLast: false,
                 isOrangeDot: false,
-                title: 'Maintenance Talk',
+                title: 'Maintenance Talk'.tr,
                 subtitle:
-                    'Confirmed tire pressure check at departure terminal.',
-                timestamp: 'Yesterday',
+                    'Confirmed tire pressure check at departure terminal.'.tr,
+                timestamp: 'Yesterday'.tr,
               ),
               _buildTimelineItem(
                 isFirst: false,
                 isLast: true,
                 isOrangeDot: false,
-                title: 'Trip Approval',
-                subtitle: 'Assignment authorized for Logistics Hub terminal.',
-                timestamp: '2 days ago',
+                title: 'Trip Approval'.tr,
+                subtitle: 'Assignment authorized for Logistics Hub terminal.'.tr,
+                timestamp: '2 days ago'.tr,
               ),
 
               const SizedBox(height: 24.0),
@@ -631,6 +677,9 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
           ),
         ),
       ),
+    ),
+    );
+      },
     );
   }
 
@@ -700,41 +749,46 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
     const textSecondary = Color(0xFF6B7280);
     const primaryOrange = Color(0xFFF97316);
 
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          // Timeline indicator (dot + line)
-          SizedBox(
-            width: 24,
-            child: Column(
-              children: [
-                const SizedBox(height: 16),
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: isOrangeDot ? primaryOrange : Colors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isOrangeDot
-                          ? primaryOrange
-                          : const Color(0xFFD1D5DB),
-                      width: isOrangeDot ? 0 : 2,
-                    ),
-                  ),
+          // Timeline vertical connector line
+          if (!isLast)
+            Positioned(
+              left: 11,
+              top: 28,
+              bottom: -12,
+              child: Container(
+                width: 2,
+                color: const Color(0xFFE5E7EB),
+              ),
+            ),
+          // Timeline indicator dot
+          Positioned(
+            left: 6,
+            top: 18,
+            child: Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: isOrangeDot ? primaryOrange : Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isOrangeDot
+                      ? primaryOrange
+                      : const Color(0xFFD1D5DB),
+                  width: isOrangeDot ? 0 : 2,
                 ),
-                if (!isLast)
-                  Expanded(
-                    child: Container(width: 2, color: const Color(0xFFE5E7EB)),
-                  ),
-              ],
+              ),
             ),
           ),
-          const SizedBox(width: 12.0),
-          Expanded(
+          // Timeline Content Card
+          Padding(
+            padding: const EdgeInsets.only(left: 32.0),
             child: Container(
-              margin: const EdgeInsets.only(bottom: 12.0),
+              width: double.infinity,
               padding: const EdgeInsets.all(14.0),
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -750,18 +804,22 @@ class _ContactFleetManagerScreenState extends State<ContactFleetManagerScreen> {
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title,
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: textPrimary,
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: textPrimary,
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8.0),
                       Text(
                         timestamp,
                         style: GoogleFonts.nunito(

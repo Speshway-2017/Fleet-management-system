@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
+import '../services/localization_service.dart';
+import '../utils/navigation_helper.dart';
 
 /// Driver Module - Raise Ticket Screen
 /// 
@@ -127,7 +129,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Attach Ticket Photo',
+                  'Attach Ticket Photo'.tr,
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -138,7 +140,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
                 ListTile(
                   leading: const Icon(Icons.camera_alt_rounded, color: Color(0xFFFF7A1A)),
                   title: Text(
-                    'Take Photo with Camera',
+                    'Take Photo with Camera'.tr,
                     style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                   onTap: () {
@@ -150,7 +152,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
                 ListTile(
                   leading: const Icon(Icons.photo_library_rounded, color: Color(0xFF2563EB)),
                   title: Text(
-                    'Choose from Gallery',
+                    'Choose from Gallery'.tr,
                     style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                   onTap: () {
@@ -257,27 +259,35 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
     const textSecondary = Color(0xFF6B7280);
     const primaryOrange = Color(0xFFFF7A1A);
 
-    return Scaffold(
-      backgroundColor: bgLight,
-      appBar: AppBar(
-        backgroundColor: primaryDark,
-        elevation: 0,
-        centerTitle: false,
-        titleSpacing: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          'Raise Ticket',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-        ),
-        actions: const [],
-      ),
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLang, _) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop) SafeNavigation.pop(context, fallbackTab: 2);
+          },
+          child: Scaffold(
+            backgroundColor: bgLight,
+            appBar: AppBar(
+              backgroundColor: primaryDark,
+              elevation: 0,
+              centerTitle: false,
+              titleSpacing: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                onPressed: () => SafeNavigation.pop(context, fallbackTab: 2),
+              ),
+              title: Text(
+                'Raise Ticket'.tr,
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              actions: const [],
+            ),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -302,7 +312,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'No vehicle is currently assigned. You can view your previous records, but new maintenance tickets will be available once a vehicle is assigned.',
+                          'No vehicle is currently assigned. You can view your previous records, but new maintenance tickets will be available once a vehicle is assigned.'.tr,
                           style: GoogleFonts.nunito(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w600,
@@ -335,7 +345,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Operational Support',
+                      'Operational Support'.tr,
                       style: GoogleFonts.poppins(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -344,7 +354,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
                     ),
                     const SizedBox(height: 6.0),
                     Text(
-                      'Report vehicle issues, delivery delays, or operational hurdles. Our dispatcher team typically responds within 15 minutes.',
+                      'Report vehicle issues, delivery delays, or operational hurdles. Our dispatcher team typically responds within 15 minutes.'.tr,
                       style: GoogleFonts.nunito(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w500,
@@ -359,7 +369,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
               const SizedBox(height: 20.0),
 
               // 2. Ticket Category Field
-              _buildFieldLabel('TICKET CATEGORY'),
+              _buildFieldLabel('TICKET CATEGORY'.tr),
               const SizedBox(height: 6.0),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14.0),
@@ -384,7 +394,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
                     items: _categories.map((String category) {
                       return DropdownMenuItem<String>(
                         value: category,
-                        child: Text(category),
+                        child: Text(category.tr),
                       );
                     }).toList(),
                     onChanged: (newValue) {
@@ -401,7 +411,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
               const SizedBox(height: 18.0),
 
               // 3. Priority Level Selector (LOW, MEDIUM, HIGH)
-              _buildFieldLabel('PRIORITY LEVEL'),
+              _buildFieldLabel('PRIORITY LEVEL'.tr),
               const SizedBox(height: 6.0),
               Container(
                 padding: const EdgeInsets.all(4.0),
@@ -437,7 +447,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
                           ),
                           alignment: Alignment.center,
                           child: Text(
-                            _priorities[index],
+                            _priorities[index].tr,
                             style: GoogleFonts.poppins(
                               fontSize: 12,
                               fontWeight:
@@ -455,7 +465,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
               const SizedBox(height: 18.0),
 
               // 4. Subject Input Field
-              _buildFieldLabel('SUBJECT'),
+              _buildFieldLabel('SUBJECT'.tr),
               const SizedBox(height: 6.0),
               TextField(
                 controller: _subjectController,
@@ -464,7 +474,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
                   color: textPrimary,
                 ),
                 decoration: InputDecoration(
-                  hintText: 'Briefly summarize the issue (e.g. Engine Overheating)',
+                  hintText: 'Briefly summarize the issue (e.g. Engine Overheating)'.tr,
                   hintStyle: GoogleFonts.poppins(
                     fontSize: 13,
                     color: textSecondary.withAlpha(180),
@@ -490,7 +500,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
               const SizedBox(height: 18.0),
 
               // 5. Detailed Description Input Field
-              _buildFieldLabel('DETAILED DESCRIPTION'),
+              _buildFieldLabel('DETAILED DESCRIPTION'.tr),
               const SizedBox(height: 6.0),
               TextField(
                 controller: _descriptionController,
@@ -503,7 +513,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
                 ),
                 decoration: InputDecoration(
                   hintText:
-                      'Please provide specific details including vehicle condition, location or breakdown symptoms...',
+                      'Please provide specific details including vehicle condition, location or breakdown symptoms...'.tr,
                   hintStyle: GoogleFonts.nunito(
                     fontSize: 13,
                     color: textSecondary.withAlpha(180),
@@ -529,7 +539,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
               const SizedBox(height: 18.0),
 
               // 6. Attach Files/Photos Box with Image Preview
-              _buildFieldLabel('ATTACH FILES/PHOTOS'),
+              _buildFieldLabel('ATTACH FILES/PHOTOS'.tr),
               const SizedBox(height: 6.0),
               GestureDetector(
                 onTap: _showImagePickerModal,
@@ -568,7 +578,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
                                           const Icon(Icons.check_circle_rounded, color: Colors.green, size: 16),
                                           const SizedBox(width: 4),
                                           Text(
-                                            'Photo Attached',
+                                            'Photo Attached'.tr,
                                             style: GoogleFonts.poppins(
                                               fontSize: 13,
                                               fontWeight: FontWeight.w700,
@@ -590,7 +600,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
                                       ),
                                       const SizedBox(height: 4.0),
                                       Text(
-                                        'Tap to change photo',
+                                        'Tap to change photo'.tr,
                                         style: GoogleFonts.poppins(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w600,
@@ -640,7 +650,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
                             ),
                             const SizedBox(height: 10.0),
                             Text(
-                              'Tap to upload or take a photo',
+                              'Tap to upload or take a photo'.tr,
                               style: GoogleFonts.poppins(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
@@ -649,7 +659,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
                             ),
                             const SizedBox(height: 2.0),
                             Text(
-                              'Camera, PNG, JPG (Max 10MB)',
+                              'Camera, PNG, JPG (Max 10MB)'.tr,
                               style: GoogleFonts.nunito(
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w500,
@@ -694,7 +704,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
                       : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text('Submit Ticket'),
+                            Text('Submit Ticket'.tr),
                             const SizedBox(width: 8.0),
                             const Icon(
                               Icons.send_rounded,
@@ -737,6 +747,9 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
           ),
         ),
       ),
+    ),
+    );
+      },
     );
   }
 

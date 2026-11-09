@@ -8,6 +8,7 @@ import '../utils/date_formatter.dart';
 import '../widgets/custom_card.dart';
 import 'active_trips_screen.dart';
 import 'upcoming_trips_screen.dart';
+import '../utils/navigation_helper.dart';
 
 class UpcomingTripDetailsScreen extends StatefulWidget {
   final String tripId;
@@ -145,18 +146,24 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
     final departureTime = formatIndianDateTime(_trip?['departureTime'] ?? 'Tomorrow, 08:00 AM');
     final managerName = _trip?['manager'] != null ? _trip!['manager']['name'] : 'Sarah Jenkins';
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
-        centerTitle: false,
-        title: Text(
-          'Upcoming Trip Details',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: AppColors.background,
-            fontWeight: FontWeight.bold,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) SafeNavigation.pop(context, fallbackTab: 3);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: CustomAppBar(
+          centerTitle: false,
+          fallbackTab: 3,
+          title: Text(
+            'Upcoming Trip Details',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppColors.background,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
-      ),
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator(color: AppColors.secondary))
@@ -207,6 +214,7 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
               ),
             ),
       ),
+    ),
     );
   }
 

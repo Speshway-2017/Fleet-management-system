@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../providers/auth_provider.dart';
+import '../../utils/navigation_helper.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -127,16 +128,22 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     final bool isSmallScreen = screenWidth < 375;
     final double paddingValue = isSmallScreen ? 16.0 : 24.0;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
-        centerTitle: false,
-        titleSpacing: 0.0,
-        backgroundColor: AppColors.primary,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) SafeNavigation.pop(context, fallbackTab: 4);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: CustomAppBar(
+          centerTitle: false,
+          titleSpacing: 0.0,
+          backgroundColor: AppColors.primary,
+          fallbackTab: 4,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => SafeNavigation.pop(context, fallbackTab: 4),
+          ),
         title: Text(
           'Change Password',
           style: GoogleFonts.poppins(
@@ -336,6 +343,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 

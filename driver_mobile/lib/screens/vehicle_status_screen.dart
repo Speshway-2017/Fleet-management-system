@@ -1,6 +1,8 @@
 import '../services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/localization_service.dart';
+import '../utils/navigation_helper.dart';
 
 /// Driver Module - Vehicle Status Screen
 /// 
@@ -133,19 +135,20 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
     const successGreen = Color(0xFF16A34A);
     const accentOrange = Color(0xFFF97316);
 
+    final Widget page;
     final currentVehicle = _vehicle ?? widget.vehicle;
     if (currentVehicle == null) {
-      return Scaffold(
+      page = Scaffold(
         backgroundColor: bgLight,
         appBar: AppBar(
           backgroundColor: primaryDark,
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => SafeNavigation.pop(context, fallbackTab: 0),
           ),
           title: Text(
-            'Vehicle Status',
+            'Vehicle Status'.tr,
             style: GoogleFonts.poppins(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -162,7 +165,7 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
                 const Icon(Icons.bar_chart_outlined, size: 64, color: textSecondary),
                 const SizedBox(height: 16),
                 Text(
-                  'No Vehicle Assigned',
+                  'No Vehicle Assigned'.tr,
                   style: GoogleFonts.poppins(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -171,7 +174,7 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'No vehicle has been assigned yet. Vehicle-related features will become available once your manager assigns a vehicle.',
+                  'No vehicle has been assigned yet. Vehicle-related features will become available once your manager assigns a vehicle.'.tr,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.nunito(fontSize: 14, color: textSecondary),
                 ),
@@ -180,32 +183,31 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
           ),
         ),
       );
-    }
+    } else {
+      final veh = currentVehicle;
+      final vehicleNumber = veh['vehicleNumber'] ?? veh['registrationNumber'] ?? 'N/A';
+      final vehicleType = veh['vehicleType'] ?? 'Truck';
+      final driverName = veh['assignedDriverName'] ?? 'Driver';
+      final odometer = veh['odometer'] != null ? '${veh['odometer']} km' : '0 km';
+      final currentStatus = veh['currentStatus'] ?? 'Assigned';
+      final currentLocation = veh['currentLocation'] ?? veh['branchDepot'] ?? 'N/A';
+      final fastagBalance = veh['fastagBalance'] != null ? '₹${veh['fastagBalance']}' : '₹0';
+      final lastServiceDateStr = _formatDate(veh['lastServiceDate'] ?? veh['lastService']);
+      final nextServiceDueStr = _formatDate(veh['nextServiceDue'] ?? veh['nextService']);
 
-    final veh = currentVehicle;
-    final vehicleNumber = veh['vehicleNumber'] ?? veh['registrationNumber'] ?? 'N/A';
-    final vehicleType = veh['vehicleType'] ?? 'Truck';
-    final driverName = veh['assignedDriverName'] ?? 'Driver';
-    final odometer = veh['odometer'] != null ? '${veh['odometer']} km' : '0 km';
-    final currentStatus = veh['currentStatus'] ?? 'Assigned';
-    final currentLocation = veh['currentLocation'] ?? veh['branchDepot'] ?? 'N/A';
-    final fastagBalance = veh['fastagBalance'] != null ? '₹${veh['fastagBalance']}' : '₹0';
-    final lastServiceDateStr = _formatDate(veh['lastServiceDate'] ?? veh['lastService']);
-    final nextServiceDueStr = _formatDate(veh['nextServiceDue'] ?? veh['nextService']);
-
-    return Scaffold(
-      backgroundColor: bgLight,
-      appBar: AppBar(
-        backgroundColor: primaryDark,
-        elevation: 0,
-        centerTitle: false,
-        titleSpacing: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+      page = Scaffold(
+        backgroundColor: bgLight,
+        appBar: AppBar(
+          backgroundColor: primaryDark,
+          elevation: 0,
+          centerTitle: false,
+          titleSpacing: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            onPressed: () => SafeNavigation.pop(context, fallbackTab: 0),
+          ),
         title: Text(
-          'Vehicle Status',
+          'Vehicle Status'.tr,
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -282,7 +284,7 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
                               ),
                               const SizedBox(width: 4.0),
                               Text(
-                                'Driver: ',
+                                'Driver: '.tr,
                                 style: GoogleFonts.nunito(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
@@ -301,7 +303,7 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
                           ),
                           const SizedBox(height: 12.0),
                           Text(
-                            'ODOMETER',
+                            'ODOMETER'.tr,
                             style: GoogleFonts.poppins(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
@@ -347,7 +349,7 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  currentStatus,
+                                  currentStatus.toString().tr,
                                   style: GoogleFonts.poppins(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
@@ -403,9 +405,9 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildSectionHeader(Icons.my_location_rounded, 'Real-time Live Location'),
+                        _buildSectionHeader(Icons.my_location_rounded, 'Real-time Live Location'.tr),
                         Text(
-                          'Updated Live',
+                          'Updated Live'.tr,
                           style: GoogleFonts.nunito(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -464,7 +466,7 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
                           child: _buildLiveDetailItem(
                             icon: Icons.location_on_outlined,
                             iconColor: accentOrange,
-                            label: 'Current Location',
+                            label: 'Current Location'.tr,
                             value: currentLocation,
                           ),
                         ),
@@ -472,9 +474,9 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
                           child: _buildLiveDetailItem(
                             icon: Icons.speed_rounded,
                             iconColor: primaryDark,
-                            label: 'Status / Speed',
-                            value: currentStatus,
-                            subValue: 'GPS Connected',
+                            label: 'Status / Speed'.tr,
+                            value: currentStatus.toString().tr,
+                            subValue: 'GPS Connected'.tr,
                           ),
                         ),
                       ],
@@ -503,7 +505,7 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionHeader(Icons.speed_outlined, 'Telemetry & Metrics'),
+                    _buildSectionHeader(Icons.speed_outlined, 'Telemetry & Metrics'.tr),
                     const SizedBox(height: 14.0),
                     Row(
                       children: [
@@ -511,18 +513,18 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
                           child: _buildLiveDetailItem(
                             icon: Icons.gps_fixed_rounded,
                             iconColor: primaryDark,
-                            label: 'GPS Tracking System',
-                            value: 'Connected',
-                            subValue: 'Live Telemetry',
+                            label: 'GPS Tracking System'.tr,
+                            value: 'Connected'.tr,
+                            subValue: 'Live Telemetry'.tr,
                           ),
                         ),
                         Expanded(
                           child: _buildLiveDetailItem(
                             icon: Icons.toll_outlined,
                             iconColor: successGreen,
-                            label: 'FASTag Balance',
+                            label: 'FASTag Balance'.tr,
                             value: fastagBalance,
-                            subValue: 'Active Account',
+                            subValue: 'Active Account'.tr,
                           ),
                         ),
                       ],
@@ -536,7 +538,7 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
                           child: _buildLiveDetailItem(
                             icon: Icons.history_rounded,
                             iconColor: primaryDark,
-                            label: 'Last Service Date',
+                            label: 'Last Service Date'.tr,
                             value: lastServiceDateStr,
                           ),
                         ),
@@ -544,7 +546,7 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
                           child: _buildLiveDetailItem(
                             icon: Icons.event_available_outlined,
                             iconColor: primaryDark,
-                            label: 'Next Service Due',
+                            label: 'Next Service Due'.tr,
                             value: nextServiceDueStr,
                           ),
                         ),
@@ -560,6 +562,20 @@ class _VehicleStatusScreenState extends State<VehicleStatusScreen> {
         ),
       ),
       ),
+    );
+    }
+
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLang, _) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop) SafeNavigation.pop(context, fallbackTab: 0);
+          },
+          child: page,
+        );
+      },
     );
   }
 }

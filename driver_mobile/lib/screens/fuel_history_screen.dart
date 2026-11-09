@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
+import '../services/localization_service.dart';
+import '../utils/navigation_helper.dart';
 import 'fuel_entry_details_screen.dart';
 
 /// Driver Module - Fuel History Screen
@@ -127,27 +129,35 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
 
     final entriesToDisplay = _filteredEntries;
 
-    return Scaffold(
-      backgroundColor: bgLight,
-      appBar: AppBar(
-        backgroundColor: primaryDark,
-        elevation: 0,
-        centerTitle: false,
-        titleSpacing: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          'Fuel History',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-        ),
-        actions: const [],
-      ),
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLang, _) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop) SafeNavigation.pop(context, fallbackTab: 1);
+          },
+          child: Scaffold(
+            backgroundColor: bgLight,
+            appBar: AppBar(
+              backgroundColor: primaryDark,
+              elevation: 0,
+              centerTitle: false,
+              titleSpacing: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                onPressed: () => SafeNavigation.pop(context, fallbackTab: 1),
+              ),
+              title: Text(
+                'Fuel History'.tr,
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              actions: const [],
+            ),
       body: SafeArea(
         child: _isLoading
             ? const Center(
@@ -194,7 +204,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  'No vehicle is currently assigned. You can view your previous records, but new fuel entries will be available once a vehicle is assigned.',
+                                  'No vehicle is currently assigned. You can view your previous records, but new fuel entries will be available once a vehicle is assigned.'.tr,
                                   style: GoogleFonts.nunito(
                                     fontSize: 12.5,
                                     fontWeight: FontWeight.w600,
@@ -243,7 +253,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                                       : null,
                                 ),
                                 child: Text(
-                                  _filters[index],
+                                  _filters[index].tr,
                                   style: GoogleFonts.poppins(
                                     fontSize: 12,
                                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -274,7 +284,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                                   const Icon(Icons.local_gas_station_outlined, size: 64, color: textSecondary),
                                   const SizedBox(height: 16),
                                   Text(
-                                    'No fuel records found.',
+                                    'No fuel records found'.tr,
                                     style: GoogleFonts.poppins(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
@@ -283,7 +293,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    'No fuel logs have been recorded for your profile.',
+                                    'No fuel logs have been recorded for your profile.'.tr,
                                     textAlign: TextAlign.center,
                                     style: GoogleFonts.nunito(fontSize: 14, color: textSecondary),
                                   ),
@@ -306,7 +316,10 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                   ),
                 ),
               ),
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -391,7 +404,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    status,
+                    status.toString().tr,
                     style: GoogleFonts.poppins(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -444,7 +457,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Station: ${station.toString()}',
+                        '${'Station'.tr}: ${station.toString()}',
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
@@ -457,7 +470,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                           const Icon(Icons.location_on_rounded, size: 13, color: primaryOrange),
                           const SizedBox(width: 4),
                           Text(
-                            'City: ${entry['location'] ?? entry['city'] ?? 'N/A'}',
+                            '${'City'.tr}: ${entry['location'] ?? entry['city'] ?? 'N/A'}',
                             style: GoogleFonts.nunito(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -493,7 +506,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'QUANTITY',
+                        'QUANTITY'.tr,
                         style: GoogleFonts.poppins(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w600,
@@ -518,7 +531,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'TOTAL COST',
+                        'TOTAL COST'.tr,
                         style: GoogleFonts.poppins(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w600,
@@ -558,7 +571,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Rejection Reason: ${rejectionReason.toString()}',
+                        '${'Rejection Reason'.tr}: ${rejectionReason.toString()}',
                         style: GoogleFonts.nunito(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,

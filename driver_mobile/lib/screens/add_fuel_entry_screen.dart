@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 import '../services/api_service.dart';
+import '../utils/navigation_helper.dart';
 
 /// Driver Module - Add Fuel Entry Screen
 class AddFuelEntryScreen extends StatefulWidget {
@@ -604,17 +605,22 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
     const textSecondary = Color(0xFF6B7280);
     const primaryOrange = Color(0xFFFF7A1A);
 
-    return Scaffold(
-      backgroundColor: bgLight,
-      appBar: AppBar(
-        backgroundColor: primaryDark,
-        elevation: 0,
-        centerTitle: false,
-        titleSpacing: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) SafeNavigation.pop(context, fallbackTab: 1);
+      },
+      child: Scaffold(
+        backgroundColor: bgLight,
+        appBar: AppBar(
+          backgroundColor: primaryDark,
+          elevation: 0,
+          centerTitle: false,
+          titleSpacing: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            onPressed: () => SafeNavigation.pop(context, fallbackTab: 1),
+          ),
         title: Text(
           'Add Fuel Entry',
           style: GoogleFonts.poppins(
@@ -1231,6 +1237,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
         ),
       ),
     ),
+  ),
   );
 }
 

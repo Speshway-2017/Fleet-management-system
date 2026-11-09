@@ -23,6 +23,7 @@ void main() async {
   } catch (e) {
     debugPrint('Firebase initialization failed: $e');
   }
+  await LocalizationService.init();
   runApp(const MyApp());
 }
 
@@ -36,11 +37,18 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
-      child: MaterialApp(
-        title: 'Fleet Driver Mobile',
-        theme: AppTheme.lightTheme,
-        debugShowCheckedModeBanner: false,
-        home: const SplashScreen(),
+      child: ValueListenableBuilder<String>(
+        valueListenable: LocalizationService.currentLanguageNotifier,
+        builder: (context, lang, child) {
+          return MaterialApp(
+            title: 'Fleet Driver Mobile',
+            theme: AppTheme.lightTheme,
+            debugShowCheckedModeBanner: false,
+            locale: LocalizationService.getLocale(lang),
+            home: child,
+          );
+        },
+        child: const SplashScreen(),
       ),
     );
   }

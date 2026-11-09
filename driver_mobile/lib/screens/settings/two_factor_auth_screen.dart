@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../providers/auth_provider.dart';
+import '../../utils/navigation_helper.dart';
 
 class TwoFactorAuthScreen extends StatefulWidget {
   const TwoFactorAuthScreen({super.key});
@@ -289,7 +290,20 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return _isVerificationStep ? _buildVerificationScreen() : _buildSettingsScreen();
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_isVerificationStep) {
+          setState(() {
+            _isVerificationStep = false;
+          });
+        } else {
+          SafeNavigation.pop(context, fallbackTab: 4);
+        }
+      },
+      child: _isVerificationStep ? _buildVerificationScreen() : _buildSettingsScreen(),
+    );
   }
 
   // --- STEP 1: SETTINGS VIEW ---
@@ -304,9 +318,10 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
         centerTitle: false,
         titleSpacing: 0.0,
         backgroundColor: AppColors.primary,
+        fallbackTab: 4,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => SafeNavigation.pop(context, fallbackTab: 4),
         ),
         title: Text(
           'Two-Factor Authentication',

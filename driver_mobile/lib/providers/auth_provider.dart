@@ -277,16 +277,16 @@ class AuthProvider extends ChangeNotifier {
       if (profile != null) {
         final prefs = await SharedPreferences.getInstance();
         final savedLanguage = prefs.getString('app_language');
-        if (savedLanguage != null && savedLanguage.isNotEmpty) {
-          _driver = profile.copyWith(language: savedLanguage);
-          LocalizationService.setLanguage(savedLanguage);
-        } else {
-          _driver = profile;
-          if (profile.language.isNotEmpty) {
-            LocalizationService.setLanguage(profile.language);
-            await prefs.setString('app_language', profile.language);
-          }
-        }
+        final currentServiceLang = LocalizationService.currentLanguage;
+        final effectiveLanguage = (savedLanguage != null && savedLanguage.isNotEmpty)
+            ? savedLanguage
+            : (currentServiceLang.isNotEmpty && currentServiceLang != LocalizationService.defaultLanguage
+                ? currentServiceLang
+                : (profile.language.isNotEmpty ? profile.language : LocalizationService.defaultLanguage));
+
+        _driver = profile.copyWith(language: effectiveLanguage);
+        LocalizationService.setLanguage(effectiveLanguage);
+        await prefs.setString('app_language', effectiveLanguage);
         _syncNotificationPreferences();
         _isAuthenticated = true;
         ProfileState.profilePhotoUrlNotifier.value = profile.profileImage;
@@ -361,14 +361,19 @@ class AuthProvider extends ChangeNotifier {
       }
 
       final prefs = await SharedPreferences.getInstance();
-      final savedLanguage = prefs.getString('app_language') ?? _driver?.language ?? LocalizationService.currentLanguage;
-      if (!data.containsKey('language') && savedLanguage.isNotEmpty) {
+      final requestedLang = data['language'] as String?;
+      final savedLanguage = requestedLang ?? prefs.getString('app_language') ?? _driver?.language ?? LocalizationService.currentLanguage;
+      if (requestedLang != null && requestedLang.isNotEmpty) {
+        data['language'] = LocalizationService.normalizeLanguage(requestedLang);
+      } else if (savedLanguage.isNotEmpty) {
         data['language'] = savedLanguage;
       }
 
       final profile = await _authRepository.updateProfile(data);
       if (profile != null) {
-        final activeLang = savedLanguage.isNotEmpty ? savedLanguage : profile.language;
+        final activeLang = (requestedLang != null && requestedLang.isNotEmpty)
+            ? LocalizationService.normalizeLanguage(requestedLang)
+            : (savedLanguage.isNotEmpty ? savedLanguage : profile.language);
         _driver = profile.copyWith(language: activeLang);
         if (activeLang.isNotEmpty) {
           LocalizationService.setLanguage(activeLang);

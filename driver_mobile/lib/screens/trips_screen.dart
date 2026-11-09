@@ -139,30 +139,27 @@ class _TripsScreenState extends State<TripsScreen> {
     final recentDestination = hasRecentTrip ? (_currentTrip!['destination'] ?? _currentTrip!['endLocation'] ?? '--') : '--';
     final recentStatus = hasRecentTrip ? (_currentTrip!['status'] ?? 'Scheduled') : '';
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
-        centerTitle: false,
-        actions: const [],
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            } else {
-              MainNavigationScreen.selectedTabNotifier.value = 2;
-            }
-          },
-        ),
-        title: Text(
-          'Trips'.tr,
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLang, _) {
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: CustomAppBar(
+            centerTitle: false,
+            actions: const [],
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => MainNavigationScreen.selectedTabNotifier.value = 2,
+            ),
+            title: Text(
+              'Trips'.tr,
+              style: GoogleFonts.poppins(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
           ),
-        ),
-      ),
       body: SafeArea(
         child: RefreshIndicator(
           color: const Color(0xFFF97316),
@@ -236,7 +233,7 @@ class _TripsScreenState extends State<TripsScreen> {
                             Expanded(
                               child: _buildStatCard(
                                 context,
-                                label: 'Active',
+                                label: 'Active'.tr,
                                 value: activeCount.toString().padLeft(2, '0'),
                                 valueColor: AppColors.secondary,
                                 showDot: true,
@@ -246,7 +243,7 @@ class _TripsScreenState extends State<TripsScreen> {
                             Expanded(
                               child: _buildStatCard(
                                 context,
-                                label: 'Upcoming',
+                                label: 'Upcoming'.tr,
                                 value: upcomingCount.toString().padLeft(2, '0'),
                               ),
                             ),
@@ -309,7 +306,7 @@ class _TripsScreenState extends State<TripsScreen> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                         child: Text(
-                          'Recent Trip',
+                          'Recent Trip'.tr,
                           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: AppColors.primaryText,
@@ -542,9 +539,9 @@ class _TripsScreenState extends State<TripsScreen> {
                                       borderRadius: BorderRadius.circular(AppRadius.sm),
                                     ),
                                   ),
-                                  child: const Text(
-                                    'View Details',
-                                    style: TextStyle(
+                                  child: Text(
+                                    'View Details'.tr,
+                                    style: const TextStyle(
                                       fontSize: 14.0,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -565,6 +562,8 @@ class _TripsScreenState extends State<TripsScreen> {
                 ),
         ),
       ),
+    );
+      },
     );
   }
 

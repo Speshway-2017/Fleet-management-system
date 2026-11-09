@@ -2,6 +2,7 @@ import '../services/localization_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
+import '../utils/navigation_helper.dart';
 import 'contact_fleet_manager_screen.dart';
 import 'fuel_overview_screen.dart';
 import 'raise_ticket_screen.dart';
@@ -236,16 +237,24 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
     const primaryDark = Color(0xFF101C2C);
     const bgLight = Color(0xFFF7F8FA);
 
-    return Scaffold(
-      backgroundColor: bgLight,
-      appBar: AppBar(
-        backgroundColor: primaryDark,
-        elevation: 0,
-        centerTitle: false,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLanguage, _) {
+        return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) SafeNavigation.pop(context, fallbackTab: 0);
+      },
+      child: Scaffold(
+        backgroundColor: bgLight,
+        appBar: AppBar(
+          backgroundColor: primaryDark,
+          elevation: 0,
+          centerTitle: false,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            onPressed: () => SafeNavigation.pop(context, fallbackTab: 0),
+          ),
         title: Text(
           'Vehicle Maintenance'.tr,
           style: GoogleFonts.poppins(
@@ -378,6 +387,9 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
           ),
         ),
       ),
+    ),
+    );
+      },
     );
   }
 
@@ -402,7 +414,7 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'No Vehicle Assigned',
+              'No Vehicle Assigned'.tr,
               style: GoogleFonts.poppins(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -411,7 +423,7 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'No vehicle has been assigned yet. You can inspect previous vehicle issues and fuel records, or contact your fleet manager for vehicle allocation.',
+              'No vehicle has been assigned yet. You can inspect previous vehicle issues and fuel records, or contact your fleet manager for vehicle allocation.'.tr,
               textAlign: TextAlign.center,
               style: GoogleFonts.nunito(fontSize: 13.5, color: textSecondary, height: 1.4),
             ),
@@ -455,7 +467,7 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            'Vehicle Issues',
+                            'Vehicle Issues'.tr,
                             textAlign: TextAlign.center,
                             style: GoogleFonts.poppins(
                               fontSize: 13,
@@ -471,7 +483,7 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              'VIEW TICKETS',
+                              'VIEW TICKETS'.tr,
                               style: GoogleFonts.poppins(
                                 fontSize: 9.5,
                                 fontWeight: FontWeight.w800,
@@ -531,7 +543,7 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            'Raise Ticket',
+                            'Raise Ticket'.tr,
                             textAlign: TextAlign.center,
                             style: GoogleFonts.poppins(
                               fontSize: 13,
@@ -547,7 +559,7 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              'REPORT ISSUE',
+                              'REPORT ISSUE'.tr,
                               style: GoogleFonts.poppins(
                                 fontSize: 9.5,
                                 fontWeight: FontWeight.w800,
@@ -730,7 +742,7 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
               ),
             ),
             Text(
-              '${alerts.length} Alerts Total',
+              '${alerts.length} ${'Alerts Total'.tr}',
               style: GoogleFonts.poppins(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
@@ -757,7 +769,7 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'All systems operational. No active maintenance alerts for this vehicle.',
+                        'All systems operational. No active maintenance alerts for this vehicle.'.tr,
                         style: GoogleFonts.nunito(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -941,7 +953,7 @@ class _VehicleMaintenanceScreenState extends State<VehicleMaintenanceScreen> {
             },
             icon: const Icon(Icons.headset_mic_rounded, size: 20, color: Color(0xFF0F172A)),
             label: Text(
-              'Contact Fleet Manager',
+              'Contact Fleet Manager'.tr,
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,

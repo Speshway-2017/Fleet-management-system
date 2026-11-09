@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../utils/navigation_helper.dart';
 
 /// Driver Module - Fuel Entry Details Screen
 class FuelEntryDetailsScreen extends StatelessWidget {
@@ -169,17 +170,22 @@ class FuelEntryDetailsScreen extends StatelessWidget {
     final rejectionReason = d['rejectionReason'] ?? '';
     final odometer = d['odometer'] != null ? '${d['odometer']} km' : 'N/A';
 
-    return Scaffold(
-      backgroundColor: bgLight,
-      appBar: AppBar(
-        backgroundColor: primaryDark,
-        elevation: 0,
-        centerTitle: false,
-        titleSpacing: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) SafeNavigation.pop(context, fallbackTab: 1);
+      },
+      child: Scaffold(
+        backgroundColor: bgLight,
+        appBar: AppBar(
+          backgroundColor: primaryDark,
+          elevation: 0,
+          centerTitle: false,
+          titleSpacing: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            onPressed: () => SafeNavigation.pop(context, fallbackTab: 1),
+          ),
         title: Text(
           'Fuel Entry Details',
           style: GoogleFonts.poppins(
@@ -492,6 +498,7 @@ class FuelEntryDetailsScreen extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 

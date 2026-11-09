@@ -1,3 +1,4 @@
+import 'main_navigation_screen.dart';
 import '../services/localization_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -156,27 +157,30 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
     const primaryOrange = Color(0xFFFF7A1A);
     const successGreen = Color(0xFF22C55E);
 
-    return Scaffold(
-      backgroundColor: bgLight,
-      appBar: AppBar(
-        backgroundColor: primaryDark,
-        elevation: 0,
-        centerTitle: false,
-        titleSpacing: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          'Fuel Overview',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLang, _) {
+        return Scaffold(
+          backgroundColor: bgLight,
+          appBar: AppBar(
+            backgroundColor: primaryDark,
+            elevation: 0,
+            centerTitle: false,
+            titleSpacing: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+              onPressed: () => MainNavigationScreen.selectedTabNotifier.value = 2,
+            ),
+            title: Text(
+              'Fuel Overview'.tr,
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            actions: const [],
           ),
-        ),
-        actions: const [],
-      ),
       body: SafeArea(
         child: _isLoading
             ? const Center(
@@ -224,7 +228,7 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  'No vehicle or trip is currently assigned. Fuel logging will become available once a vehicle or trip is assigned to you.',
+                                  'No vehicle or trip is currently assigned. Fuel logging will become available once a vehicle or trip is assigned to you.'.tr,
                                   style: GoogleFonts.nunito(
                                     fontSize: 12.5,
                                     fontWeight: FontWeight.w600,
@@ -338,7 +342,7 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
                                       ),
                                       const SizedBox(height: 2.0),
                                       Text(
-                                        '$_totalEntries Entries',
+                                        '$_totalEntries ${'Entries'.tr}',
                                         style: GoogleFonts.poppins(
                                           fontSize: 15,
                                           fontWeight: FontWeight.w700,
@@ -382,7 +386,7 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
                       const SizedBox(height: 24.0),
 
                       // 2. QUICK ACTIONS Section Header
-                      _buildSectionHeader('QUICK ACTIONS'),
+                      _buildSectionHeader('QUICK ACTIONS'.tr),
                       const SizedBox(height: 12.0),
 
                       Row(
@@ -391,7 +395,7 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
                             child: _buildQuickActionCard(
                               context,
                               icon: Icons.add_circle_outline_rounded,
-                              label: 'Add Fuel\nEntry',
+                              label: 'Add Fuel\nEntry'.tr,
                               isDisabled: !(_isAssigned || _hasActiveTrip),
                               onTap: () async {
                                 if (!_isAssigned && !_hasActiveTrip) {
@@ -401,8 +405,8 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
                                         children: [
                                           const Icon(Icons.lock_outline_rounded, color: Colors.white, size: 18),
                                           const SizedBox(width: 8),
-                                          const Expanded(
-                                            child: Text('Fuel logging is locked: Requires an assigned vehicle or active trip.'),
+                                          Expanded(
+                                            child: Text('Fuel logging is locked: Requires an assigned vehicle or active trip.'.tr),
                                           ),
                                         ],
                                       ),
@@ -428,7 +432,7 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
                             child: _buildQuickActionCard(
                               context,
                               icon: Icons.history_rounded,
-                              label: 'Fuel\nHistory',
+                              label: 'Fuel\nHistory'.tr,
                               isDisabled: false,
                               onTap: () {
                                 Navigator.push(
@@ -446,20 +450,20 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
                       const SizedBox(height: 24.0),
 
                       // 3. FUEL STATISTICS Section Header
-                      _buildSectionHeader('FUEL STATISTICS'),
+                      _buildSectionHeader('FUEL STATISTICS'.tr),
                       const SizedBox(height: 12.0),
 
                       _buildStatCard(
                         context,
                         icon: Icons.local_gas_station_outlined,
-                        title: 'Total Quantity Logged',
+                        title: 'Total Quantity Logged'.tr,
                         value: '${_totalLiters.toStringAsFixed(1)} L',
                       ),
                       const SizedBox(height: 12.0),
                       _buildStatCard(
                         context,
                         icon: Icons.account_balance_wallet_outlined,
-                        title: 'Last Refill Cost',
+                        title: 'Last Refill Cost'.tr,
                         value: _lastRefillCost > 0 ? '₹${_lastRefillCost.toStringAsFixed(2)}' : 'N/A',
                       ),
 
@@ -468,7 +472,9 @@ class _FuelOverviewScreenState extends State<FuelOverviewScreen> {
                   ),
                 ),
               ),
-      ),
+          ),
+        );
+      },
     );
   }
 

@@ -3,7 +3,9 @@ import '../constants/app_colors.dart';
 import '../constants/app_radius.dart';
 import '../constants/app_spacing.dart';
 import '../services/api_service.dart';
+import '../services/localization_service.dart';
 import '../widgets/custom_app_bar.dart';
+import '../utils/navigation_helper.dart';
 import '../widgets/custom_card.dart';
 import '../utils/date_formatter.dart';
 import 'completed_trip_details_screen.dart';
@@ -76,46 +78,58 @@ class _CompletedTripsScreenState extends State<CompletedTripsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
-        centerTitle: false,
-        title: Text(
-          'Completed Trips',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: AppColors.background,
-            fontWeight: FontWeight.bold,
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLang, _) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop) SafeNavigation.pop(context, fallbackTab: 3);
+          },
+          child: Scaffold(
+            backgroundColor: AppColors.background,
+            appBar: CustomAppBar(
+              centerTitle: false,
+              fallbackTab: 3,
+              title: Text(
+                'Completed Trips'.tr,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppColors.background,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          body: SafeArea(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                _cachedCompletedTrips = null;
+                ApiService.clearApiCache('/driver/trips?status=Completed');
+                await Future.any([
+                  _fetchCompletedTrips(),
+                  Future.delayed(const Duration(milliseconds: 500)),
+                ]);
+              },
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _completedTrips.isEmpty
+                      ? _buildEmptyState()
+                      : ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                          itemCount: _completedTrips.length,
+                          itemBuilder: (context, index) {
+                            final trip = _completedTrips[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                              child: _buildCompletedTripCard(context, trip),
+                            );
+                          },
+                        ),
+            ),
           ),
         ),
-      ),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            _cachedCompletedTrips = null;
-            ApiService.clearApiCache('/driver/trips?status=Completed');
-            await Future.any([
-              _fetchCompletedTrips(),
-              Future.delayed(const Duration(milliseconds: 500)),
-            ]);
-          },
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _completedTrips.isEmpty
-                  ? _buildEmptyState()
-                  : ListView.builder(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-                      itemCount: _completedTrips.length,
-                      itemBuilder: (context, index) {
-                        final trip = _completedTrips[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                          child: _buildCompletedTripCard(context, trip),
-                        );
-                      },
-                    ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -129,7 +143,7 @@ class _CompletedTripsScreenState extends State<CompletedTripsScreen> {
             const Icon(Icons.check_circle_outline, size: 64, color: AppColors.secondaryText),
             const SizedBox(height: 16),
             Text(
-              'No Completed Trips',
+              'No Completed Trips'.tr,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: AppColors.primaryText,
@@ -219,9 +233,9 @@ class _CompletedTripsScreenState extends State<CompletedTripsScreen> {
                   color: const Color(0xFFE8F5E9),
                   borderRadius: BorderRadius.circular(AppRadius.round),
                 ),
-                child: const Text(
-                  'Completed',
-                  style: TextStyle(
+                child: Text(
+                  'Completed'.tr,
+                  style: const TextStyle(
                     color: Color(0xFF2E7D32),
                     fontWeight: FontWeight.bold,
                     fontSize: 11,
@@ -333,13 +347,13 @@ class _CompletedTripsScreenState extends State<CompletedTripsScreen> {
                 Container(width: 1, height: 24, color: AppColors.divider),
                 _buildCardStat(
                   icon: Icons.access_time_outlined,
-                  label: 'Duration',
+                  label: 'Duration'.tr,
                   value: duration.toString(),
                 ),
                 Container(width: 1, height: 24, color: AppColors.divider),
                 _buildCardStat(
                   icon: Icons.local_gas_station_outlined,
-                  label: 'Fuel Used',
+                  label: 'Fuel Used'.tr,
                   value: fuelUsed.toString(),
                 ),
               ],
@@ -368,9 +382,9 @@ class _CompletedTripsScreenState extends State<CompletedTripsScreen> {
                 borderRadius: BorderRadius.circular(AppRadius.sm),
               ),
             ),
-            child: const Text(
-              'View Summary',
-              style: TextStyle(
+            child: Text(
+              'View Summary'.tr,
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
               ),

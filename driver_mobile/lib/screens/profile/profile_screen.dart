@@ -39,7 +39,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const Color orangeLightBg = Color(0xFFFFF7ED);
   static const Color orangeBorder = Color(0xFFFFEDD5);
 
-  String _selectedLanguage = 'English (US)';
+  String _selectedLanguage = LocalizationService.currentLanguage;
 
   static String normalizeLanguage(String? lang) {
     return LocalizationService.normalizeLanguage(lang);
@@ -48,6 +48,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedLanguage = LocalizationService.currentLanguage;
     _loadSavedLanguage();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final auth = Provider.of<AuthProvider>(context, listen: false);
@@ -683,13 +684,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             titleSpacing: 0,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-              onPressed: () {
-                if (Navigator.canPop(context)) {
-                  Navigator.pop(context);
-                } else {
-                  MainNavigationScreen.selectedTabNotifier.value = 2;
-                }
-              },
+              onPressed: () => MainNavigationScreen.selectedTabNotifier.value = 2,
             ),
             title: Text(
               'Profile',
