@@ -5,6 +5,7 @@ import '../constants/app_spacing.dart';
 import '../services/api_service.dart';
 import '../widgets/custom_app_bar.dart';
 import '../utils/navigation_helper.dart';
+import '../services/localization_service.dart';
 import '../widgets/custom_card.dart';
 
 class UpdateTripStatusScreen extends StatefulWidget {
@@ -50,7 +51,10 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, _, _) {
+        return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) SafeNavigation.pop(context, fallbackTab: 3);
@@ -61,7 +65,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
           centerTitle: false,
           fallbackTab: 3,
           title: Text(
-            'Update Trip status',
+            'Update Trip status'.tr,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: AppColors.background,
               fontWeight: FontWeight.bold,
@@ -95,12 +99,12 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
               AppSpacing.verticalSm,
 
               // 8. Attach Photo Proof Section
-              _buildSectionTitle('Attach Photo Proof'),
+              _buildSectionTitle('Attach Photo Proof'.tr),
               _buildPhotoProofSection(context),
               AppSpacing.verticalSm,
 
               // 8b. Customer Delivery Slips (POD & Weighbridge)
-              _buildSectionTitle('Customer Slips (POD & Weighbridge)'),
+              _buildSectionTitle('Customer Slips (POD & Weighbridge)'.tr),
               _buildCustomerSlipsSection(context),
               AppSpacing.verticalSm,
 
@@ -116,6 +120,8 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
         ),
       ),
     ),
+    );
+      },
     );
   }
 
@@ -147,7 +153,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'TRIP ID',
+                    'TRIP ID'.tr,
                     style: TextStyle(
                       color: AppColors.secondaryText,
                       fontSize: 10,
@@ -171,8 +177,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                   color: AppColors.divider,
                   borderRadius: BorderRadius.circular(AppRadius.round),
                 ),
-                child: const Text(
-                  'In Progress',
+                child: Text('In Progress'.tr,
                   style: TextStyle(
                     color: AppColors.primaryText,
                     fontWeight: FontWeight.bold,
@@ -195,7 +200,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Vehicle Number',
+                    'Vehicle Number'.tr,
                     style: TextStyle(
                       color: AppColors.secondaryText,
                       fontSize: 10,
@@ -317,7 +322,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Current Location',
+                    'Current Location'.tr,
                     style: TextStyle(
                       color: AppColors.primaryText,
                       fontWeight: FontWeight.bold,
@@ -329,7 +334,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
               InkWell(
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Auto-detecting current GPS coordinates...')),
+                    SnackBar(content: Text('Auto-detecting current GPS coordinates...'.tr)),
                   );
                 },
                 child: Row(
@@ -342,7 +347,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      'Auto-detect',
+                      'Auto-detect'.tr,
                       style: TextStyle(
                         color: AppColors.secondary,
                         fontWeight: FontWeight.bold,
@@ -381,8 +386,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Current Odometer Reading (km)',
+        Text('Current Odometer Reading (km)'.tr,
           style: TextStyle(
             color: AppColors.primaryText,
             fontWeight: FontWeight.bold,
@@ -395,7 +399,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
           keyboardType: TextInputType.number,
           style: const TextStyle(fontSize: 14.0, color: AppColors.primaryText),
           decoration: InputDecoration(
-            hintText: 'Enter reading',
+            hintText: 'Enter reading'.tr,
             hintStyle: const TextStyle(color: AppColors.disabledText, fontSize: 13),
             prefixIcon: const Icon(Icons.speed, color: AppColors.disabledText, size: 20),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
@@ -420,8 +424,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Remarks',
+        Text('Remarks'.tr,
           style: TextStyle(
             color: AppColors.primaryText,
             fontWeight: FontWeight.bold,
@@ -434,7 +437,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
           maxLines: 3,
           style: const TextStyle(fontSize: 14.0, color: AppColors.primaryText),
           decoration: InputDecoration(
-            hintText: 'Add trip update or remarks...',
+            hintText: 'Add trip update or remarks...'.tr,
             hintStyle: const TextStyle(color: AppColors.disabledText, fontSize: 13),
             contentPadding: const EdgeInsets.all(16.0),
             filled: true,
@@ -465,7 +468,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                 _attachedPhotoPath = 'camera';
               });
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Mock photo captured successfully!')),
+                SnackBar(content: Text('Mock photo captured successfully!'.tr)),
               );
             },
             borderRadius: BorderRadius.circular(AppRadius.md),
@@ -515,7 +518,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                 _attachedPhotoPath = 'gallery';
               });
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Mock photo selected from Gallery!')),
+                SnackBar(content: Text('Mock photo selected from Gallery!'.tr)),
               );
             },
             borderRadius: BorderRadius.circular(AppRadius.md),
@@ -574,8 +577,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'POD Slip (Proof of Delivery)',
+                    Text('POD Slip (Proof of Delivery)'.tr,
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primaryText),
                     ),
                     Text(
@@ -610,8 +612,8 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                               _isUploadingPod = false;
                             });
                             messenger.showSnackBar(
-                              const SnackBar(
-                                content: Text('POD uploaded to DB! Manager notified for approval.'),
+                              SnackBar(
+                                content: Text('POD uploaded to DB! Manager notified for approval.'.tr),
                                 backgroundColor: AppColors.success,
                               ),
                             );
@@ -661,8 +663,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Weighbridge Slip',
+                    Text('Weighbridge Slip'.tr,
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primaryText),
                     ),
                     Text(
@@ -697,8 +698,8 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                               _isUploadingWeighbridge = false;
                             });
                             messenger.showSnackBar(
-                              const SnackBar(
-                                content: Text('Weighbridge slip uploaded to DB! Manager notified for approval.'),
+                              SnackBar(
+                                content: Text('Weighbridge slip uploaded to DB! Manager notified for approval.'.tr),
                                 backgroundColor: AppColors.success,
                               ),
                             );
@@ -740,8 +741,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Final Checklist',
+          Text('Final Checklist'.tr,
             style: TextStyle(
               color: AppColors.primaryText,
               fontWeight: FontWeight.bold,
@@ -750,7 +750,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
           ),
           const SizedBox(height: 8),
           _buildChecklistItem(
-            title: 'Vehicle condition checked',
+            title: 'Vehicle condition checked'.tr,
             value: _vehicleConditionChecked,
             onChanged: (val) {
               setState(() {
@@ -759,7 +759,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
             },
           ),
           _buildChecklistItem(
-            title: 'Delivery documents verified',
+            title: 'Delivery documents verified'.tr,
             value: _documentsVerified,
             onChanged: (val) {
               setState(() {
@@ -768,7 +768,7 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
             },
           ),
           _buildChecklistItem(
-            title: 'GPS location confirmed',
+            title: 'GPS location confirmed'.tr,
             value: _gpsLocationConfirmed,
             onChanged: (val) {
               setState(() {
@@ -839,8 +839,8 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                 borderRadius: BorderRadius.circular(AppRadius.sm),
               ),
             ),
-            child: const Text(
-              'UPDATE STATUS',
+            child: Text(
+              'UPDATE STATUS'.tr,
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
@@ -863,8 +863,8 @@ class _UpdateTripStatusScreenState extends State<UpdateTripStatusScreen> {
                 borderRadius: BorderRadius.circular(AppRadius.sm),
               ),
             ),
-            child: const Text(
-              'CANCEL',
+            child: Text(
+              'CANCEL'.tr,
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,

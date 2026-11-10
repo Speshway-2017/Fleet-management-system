@@ -8,6 +8,7 @@ import '../services/api_service.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
 import '../utils/navigation_helper.dart';
+import '../services/localization_service.dart';
 
 class TollFeeReceiptScreen extends StatefulWidget {
   final String receiptNumber;
@@ -98,7 +99,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to select receipt image: $e')),
+          SnackBar(content: Text('${'Failed to select image:'.tr} $e')),
         );
       }
     }
@@ -129,8 +130,8 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Manual toll receipt uploaded successfully!'),
+          SnackBar(
+            content: Text('✅ Manual toll receipt uploaded successfully!'.tr),
             backgroundColor: AppColors.success,
           ),
         );
@@ -165,7 +166,10 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width > 768;
 
-    return PopScope(
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, _, _) {
+        return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) SafeNavigation.pop(context, fallbackTab: 3);
@@ -201,7 +205,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
                         const SizedBox(height: 16),
 
                         Text(
-                          'TOLL TRANSACTIONS',
+                          'TOLL TRANSACTIONS'.tr,
                           style: GoogleFonts.poppins(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
@@ -230,7 +234,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
                               },
                               icon: const Icon(Icons.upload_file, color: Colors.white),
                               label: Text(
-                                'UPLOAD MANUAL TOLL RECEIPT',
+                                'UPLOAD MANUAL TOLL RECEIPT'.tr,
                                 style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.white),
                               ),
                               style: ElevatedButton.styleFrom(
@@ -258,6 +262,8 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
       ),
     ),
     );
+      },
+    );
   }
 
   Widget _buildReceiptHeaderCard(BuildContext context) {
@@ -279,7 +285,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'TRIP ID',
+                    'TRIP ID'.tr,
                     style: GoogleFonts.poppins(
                       color: AppColors.secondaryText,
                       fontSize: 10,
@@ -304,7 +310,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
                   borderRadius: BorderRadius.circular(AppRadius.round),
                 ),
                 child: Text(
-                  'Verified',
+                  'Verified'.tr,
                   style: GoogleFonts.poppins(
                     color: AppColors.success,
                     fontWeight: FontWeight.bold,
@@ -318,8 +324,8 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoRow('RECEIPT NO', widget.receiptNumber),
-              _buildInfoRow('VEHICLE', vehicle.toString(), alignRight: true),
+              _buildInfoRow('Receipt Number'.tr, widget.receiptNumber),
+              _buildInfoRow('Vehicle'.tr, vehicle.toString(), alignRight: true),
             ],
           ),
         ],
@@ -386,7 +392,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Amount Paid',
+                  'Amount Paid'.tr,
                   style: GoogleFonts.nunito(
                     color: AppColors.secondaryText,
                     fontSize: 12.5,
@@ -407,7 +413,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Payment Mode',
+                  'Payment Mode'.tr,
                   style: GoogleFonts.nunito(
                     color: AppColors.secondaryText,
                     fontSize: 12.5,
@@ -449,7 +455,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'No toll transactions found',
+            'No toll transactions found'.tr,
             style: GoogleFonts.poppins(
               fontSize: 14.5,
               fontWeight: FontWeight.bold,
@@ -458,7 +464,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'No automated FASTag logs were detected for this trip. If you paid cash or crossed tolls manually, please upload the receipt details below.',
+            'No automated FASTag logs were detected for this trip. If you paid cash or crossed tolls manually, please upload the receipt details.'.tr,
             textAlign: TextAlign.center,
             style: GoogleFonts.nunito(
               fontSize: 12,
@@ -483,7 +489,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Manual Toll Receipt Form',
+                  'Manual Toll Receipt Form'.tr,
                   style: GoogleFonts.poppins(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -503,7 +509,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
             const SizedBox(height: 12),
             _buildInputField(
               controller: _plazaController,
-              label: 'Toll Plaza Name',
+              label: 'Toll Plaza Name'.tr,
               hint: 'e.g. vasad Toll Plaza',
               validator: (val) => val == null || val.trim().isEmpty ? 'Plaza Name is required' : null,
             ),
@@ -513,7 +519,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
                 Expanded(
                   child: _buildInputField(
                     controller: _amountController,
-                    label: 'Amount Paid (₹)',
+                    label: 'Amount Paid (₹)'.tr,
                     hint: 'e.g. 180',
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     validator: (val) {
@@ -527,7 +533,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
                 Expanded(
                   child: _buildInputField(
                     controller: _dateTimeController,
-                    label: 'Crossed Date/Time',
+                    label: 'Crossed Date/Time'.tr,
                     hint: 'YYYY-MM-DD HH:MM',
                     validator: (val) => val == null || val.trim().isEmpty ? 'Date is required' : null,
                   ),
@@ -536,7 +542,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'RECEIPT IMAGES',
+              'RECEIPT IMAGES'.tr,
               style: GoogleFonts.poppins(
                 fontSize: 10.5,
                 fontWeight: FontWeight.bold,
@@ -559,7 +565,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
                     const Icon(Icons.add_photo_alternate_outlined, color: AppColors.secondary, size: 20),
                     const SizedBox(width: 8),
                     Text(
-                      'Attach Receipt Photo',
+                      'Attach Receipt Photo'.tr,
                       style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.secondary),
                     ),
                   ],
@@ -616,7 +622,7 @@ class _TollFeeReceiptScreenState extends State<TollFeeReceiptScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
               ),
               child: Text(
-                _isSubmitting ? 'UPLOADING...' : 'SUBMIT MANUAL RECEIPT',
+                _isSubmitting ? 'UPLOADING...'.tr : 'SUBMIT MANUAL RECEIPT'.tr,
                 style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.white),
               ),
             ),

@@ -63,8 +63,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void _setupSocketNotificationListeners() {
     SocketService.onEvent('notification:new', (data) {
       if (mounted && data != null) {
-        final title = data['title'] ?? 'New Notification';
-        final message = data['message'] ?? data['description'] ?? '';
+        final title = (data['title'] ?? 'New Notification').toString();
+        final message = (data['message'] ?? data['description'] ?? '').toString();
+        final section = (data['metadata'] is Map ? (data['metadata']['section'] ?? '') : '').toString().toLowerCase();
+        final lowerTitle = title.toLowerCase();
+
+        // Suppress settings and preferences update notifications from popping up toast alerts
+        if (lowerTitle.contains('settings & preferences') ||
+            lowerTitle.contains('preferences updated') ||
+            lowerTitle.contains('settings updated') ||
+            section == 'preferences') {
+          return;
+        }
+
         _showPopupNotification(title, message);
 
         final newItem = NotificationItem(

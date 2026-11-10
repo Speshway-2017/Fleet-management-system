@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/localization_service.dart';
 import '../../utils/navigation_helper.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
@@ -217,248 +218,253 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
     final bool isSmallScreen = screenWidth < 375;
     final double paddingValue = isSmallScreen ? 16.0 : 20.0;
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) SafeNavigation.pop(context, fallbackTab: 4);
-      },
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: CustomAppBar(
-          centerTitle: false,
-          titleSpacing: 0.0,
-          backgroundColor: AppColors.primary,
-          fallbackTab: 4,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => SafeNavigation.pop(context, fallbackTab: 4),
-          ),
-        title: Text(
-          'Notifications',
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        actions: const [],
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.symmetric(horizontal: paddingValue, vertical: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // PREFERENCES Header Banner
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 24.0),
-                decoration: BoxDecoration(
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLang, _) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop) SafeNavigation.pop(context, fallbackTab: 4);
+          },
+          child: Scaffold(
+            backgroundColor: AppColors.background,
+            appBar: CustomAppBar(
+              centerTitle: false,
+              titleSpacing: 0.0,
+              backgroundColor: AppColors.primary,
+              fallbackTab: 4,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => SafeNavigation.pop(context, fallbackTab: 4),
+              ),
+              title: Text(
+                'Notifications'.tr,
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(12.0),
-                  border: Border.all(color: AppColors.divider, width: 1.0),
                 ),
+              ),
+              actions: const [],
+            ),
+            body: SafeArea(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.symmetric(horizontal: paddingValue, vertical: 24.0),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Icon(
-                      Icons.tune_rounded,
-                      size: 28,
-                      color: AppColors.secondary,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'PREFERENCES',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                        letterSpacing: 1.5,
+                    // PREFERENCES Header Banner
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 24.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12.0),
+                        border: Border.all(color: AppColors.divider, width: 1.0),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.tune_rounded,
+                            size: 28,
+                            color: AppColors.secondary,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'PREFERENCES'.tr,
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                    const SizedBox(height: 28),
+
+                    // Route Alerts Section
+                    _buildSectionTitle('Route Alerts'.tr),
+                    const SizedBox(height: 12),
+                    _buildSwitchCard(
+                      title: 'Route Changes'.tr,
+                      subtitle: 'Immediate notifications about updates'.tr,
+                      icon: Icons.alt_route_rounded,
+                      iconColor: AppColors.secondary,
+                      bgColor: AppColors.secondary.withValues(alpha: 0.1),
+                      value: _routeChanges,
+                      onChanged: (val) => setState(() => _routeChanges = val),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildSwitchCard(
+                      title: 'Traffic Warnings'.tr,
+                      subtitle: 'Real-time alerts for heavy congestion'.tr,
+                      icon: Icons.traffic_rounded,
+                      iconColor: Colors.blue,
+                      bgColor: Colors.blue.withValues(alpha: 0.1),
+                      value: _trafficWarnings,
+                      onChanged: (val) => setState(() => _trafficWarnings = val),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Vehicle Maintenance Section
+                    _buildSectionTitle('Vehicle Maintenance'.tr),
+                    const SizedBox(height: 12),
+                    _buildSwitchCard(
+                      title: 'Health Alerts'.tr,
+                      subtitle: 'Updates on engine and system health'.tr,
+                      icon: Icons.handyman_rounded,
+                      iconColor: AppColors.error,
+                      bgColor: AppColors.error.withValues(alpha: 0.1),
+                      value: _healthAlertes,
+                      onChanged: (val) => setState(() => _healthAlertes = val),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildSwitchCard(
+                      title: 'Fuel Level Warnings'.tr,
+                      subtitle: 'Notify when tank is below 15%'.tr,
+                      icon: Icons.local_gas_station_rounded,
+                      iconColor: Colors.blue,
+                      bgColor: Colors.blue.withValues(alpha: 0.1),
+                      value: _fuelWarnings,
+                      onChanged: (val) => setState(() => _fuelWarnings = val),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Safety & Performance Section
+                    _buildSectionTitle('Safety & Performance'.tr),
+                    const SizedBox(height: 12),
+                    _buildSwitchCard(
+                      title: 'Emergency Alerts'.tr,
+                      subtitle: 'Critical updates during emergency events'.tr,
+                      icon: Icons.error_outline_rounded,
+                      iconColor: AppColors.error,
+                      bgColor: AppColors.error.withValues(alpha: 0.1),
+                      value: _emergencyAlerts,
+                      onChanged: (val) => setState(() => _emergencyAlerts = val),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildSwitchCard(
+                      title: 'Trip Updates'.tr,
+                      subtitle: 'Updates on trip assignments and schedules'.tr,
+                      icon: Icons.assignment_turned_in_outlined,
+                      iconColor: AppColors.success,
+                      bgColor: AppColors.success.withValues(alpha: 0.1),
+                      value: _tripUpdates,
+                      onChanged: (val) => setState(() => _tripUpdates = val),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // System Preferences Section
+                    _buildSectionTitle('System Preferences'.tr),
+                    const SizedBox(height: 12),
+                    _buildSwitchCard(
+                      title: 'Sound'.tr,
+                      subtitle: 'Play sound for incoming notifications'.tr,
+                      icon: Icons.volume_up_rounded,
+                      iconColor: Colors.teal,
+                      bgColor: Colors.teal.withValues(alpha: 0.1),
+                      value: _sound,
+                      onChanged: (val) => setState(() => _sound = val),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildSwitchCard(
+                      title: 'Vibration'.tr,
+                      subtitle: 'Vibrate device for incoming alerts'.tr,
+                      icon: Icons.vibration_rounded,
+                      iconColor: AppColors.secondary,
+                      bgColor: AppColors.secondary.withValues(alpha: 0.1),
+                      value: _vibration,
+                      onChanged: (val) => setState(() => _vibration = val),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Notification Channels Section
+                    _buildSectionTitle('Notification Channels'.tr),
+                    const SizedBox(height: 12),
+                    _buildSwitchCard(
+                      title: 'Push Notifications'.tr,
+                      subtitle: 'Receive notifications on your device'.tr,
+                      icon: Icons.notifications_active_outlined,
+                      iconColor: Colors.indigo,
+                      bgColor: Colors.indigo.withValues(alpha: 0.1),
+                      value: _pushNotifications,
+                      onChanged: (val) => setState(() => _pushNotifications = val),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildSwitchCard(
+                      title: 'Email Notifications'.tr,
+                      subtitle: 'Receive notification emails at your address'.tr,
+                      icon: Icons.email_outlined,
+                      iconColor: Colors.blue,
+                      bgColor: Colors.blue.withValues(alpha: 0.1),
+                      value: _emailNotifications,
+                      onChanged: (val) => setState(() => _emailNotifications = val),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildSwitchCard(
+                      title: 'SMS Notifications'.tr,
+                      subtitle: 'Receive notification text messages on your phone'.tr,
+                      icon: Icons.sms_outlined,
+                      iconColor: AppColors.success,
+                      bgColor: AppColors.success.withValues(alpha: 0.1),
+                      value: _smsNotifications,
+                      onChanged: (val) => setState(() => _smsNotifications = val),
+                    ),
+                    const SizedBox(height: 36),
+
+                    // Action Buttons
+                    ElevatedButton(
+                      onPressed: _saveChanges,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.secondary,
+                        minimumSize: const Size(double.infinity, 54),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.0),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        'Save Changes'.tr,
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    OutlinedButton(
+                      onPressed: _resetToDefault,
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 54),
+                        side: const BorderSide(color: AppColors.divider, width: 1.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.0),
+                        ),
+                        backgroundColor: Colors.white,
+                      ),
+                      child: Text(
+                        'Reset to Default'.tr,
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
-              const SizedBox(height: 28),
-
-              // Route Alerts Section
-              _buildSectionTitle('Route Alerts'),
-              const SizedBox(height: 12),
-              _buildSwitchCard(
-                title: 'Route Changes',
-                subtitle: 'Immediate notifications about updates',
-                icon: Icons.alt_route_rounded,
-                iconColor: AppColors.secondary,
-                bgColor: AppColors.secondary.withValues(alpha: 0.1),
-                value: _routeChanges,
-                onChanged: (val) => setState(() => _routeChanges = val),
-              ),
-              const SizedBox(height: 12),
-              _buildSwitchCard(
-                title: 'Traffic Warnings',
-                subtitle: 'Real-time alerts for heavy congestion',
-                icon: Icons.traffic_rounded,
-                iconColor: Colors.blue,
-                bgColor: Colors.blue.withValues(alpha: 0.1),
-                value: _trafficWarnings,
-                onChanged: (val) => setState(() => _trafficWarnings = val),
-              ),
-              const SizedBox(height: 24),
-
-              // Vehicle Maintenance Section
-              _buildSectionTitle('Vehicle Maintenance'),
-              const SizedBox(height: 12),
-              _buildSwitchCard(
-                title: 'Health Alerts',
-                subtitle: 'Updates on engine and system health',
-                icon: Icons.handyman_rounded,
-                iconColor: AppColors.error,
-                bgColor: AppColors.error.withValues(alpha: 0.1),
-                value: _healthAlertes,
-                onChanged: (val) => setState(() => _healthAlertes = val),
-              ),
-              const SizedBox(height: 12),
-              _buildSwitchCard(
-                title: 'Fuel Level Warnings',
-                subtitle: 'Notify when tank is below 15%',
-                icon: Icons.local_gas_station_rounded,
-                iconColor: Colors.blue,
-                bgColor: Colors.blue.withValues(alpha: 0.1),
-                value: _fuelWarnings,
-                onChanged: (val) => setState(() => _fuelWarnings = val),
-              ),
-              const SizedBox(height: 24),
-
-              // Safety & Performance Section
-              _buildSectionTitle('Safety & Performance'),
-              const SizedBox(height: 12),
-              _buildSwitchCard(
-                title: 'Emergency Alerts',
-                subtitle: 'Critical updates during emergency events',
-                icon: Icons.error_outline_rounded,
-                iconColor: AppColors.error,
-                bgColor: AppColors.error.withValues(alpha: 0.1),
-                value: _emergencyAlerts,
-                onChanged: (val) => setState(() => _emergencyAlerts = val),
-              ),
-              const SizedBox(height: 12),
-              _buildSwitchCard(
-                title: 'Trip Updates',
-                subtitle: 'Updates on trip assignments and schedules',
-                icon: Icons.assignment_turned_in_outlined,
-                iconColor: AppColors.success,
-                bgColor: AppColors.success.withValues(alpha: 0.1),
-                value: _tripUpdates,
-                onChanged: (val) => setState(() => _tripUpdates = val),
-              ),
-              const SizedBox(height: 24),
-
-              // System Preferences Section
-              _buildSectionTitle('System Preferences'),
-              const SizedBox(height: 12),
-              _buildSwitchCard(
-                title: 'Sound',
-                subtitle: 'Play sound for incoming notifications',
-                icon: Icons.volume_up_rounded,
-                iconColor: Colors.teal,
-                bgColor: Colors.teal.withValues(alpha: 0.1),
-                value: _sound,
-                onChanged: (val) => setState(() => _sound = val),
-              ),
-              const SizedBox(height: 12),
-              _buildSwitchCard(
-                title: 'Vibration',
-                subtitle: 'Vibrate device for incoming alerts',
-                icon: Icons.vibration_rounded,
-                iconColor: AppColors.secondary,
-                bgColor: AppColors.secondary.withValues(alpha: 0.1),
-                value: _vibration,
-                onChanged: (val) => setState(() => _vibration = val),
-              ),
-              const SizedBox(height: 24),
-
-              // Notification Channels Section
-              _buildSectionTitle('Notification Channels'),
-              const SizedBox(height: 12),
-              _buildSwitchCard(
-                title: 'Push Notifications',
-                subtitle: 'Receive notifications on your device',
-                icon: Icons.notifications_active_outlined,
-                iconColor: Colors.indigo,
-                bgColor: Colors.indigo.withValues(alpha: 0.1),
-                value: _pushNotifications,
-                onChanged: (val) => setState(() => _pushNotifications = val),
-              ),
-              const SizedBox(height: 12),
-              _buildSwitchCard(
-                title: 'Email Notifications',
-                subtitle: 'Receive notification emails at your address',
-                icon: Icons.email_outlined,
-                iconColor: Colors.blue,
-                bgColor: Colors.blue.withValues(alpha: 0.1),
-                value: _emailNotifications,
-                onChanged: (val) => setState(() => _emailNotifications = val),
-              ),
-              const SizedBox(height: 12),
-              _buildSwitchCard(
-                title: 'SMS Notifications',
-                subtitle: 'Receive notification text messages on your phone',
-                icon: Icons.sms_outlined,
-                iconColor: AppColors.success,
-                bgColor: AppColors.success.withValues(alpha: 0.1),
-                value: _smsNotifications,
-                onChanged: (val) => setState(() => _smsNotifications = val),
-              ),
-              const SizedBox(height: 36),
-
-              // Action Buttons
-              ElevatedButton(
-                onPressed: _saveChanges,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.secondary,
-                  minimumSize: const Size(double.infinity, 54),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.0),
-                  ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  'Save Changes',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              OutlinedButton(
-                onPressed: _resetToDefault,
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 54),
-                  side: const BorderSide(color: AppColors.divider, width: 1.5),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.0),
-                  ),
-                  backgroundColor: Colors.white,
-                ),
-                child: Text(
-                  'Reset to Default',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
-        ),
-      ),
-    ),
+        );
+      },
     );
   }
 

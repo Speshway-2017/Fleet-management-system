@@ -6,6 +6,7 @@ import '../constants/app_radius.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
 import '../utils/navigation_helper.dart';
+import '../services/localization_service.dart';
 
 class AssignmentDetailsScreen extends StatelessWidget {
   final String? tripId;
@@ -14,7 +15,10 @@ class AssignmentDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeId = tripId ?? '#FL-771';
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, _, _) {
+        final activeId = tripId ?? '#FL-771';
     final isCompleted = activeId == '#TX-9021';
     final statusText = isCompleted ? 'Completed' : 'Scheduled';
     final statusColor = isCompleted ? AppColors.success : AppColors.secondary;
@@ -31,7 +35,7 @@ class AssignmentDetailsScreen extends StatelessWidget {
           centerTitle: false,
           fallbackTab: 3,
           title: Text(
-            'Assignment Details',
+            'Assignment Details'.tr,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.bold,
@@ -68,7 +72,7 @@ class AssignmentDetailsScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            statusText,
+                            statusText.tr,
                             style: GoogleFonts.poppins(
                               color: Colors.white,
                               fontSize: 12,
@@ -185,7 +189,7 @@ class AssignmentDetailsScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _buildMetricBox(
-                      'DEPARTURE',
+                      'DEPARTURE'.tr,
                       isCompleted ? '06:00 AM' : '08:00 AM',
                       isCompleted ? 'Completed' : 'Expected Oct 25',
                     ),
@@ -193,7 +197,7 @@ class AssignmentDetailsScreen extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: _buildMetricBox(
-                      'ARRIVAL',
+                      'ARRIVAL'.tr,
                       isCompleted ? '02:30 PM' : '11:30 AM',
                       isCompleted ? 'Completed' : 'Est. Delivery',
                     ),
@@ -205,7 +209,7 @@ class AssignmentDetailsScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _buildMetricBox(
-                      'DISTANCE',
+                      'DISTANCE'.tr,
                       isCompleted ? '420 mi' : '184 mi',
                       'Total Route',
                     ),
@@ -213,7 +217,7 @@ class AssignmentDetailsScreen extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: _buildMetricBox(
-                      'DURATION',
+                      'DURATION'.tr,
                       isCompleted ? '8h 30m' : '3h 30m',
                       'Shift Estimate',
                     ),
@@ -224,7 +228,7 @@ class AssignmentDetailsScreen extends StatelessWidget {
 
               // Load Details Card
               Text(
-                'LOAD DETAILS',
+                'LOAD DETAILS'.tr,
                 style: GoogleFonts.poppins(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
@@ -246,7 +250,7 @@ class AssignmentDetailsScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Perishables',
+                                'Perishables'.tr,
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
@@ -254,7 +258,7 @@ class AssignmentDetailsScreen extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                'Cargo Type',
+                                'Cargo Type'.tr,
                                 style: GoogleFonts.nunito(
                                   fontSize: 11,
                                   color: AppColors.secondaryText,
@@ -274,7 +278,7 @@ class AssignmentDetailsScreen extends StatelessWidget {
                                   color: AppColors.primaryText),
                             ),
                             Text(
-                              'Weight',
+                              'Weight'.tr,
                               style: GoogleFonts.nunito(
                                 fontSize: 11,
                                 color: AppColors.secondaryText,
@@ -304,7 +308,7 @@ class AssignmentDetailsScreen extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                'Standard Grade',
+                                'Standard Grade'.tr,
                                 style: GoogleFonts.nunito(
                                   fontSize: 11,
                                   color: AppColors.secondaryText,
@@ -322,7 +326,7 @@ class AssignmentDetailsScreen extends StatelessWidget {
 
               // Route Progress
               Text(
-                'ROUTE PROGRESS',
+                'ROUTE PROGRESS'.tr,
                 style: GoogleFonts.poppins(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
@@ -336,14 +340,14 @@ class AssignmentDetailsScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     _buildRouteNode(
-                      title: 'STOP 1: PICKUP',
+                      title: 'STOP 1: PICKUP'.tr,
                       name: 'Warehouse A',
                       address: '422 Logistics Way, Chicago IL',
                       isCompleted: true,
                       isLast: false,
                     ),
                     _buildRouteNode(
-                      title: 'STOP 2: DELIVERY',
+                      title: 'STOP 2: DELIVERY'.tr,
                       name: 'Logistics Hub',
                       address: isCompleted
                           ? '120 Industrial Hub, Dallas TX'
@@ -359,6 +363,8 @@ class AssignmentDetailsScreen extends StatelessWidget {
         ),
       ),
     ),
+    );
+      },
     );
   }
 

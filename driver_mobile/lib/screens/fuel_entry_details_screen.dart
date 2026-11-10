@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/navigation_helper.dart';
+import '../services/localization_service.dart';
 
 /// Driver Module - Fuel Entry Details Screen
 class FuelEntryDetailsScreen extends StatelessWidget {
@@ -58,7 +59,7 @@ class FuelEntryDetailsScreen extends StatelessWidget {
                           ),
                           const SizedBox(width: 10),
                           Text(
-                            'Fuel Receipt Image',
+                            'Fuel Receipt Image'.tr,
                             style: GoogleFonts.poppins(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
@@ -91,17 +92,17 @@ class FuelEntryDetailsScreen extends StatelessWidget {
                         ? Image.network(
                             imageUrl,
                             fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) => const Center(
+                            errorBuilder: (context, error, stackTrace) => Center(
                               child: Padding(
-                                padding: EdgeInsets.all(24.0),
-                                child: Text('No receipt image available.'),
+                                padding: const EdgeInsets.all(24.0),
+                                child: Text('No receipt image available.'.tr),
                               ),
                             ),
                           )
-                        : const Center(
+                        : Center(
                             child: Padding(
-                              padding: EdgeInsets.all(24.0),
-                              child: Text('No receipt uploaded.'),
+                              padding: const EdgeInsets.all(24.0),
+                              child: Text('No receipt uploaded.'.tr),
                             ),
                           ),
                   ),
@@ -124,7 +125,7 @@ class FuelEntryDetailsScreen extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      child: const Text('Close'),
+                      child: Text('Close'.tr),
                     ),
                   ),
                 ],
@@ -138,14 +139,17 @@ class FuelEntryDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const primaryDark = Color(0xFF101C2C);
-    const bgLight = Color(0xFFF7F8FA);
-    const borderGray = Color(0xFFE2E8F0);
-    const textPrimary = Color(0xFF1F2937);
-    const textSecondary = Color(0xFF6B7280);
-    const primaryOrange = Color(0xFFFF7A1A);
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, _, _) {
+        const primaryDark = Color(0xFF101C2C);
+        const bgLight = Color(0xFFF7F8FA);
+        const borderGray = Color(0xFFE2E8F0);
+        const textPrimary = Color(0xFF1F2937);
+        const textSecondary = Color(0xFF6B7280);
+        const primaryOrange = Color(0xFFFF7A1A);
 
-    final d = _data;
+        final d = _data;
     final status = (d['approvalStatus'] ?? 'Pending').toString();
     final isApproved = status == 'Approved';
     final isRejected = status == 'Rejected';
@@ -187,7 +191,7 @@ class FuelEntryDetailsScreen extends StatelessWidget {
             onPressed: () => SafeNavigation.pop(context, fallbackTab: 1),
           ),
         title: Text(
-          'Fuel Entry Details',
+          'Fuel Entry Details'.tr,
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -245,7 +249,7 @@ class FuelEntryDetailsScreen extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'STATUS',
+                                'STATUS'.tr,
                                 style: GoogleFonts.poppins(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w600,
@@ -260,7 +264,7 @@ class FuelEntryDetailsScreen extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(
-                                  status,
+                                  status.tr,
                                   style: GoogleFonts.poppins(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
@@ -273,8 +277,8 @@ class FuelEntryDetailsScreen extends StatelessWidget {
                           const SizedBox(height: 2.0),
                           Text(
                             isApproved
-                                ? 'Approved by Fleet Manager'
-                                : (isRejected ? 'Rejected by Fleet Manager' : 'Pending Manager Verification'),
+                                ? 'Approved by Fleet Manager'.tr
+                                : (isRejected ? 'Rejected by Fleet Manager'.tr : 'Pending Manager Verification'.tr),
                             style: GoogleFonts.poppins(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
@@ -307,7 +311,7 @@ class FuelEntryDetailsScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Rejection Reason:',
+                              'Rejection Reason:'.tr,
                               style: GoogleFonts.poppins(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
@@ -334,7 +338,7 @@ class FuelEntryDetailsScreen extends StatelessWidget {
 
               // 2. Fuel Entry Details Grid Card
               Text(
-                'Fuel Entry Summary',
+                'Fuel Entry Summary'.tr,
                 style: GoogleFonts.poppins(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -360,19 +364,19 @@ class FuelEntryDetailsScreen extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    _buildDetailRow('Fuel Station', station.toString(), isBold: true),
+                    _buildDetailRow('Fuel Station'.tr, station.toString(), isBold: true),
                     const SizedBox(height: 8),
-                    _buildDetailRow('Purchase Location (City)', (d['location'] ?? d['city'] ?? 'N/A').toString(), isBold: true),
+                    _buildDetailRow('Purchase Location (City)'.tr, (d['location'] ?? d['city'] ?? 'N/A').toString(), isBold: true),
                     const Divider(color: borderGray, height: 16),
-                    _buildDetailRow('Vehicle Number', vehicleId.toString()),
+                    _buildDetailRow('Vehicle Number'.tr, vehicleId.toString()),
                     const SizedBox(height: 8),
-                    _buildDetailRow('Driver Name', driverName.toString()),
+                    _buildDetailRow('Driver Name'.tr, driverName.toString()),
                     const SizedBox(height: 8),
-                    _buildDetailRow('Quantity Filled', liters.toString()),
+                    _buildDetailRow('Quantity Filled'.tr, liters.toString()),
                     const SizedBox(height: 8),
-                    _buildDetailRow('Total Cost', amount.toString(), valueColor: primaryOrange, isBold: true),
+                    _buildDetailRow('Total Cost'.tr, amount.toString(), valueColor: primaryOrange, isBold: true),
                     const SizedBox(height: 8),
-                    _buildDetailRow('Odometer Reading', odometer),
+                    _buildDetailRow('Odometer Reading'.tr, odometer),
                   ],
                 ),
               ),
@@ -381,7 +385,7 @@ class FuelEntryDetailsScreen extends StatelessWidget {
 
               // 3. Uploaded Receipt Document Card
               Text(
-                'Attached Receipt',
+                'Attached Receipt'.tr,
                 style: GoogleFonts.poppins(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -444,7 +448,7 @@ class FuelEntryDetailsScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                receiptImage.toString().isNotEmpty ? 'Fuel Receipt Image' : 'No Receipt Attached',
+                                receiptImage.toString().isNotEmpty ? 'Fuel Receipt Image'.tr : 'No Receipt Attached'.tr,
                                 style: GoogleFonts.poppins(
                                   fontSize: 13.5,
                                   fontWeight: FontWeight.w700,
@@ -454,7 +458,7 @@ class FuelEntryDetailsScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 2.0),
                               Text(
-                                receiptImage.toString().isNotEmpty ? 'Uploaded to Cloudinary' : 'No receipt image uploaded',
+                                receiptImage.toString().isNotEmpty ? 'Uploaded to Cloudinary'.tr : 'No receipt image uploaded'.tr,
                                 style: GoogleFonts.nunito(
                                   fontSize: 12,
                                   color: textSecondary,
@@ -472,7 +476,7 @@ class FuelEntryDetailsScreen extends StatelessWidget {
                           child: OutlinedButton.icon(
                             onPressed: () => _openReceiptViewerModal(context, receiptImage.toString()),
                             icon: const Icon(Icons.visibility_outlined, size: 16),
-                            label: const Text('View Receipt'),
+                            label: Text('View Receipt'.tr),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: primaryDark,
                               side: const BorderSide(color: borderGray, width: 1.0),
@@ -499,6 +503,8 @@ class FuelEntryDetailsScreen extends StatelessWidget {
         ),
       ),
     ),
+    );
+      },
     );
   }
 

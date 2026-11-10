@@ -361,23 +361,25 @@ class AuthProvider extends ChangeNotifier {
       }
 
       final prefs = await SharedPreferences.getInstance();
+      final hasExplicitLanguage = data.containsKey('language');
       final requestedLang = data['language'] as String?;
-      final savedLanguage = requestedLang ?? prefs.getString('app_language') ?? _driver?.language ?? LocalizationService.currentLanguage;
-      if (requestedLang != null && requestedLang.isNotEmpty) {
-        data['language'] = LocalizationService.normalizeLanguage(requestedLang);
-      } else if (savedLanguage.isNotEmpty) {
-        data['language'] = savedLanguage;
+      if (hasExplicitLanguage) {
+        if (requestedLang != null && requestedLang.trim().isNotEmpty) {
+          data['language'] = LocalizationService.normalizeLanguage(requestedLang);
+        }
       }
 
       final profile = await _authRepository.updateProfile(data);
       if (profile != null) {
-        final activeLang = (requestedLang != null && requestedLang.isNotEmpty)
-            ? LocalizationService.normalizeLanguage(requestedLang)
-            : (savedLanguage.isNotEmpty ? savedLanguage : profile.language);
-        _driver = profile.copyWith(language: activeLang);
-        if (activeLang.isNotEmpty) {
+        if (hasExplicitLanguage && requestedLang != null && requestedLang.trim().isNotEmpty) {
+          final activeLang = LocalizationService.normalizeLanguage(requestedLang);
+          _driver = profile.copyWith(language: activeLang);
           LocalizationService.setLanguage(activeLang);
           await prefs.setString('app_language', activeLang);
+          await prefs.setString('driver_profile', jsonEncode(_driver!.toJson()));
+        } else {
+          final currentLang = _driver?.language ?? prefs.getString('app_language') ?? profile.language;
+          _driver = profile.copyWith(language: currentLang.isNotEmpty ? currentLang : 'English');
           await prefs.setString('driver_profile', jsonEncode(_driver!.toJson()));
         }
         _syncNotificationPreferences();

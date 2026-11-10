@@ -8,6 +8,7 @@ import '../services/api_service.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/custom_card.dart';
 import '../utils/navigation_helper.dart';
+import '../services/localization_service.dart';
 
 class TripCompletionScreen extends StatefulWidget {
   final String tripId;
@@ -104,7 +105,10 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width > 768;
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, _, _) {
+        final isDesktop = MediaQuery.of(context).size.width > 768;
     final cleanId = widget.tripId.replaceAll('#', '').trim();
 
     final isWeighbridgeRequired = _trip?['weighbridgeRequired'] ?? true;
@@ -126,7 +130,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
           centerTitle: false,
           fallbackTab: 3,
           title: Text(
-            'Trip Completion',
+            'Trip Completion'.tr,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: AppColors.background,
               fontWeight: FontWeight.bold,
@@ -189,7 +193,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'Documents submitted for Fleet Manager approval. Further edits are locked.',
+                              'Documents submitted for Fleet Manager approval. Further edits are locked.'.tr,
                               style: GoogleFonts.nunito(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
@@ -203,7 +207,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                   ],
 
                   Text(
-                    'COMPLETION CHECKLIST',
+                    'COMPLETION CHECKLIST'.tr,
                     style: GoogleFonts.poppins(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
@@ -215,10 +219,10 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
 
                   // 1. POD Card
                   _buildActionCard(
-                    title: 'Proof of Delivery (POD)',
+                    title: 'Proof of Delivery (POD)'.tr,
                     subtitle: _podData != null 
                         ? 'Customer Name: ${_podData!['customerName']}'
-                        : 'Upload delivery receipt signed by customer',
+                        : 'Upload delivery receipt signed by customer'.tr,
                     icon: Icons.assignment_turned_in_rounded,
                     iconColor: Colors.blue,
                     status: podStatus,
@@ -245,8 +249,8 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                           await _fetchTripDetails();
                           if (!mounted) return;
                           messenger.showSnackBar(
-                            const SnackBar(
-                              content: Text('✅ POD uploaded successfully!'),
+                            SnackBar(
+                              content: Text('✅ POD uploaded successfully!'.tr),
                               backgroundColor: AppColors.success,
                             ),
                           );
@@ -272,10 +276,10 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
 
                   // 2. Fuel Card
                   _buildActionCard(
-                    title: 'Fuel Entry',
+                    title: 'Fuel Entry'.tr,
                     subtitle: _fuelData != null
                         ? '${_fuelData!['liters']} L refueled at ${_fuelData!['fuelStation']}'
-                        : 'Enter trip refuel details and receipts',
+                        : 'Enter trip refuel details and receipts'.tr,
                     icon: Icons.local_gas_station_rounded,
                     iconColor: Colors.orange,
                     status: fuelStatus,
@@ -305,8 +309,8 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                           await _fetchTripDetails();
                           if (!mounted) return;
                           messenger.showSnackBar(
-                            const SnackBar(
-                              content: Text('✅ Fuel entry uploaded successfully!'),
+                            SnackBar(
+                              content: Text('✅ Fuel entry uploaded successfully!'.tr),
                               backgroundColor: AppColors.success,
                             ),
                           );
@@ -332,12 +336,12 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
 
                   // Weighbridge Card
                   _buildActionCard(
-                    title: 'Weighbridge Slip',
+                    title: 'Weighbridge Slip'.tr,
                     subtitle: !isWeighbridgeRequired
-                        ? 'Weighbridge slip is not required for this trip'
+                        ? 'Weighbridge slip is not required for this trip'.tr
                         : (_weighbridgeData != null
                             ? 'Net Weight: ${_weighbridgeData!['netWeight']} kg at ${_weighbridgeData!['location']}'
-                            : 'Upload slip, tare, gross, and net weights'),
+                            : 'Upload slip, tare, gross, and net weights'.tr),
                     icon: Icons.scale_rounded,
                     iconColor: !isWeighbridgeRequired ? Colors.grey : Colors.purple,
                     status: weighbridgeStatus,
@@ -368,8 +372,8 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                                 await _fetchTripDetails();
                                 if (!mounted) return;
                                 messenger.showSnackBar(
-                                  const SnackBar(
-                                    content: Text('✅ Weighbridge Slip uploaded successfully!'),
+                                  SnackBar(
+                                    content: Text('✅ Weighbridge Slip uploaded successfully!'.tr),
                                     backgroundColor: AppColors.success,
                                   ),
                                 );
@@ -395,12 +399,12 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
 
                   // 3. Toll Card
                   _buildActionCard(
-                    title: 'Toll Receipts',
+                    title: 'Toll Receipts'.tr,
                     subtitle: _tollData != null
                         ? (_tollData!['isAutogenerated'] == true
                             ? '₹${_tollData!['amountPaid']} automatically logged via FASTag'
                             : '₹${_tollData!['amountPaid']} paid at ${_tollData!['tollPlazaName']}')
-                        : 'Upload receipts and amounts for tolls',
+                        : 'Upload receipts and amounts for tolls'.tr,
                     icon: Icons.toll_rounded,
                     iconColor: Colors.green,
                     status: tollStatus,
@@ -435,8 +439,8 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                             await _fetchTripDetails();
                             if (!mounted) return;
                             messenger.showSnackBar(
-                              const SnackBar(
-                                content: Text('✅ Toll Receipt uploaded successfully!'),
+                              SnackBar(
+                                content: Text('✅ Toll Receipt uploaded successfully!'.tr),
                                 backgroundColor: AppColors.success,
                               ),
                             );
@@ -472,7 +476,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
                       ),
                     ),
                     child: Text(
-                      _isSubmitting ? 'UPLOADING...' : 'SUBMIT ALL DOCUMENTS',
+                      _isSubmitting ? 'UPLOADING...'.tr : 'SUBMIT ALL DOCUMENTS'.tr,
                       style: GoogleFonts.poppins(
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -495,6 +499,8 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
         ),
       ),
     ),
+    );
+      },
     );
   }
 
@@ -533,7 +539,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
               borderRadius: BorderRadius.circular(AppRadius.round),
             ),
             child: Text(
-              'Awaiting Submissions',
+              'Awaiting Submissions'.tr,
               style: GoogleFonts.poppins(
                 color: AppColors.success,
                 fontWeight: FontWeight.bold,
@@ -638,7 +644,7 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
 
     if (!hasPod) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('⚠️ Proof of Delivery (POD) document is required.'),
           backgroundColor: AppColors.error,
         ),
@@ -648,8 +654,8 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
 
     if (isWeighbridgeRequired && !hasWeighbridge) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('⚠️ Weighbridge Slip document is required.'),
+        SnackBar(
+          content: Text('⚠️ Weighbridge Slip document is required.'.tr),
           backgroundColor: AppColors.error,
         ),
       );
@@ -668,8 +674,8 @@ class _TripCompletionScreenState extends State<TripCompletionScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('🎉 Documents submitted for Fleet Manager approval!'),
+          SnackBar(
+            content: Text('🎉 Documents submitted for Fleet Manager approval!'.tr),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
@@ -849,7 +855,7 @@ class _PodEntryScreenState extends State<PodEntryScreen> {
                     });
                   } else if (_imageBytes == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('⚠️ Please attach a POD receipt image.')),
+                      SnackBar(content: Text('⚠️ Please attach a POD receipt image.')),
                     );
                   }
                 },
@@ -2024,7 +2030,7 @@ class _WeighbridgeEntryScreenState extends State<WeighbridgeEntryScreen> {
                   if (_formKey.currentState!.validate()) {
                     if (_imageBytes == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
+                        SnackBar(
                           content: Text('⚠️ Weighbridge slip attachment is required.'),
                           backgroundColor: AppColors.error,
                         ),

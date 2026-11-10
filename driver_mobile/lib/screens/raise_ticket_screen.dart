@@ -107,7 +107,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to select image: ${e.toString()}'),
+            content: Text('${'Failed to select image:'.tr} ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -182,8 +182,8 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
 
     if (!_isVehicleAssigned) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No vehicle is currently assigned. You can view your previous records, but new maintenance tickets will be available once a vehicle is assigned.'),
+        SnackBar(
+          content: Text('No vehicle is currently assigned. You can view your previous records, but new maintenance tickets will be available once a vehicle is assigned.'.tr),
           backgroundColor: Colors.orange,
           behavior: SnackBarBehavior.floating,
         ),
@@ -193,8 +193,8 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
 
     if (subject.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a brief subject summarizing the issue.'),
+        SnackBar(
+          content: Text('Please enter a brief subject summarizing the issue.'.tr),
           backgroundColor: Colors.orange,
         ),
       );
@@ -220,7 +220,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ticket submitted successfully! Manager has been notified.'),
+            content: Text('Ticket submitted successfully! Manager has been notified.'.tr),
             backgroundColor: Colors.green.shade700,
             duration: const Duration(seconds: 3),
             behavior: SnackBarBehavior.floating,
@@ -235,7 +235,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to submit ticket: ${e.toString().replaceAll('Exception:', '').trim()}'),
+            content: Text('${'Failed to submit ticket:'.tr} ${e.toString().replaceAll('Exception:', '').trim()}'),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
           ),
@@ -728,9 +728,9 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
                       color: textSecondary,
                     ),
                     children: [
-                      const TextSpan(text: 'By submitting, you agree to our '),
+                      TextSpan(text: 'By submitting, you agree to our '.tr),
                       TextSpan(
-                        text: 'Operational Compliance Policy',
+                        text: 'Operational Compliance Policy'.tr,
                         style: GoogleFonts.nunito(
                           fontWeight: FontWeight.w700,
                           color: primaryOrange,

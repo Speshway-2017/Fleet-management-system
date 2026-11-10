@@ -530,10 +530,14 @@ void main() {
     await tester.tap(find.text('Spanish'));
     await tester.pumpAndSettle();
 
-    // Verify modal dismissed, snackbar displayed, and badge updated to Spanish
+    // Verify modal dismissed, snackbar displayed in selected language, and badge updated to Spanish
     expect(find.text('Select Language'), findsNothing);
-    expect(find.text('Language changed to Spanish.'), findsOneWidget);
+    expect(find.text('${'Language changed to'.tr} Spanish.'), findsOneWidget);
     expect(find.text('Spanish'), findsOneWidget);
+
+    // Reset language back to English (US) for subsequent tests
+    LocalizationService.setLanguage('English (US)');
+    await tester.pumpAndSettle();
   });
 
   testWidgets('Edit Profile Screen Validation and Submission Flow', (
