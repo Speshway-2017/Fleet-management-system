@@ -9,6 +9,7 @@ import '../widgets/custom_card.dart';
 import 'active_trips_screen.dart';
 import 'upcoming_trips_screen.dart';
 import '../utils/navigation_helper.dart';
+import '../services/localization_service.dart';
 
 class UpcomingTripDetailsScreen extends StatefulWidget {
   final String tripId;
@@ -102,8 +103,8 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
     final departureTime = _trip?['departureTime'] ?? '';
     if (!_isStartEnabled(departureTime)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Start button is locked. You can start the trip 15 minutes before scheduled departure.'),
+        SnackBar(
+          content: Text('Start button is locked. You can start the trip 15 minutes before scheduled departure.'.tr),
           backgroundColor: AppColors.primary,
         ),
       );
@@ -115,8 +116,8 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
       await ApiService.updateTripStatus(idToUse.toString(), 'In Progress');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('🚀 Trip started! Live GPS tracking activated.'),
+          SnackBar(
+            content: Text('🚀 Trip started! Live GPS tracking activated.'.tr),
             backgroundColor: AppColors.success,
           ),
         );
@@ -146,7 +147,10 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
     final departureTime = formatIndianDateTime(_trip?['departureTime'] ?? 'Tomorrow, 08:00 AM');
     final managerName = _trip?['manager'] != null ? _trip!['manager']['name'] : 'Sarah Jenkins';
 
-    return PopScope(
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, _, _) {
+        return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) SafeNavigation.pop(context, fallbackTab: 3);
@@ -157,7 +161,7 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
           centerTitle: false,
           fallbackTab: 3,
           title: Text(
-            'Upcoming Trip Details',
+            'Upcoming Trip Details'.tr,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: AppColors.background,
               fontWeight: FontWeight.bold,
@@ -189,7 +193,7 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
                     AppSpacing.verticalSm,
 
                     // 2. Route Information
-                    _buildSectionHeader(context, 'Route Information'),
+                    _buildSectionHeader(context, 'Route Information'.tr),
                     _buildRouteInfoCard(context, pickup, destination),
                     AppSpacing.verticalSm,
 
@@ -202,7 +206,7 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
                     AppSpacing.verticalSm,
 
                     // 5. Trip Instructions
-                    _buildSectionHeader(context, 'Trip Instructions'),
+                    _buildSectionHeader(context, 'Trip Instructions'.tr),
                     _buildInstructionsCard(context),
                     AppSpacing.verticalLg,
 
@@ -215,6 +219,8 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
             ),
       ),
     ),
+    );
+      },
     );
   }
 
@@ -246,7 +252,7 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'TRIP ID',
+                    'TRIP ID'.tr,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: AppColors.secondaryText,
                       fontWeight: FontWeight.bold,
@@ -270,8 +276,8 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
                   color: AppColors.secondary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(AppRadius.round),
                 ),
-                child: const Text(
-                  'Upcoming',
+                child: Text(
+                  'Upcoming'.tr,
                   style: TextStyle(
                     color: AppColors.secondary,
                     fontWeight: FontWeight.bold,
@@ -288,8 +294,8 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoItem(context, 'Departure Schedule', time),
-              _buildInfoItem(context, 'Priority', 'Normal', alignRight: true),
+              _buildInfoItem(context, 'Departure Schedule'.tr, time),
+              _buildInfoItem(context, 'Priority'.tr, 'Normal'.tr, alignRight: true),
             ],
           ),
         ],
@@ -346,8 +352,8 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Pickup',
+                    Text(
+                      'Pickup'.tr,
                       style: TextStyle(
                         color: AppColors.secondaryText,
                         fontSize: 10,
@@ -364,8 +370,8 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
                       ),
                     ),
                     const SizedBox(height: 18),
-                    const Text(
-                      'Destination',
+                    Text(
+                      'Destination'.tr,
                       style: TextStyle(
                         color: AppColors.secondaryText,
                         fontSize: 10,
@@ -401,14 +407,14 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
           _buildCardHeader(
             context,
             icon: Icons.local_shipping_outlined,
-            title: 'Vehicle Information',
+            title: 'Vehicle Information'.tr,
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoItem(context, 'Assigned Vehicle', vehicle),
-              _buildInfoItem(context, 'Fuel', 'Diesel', alignRight: true),
+              _buildInfoItem(context, 'Assigned Vehicle'.tr, vehicle),
+              _buildInfoItem(context, 'Fuel'.tr, 'Diesel'.tr, alignRight: true),
             ],
           ),
         ],
@@ -426,14 +432,14 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
           _buildCardHeader(
             context,
             icon: Icons.access_time,
-            title: 'Schedule & Dispatcher',
+            title: 'Schedule & Dispatcher'.tr,
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoItem(context, 'Departure Time', depTime),
-              _buildInfoItem(context, 'Dispatch Manager', manager, alignRight: true),
+              _buildInfoItem(context, 'Departure Time'.tr, depTime),
+              _buildInfoItem(context, 'Dispatch Manager'.tr, manager, alignRight: true),
             ],
           ),
         ],
@@ -444,10 +450,10 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
   // 5. Instructions Card
   Widget _buildInstructionsCard(BuildContext context) {
     final instructions = [
-      'Reach pickup location 15 mins early',
-      'Verify shipment documents & weighbridge clearance',
-      'Perform vehicle safety inspection before starting trip',
-      'Follow assigned route and report delays to dispatcher',
+      'Reach pickup location 15 mins early'.tr,
+      'Verify shipment documents & weighbridge clearance'.tr,
+      'Perform vehicle safety inspection before starting trip'.tr,
+      'Follow assigned route and report delays to dispatcher'.tr,
     ];
 
     return CustomCard(
@@ -492,8 +498,8 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
     if (!mounted) return;
     if (action == 'accept') {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ Trip assignment accepted! Moved to Upcoming Trips.'),
+        SnackBar(
+          content: Text('✅ Trip assignment accepted! Moved to Upcoming Trips.'.tr),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),
@@ -504,8 +510,8 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Trip assignment rejected.'),
+        SnackBar(
+          content: Text('Trip assignment rejected.'.tr),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -534,7 +540,7 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
                   borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
               ),
-              child: const Text('Reject', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Text('Reject'.tr, style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 12),
@@ -550,7 +556,7 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
                   borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
               ),
-              child: const Text('Accept Trip', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Text('Accept Trip'.tr, style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -568,7 +574,7 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
             size: 20,
           ),
           label: Text(
-            startEnabled ? 'Start Trip' : 'Start Trip (Locked until 15m before)',
+            startEnabled ? 'Start Trip'.tr : 'Start Trip (Locked until 15m before)'.tr,
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,
@@ -590,14 +596,14 @@ class _UpcomingTripDetailsScreenState extends State<UpcomingTripDetailsScreen> {
         OutlinedButton.icon(
           onPressed: () {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Connecting to dispatcher support dialer...'),
+              SnackBar(
+                content: Text('Connecting to dispatcher support dialer...'.tr),
               ),
             );
           },
           icon: const Icon(Icons.headset_mic_outlined, color: AppColors.secondary, size: 20),
-          label: const Text(
-            'Contact Dispatcher',
+          label: Text(
+            'Contact Dispatcher'.tr,
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,

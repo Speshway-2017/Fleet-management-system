@@ -83,14 +83,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             borderRadius: BorderRadius.circular(16.0),
           ),
           title: Text(
-            'Confirm Logout',
+            'Confirm Logout'.tr,
             style: GoogleFonts.poppins(
               fontWeight: FontWeight.bold,
               color: navyIcon,
             ),
           ),
           content: Text(
-            'Are you sure you want to log out from the application?',
+            'Are you sure you want to log out from the application?'.tr,
             style: GoogleFonts.nunito(
               color: const Color(0xFF64748B),
               fontSize: 15,
@@ -101,7 +101,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
               child: Text(
-                'Cancel',
+                'Cancel'.tr,
                 style: GoogleFonts.poppins(
                   fontWeight: FontWeight.w600,
                   color: const Color(0xFF64748B),
@@ -122,9 +122,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   );
 
                   ScaffoldMessenger.of(outerContext).showSnackBar(
-                    const SnackBar(
-                      content: Text('Logged out successfully.'),
-                      backgroundColor: Color(0xFF10B981),
+                    SnackBar(
+                      content: Text('Logged out successfully.'.tr),
+                      backgroundColor: const Color(0xFF10B981),
                       behavior: SnackBarBehavior.floating,
                     ),
                   );
@@ -138,7 +138,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 elevation: 0,
               ),
               child: Text(
-                'Logout',
+                'Logout'.tr,
                 style: GoogleFonts.poppins(
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
@@ -168,9 +168,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
 
       ScaffoldMessenger.of(outerContext).showSnackBar(
-        const SnackBar(
-          content: Text('Account permanently deleted and set to In-Active. You have been logged out.'),
-          backgroundColor: Color(0xFFEF4444),
+        SnackBar(
+          content: Text('Account permanently deleted and set to In-Active. You have been logged out.'.tr),
+          backgroundColor: const Color(0xFFEF4444),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -202,7 +202,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Delete Account',
+                  'Delete Account'.tr,
                   style: GoogleFonts.poppins(
                     fontWeight: FontWeight.bold,
                     color: navyIcon,
@@ -217,7 +217,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Are you sure you want to request deletion of your driver account? This action will permanently deactivate your driver profile, vehicle assignments, and active GPS telemetry.',
+                'Are you sure you want to request deletion of your driver account? This action will permanently deactivate your driver profile, vehicle assignments, and active GPS telemetry.'.tr,
                 style: GoogleFonts.nunito(
                   color: const Color(0xFF64748B),
                   fontSize: 14,
@@ -246,7 +246,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          'View Full Account Deletion Policy',
+                          'View Full Account Deletion Policy'.tr,
                           style: GoogleFonts.poppins(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -277,7 +277,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 12.0),
                     ),
                     child: Text(
-                      'Cancel',
+                      'Cancel'.tr,
                       style: GoogleFonts.poppins(
                         fontWeight: FontWeight.w600,
                         fontSize: 13.5,
@@ -302,7 +302,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 12.0),
                     ),
                     child: Text(
-                      'Confirm Deletion',
+                      'Confirm Deletion'.tr,
                       style: GoogleFonts.poppins(
                         fontWeight: FontWeight.w600,
                         fontSize: 13.5,
@@ -366,7 +366,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      'Select Language',
+                      'Select Language'.tr,
                       style: GoogleFonts.poppins(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -403,7 +403,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
-                                    'Language changed to $lang.',
+                                    '${'Language changed to'.tr} $lang.',
                                     style: GoogleFonts.poppins(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
@@ -498,7 +498,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "Driver's License Details",
+                            "Driver's License Details".tr,
                             style: GoogleFonts.poppins(
                               fontSize: 17,
                               fontWeight: FontWeight.bold,
@@ -506,7 +506,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           Text(
-                            'Government Verified Transport Authorization',
+                            'Government Verified Transport Authorization'.tr,
                             style: GoogleFonts.nunito(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -521,13 +521,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 20),
                 const Divider(color: Color(0xFFF1F5F9), height: 1),
                 const SizedBox(height: 16),
-                _buildLicenseRow('LICENSE NUMBER', driver.licenseNumber ?? 'N/A'),
+                _buildLicenseRow('LICENSE NUMBER'.tr, driver.licenseNumber ?? 'N/A'),
                 const SizedBox(height: 12),
-                _buildLicenseRow('LICENSE CATEGORY', driver.licenseType ?? 'Heavy Motor Vehicle (HMV)'),
+                _buildLicenseRow('LICENSE CATEGORY'.tr, driver.licenseType ?? 'Heavy Motor Vehicle (HMV)'),
                 const SizedBox(height: 12),
-                _buildLicenseRow('RTO / BRANCH', driver.branch ?? 'Regional Transport Office'),
+                _buildLicenseRow('RTO / BRANCH'.tr, driver.branch ?? 'Regional Transport Office'),
                 const SizedBox(height: 12),
-                _buildLicenseRow('EXPERIENCE', '${driver.experience ?? 4} Years Commercial Driving'),
+                _buildLicenseRow('EXPERIENCE'.tr, '${driver.experience ?? 4} ${'Years Commercial Driving'.tr}'),
                 const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
@@ -540,7 +540,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       elevation: 0,
                     ),
                     child: Text(
-                      'Close Details',
+                      'Close Details'.tr,
                       style: GoogleFonts.poppins(
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
@@ -584,118 +584,121 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AuthProvider>(
-      builder: (context, auth, child) {
-        if (auth.isLoading && auth.driver == null) {
-          return const Scaffold(
-            backgroundColor: Color(0xFFF7F9FC),
-            body: Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(orangePrimary),
-              ),
-            ),
-          );
-        }
-
-        if (auth.errorMessage != null && auth.driver == null) {
-          return Scaffold(
-            backgroundColor: const Color(0xFFF7F9FC),
-            body: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      color: Color(0xFFEF4444),
-                      size: 48,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      auth.errorMessage!,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: navyIcon,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () => auth.refreshProfile(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryDark,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                      ),
-                      child: Text(
-                        'Retry',
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, currentLanguage, _) {
+        return Consumer<AuthProvider>(
+          builder: (context, auth, child) {
+            if (auth.isLoading && auth.driver == null) {
+              return const Scaffold(
+                backgroundColor: Color(0xFFF7F9FC),
+                body: Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(orangePrimary),
+                  ),
                 ),
+              );
+            }
+
+            if (auth.errorMessage != null && auth.driver == null) {
+              return Scaffold(
+                backgroundColor: const Color(0xFFF7F9FC),
+                body: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          color: Color(0xFFEF4444),
+                          size: 48,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          auth.errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: navyIcon,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () => auth.refreshProfile(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryDark,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                          ),
+                          child: Text(
+                            'Retry'.tr,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            final driver = auth.driver;
+            if (driver == null) {
+              return Scaffold(
+                backgroundColor: const Color(0xFFF7F9FC),
+                body: Center(
+                  child: Text('No profile data found.'.tr),
+                ),
+              );
+            }
+
+            // Dynamically update profile image notifier
+            if (driver.profileImage != ProfileState.profilePhotoUrlNotifier.value) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                ProfileState.profilePhotoUrlNotifier.value = driver.profileImage;
+              });
+            }
+
+            final joiningYear = DateTime.tryParse(driver.joiningDate)?.year ?? 2020;
+            final initialLetter = driver.fullName.isNotEmpty ? driver.fullName[0].toUpperCase() : 'D';
+            final statusDisplay = driver.driverStatus.isNotEmpty
+                ? driver.driverStatus.replaceAll('_', ' ').toUpperCase()
+                : 'SENIOR DRIVER';
+            final cityDisplay = driver.address.isNotEmpty
+                ? driver.address.split(',')[0].trim()
+                : 'Hyderabad';
+            final emergencyContact = driver.manager != null && driver.manager!.name.isNotEmpty
+                ? '${driver.manager!.name} · ${driver.phoneNumber}'
+                : '${'Fleet Manager'.tr} · ${driver.phoneNumber}';
+
+            return Scaffold(
+              backgroundColor: const Color(0xFFF7F9FC),
+              // Top Nav updated like other pages (Dark Navy #101C2C with white back button & title)
+              appBar: AppBar(
+                backgroundColor: primaryDark,
+                elevation: 0,
+                centerTitle: false,
+                titleSpacing: 0,
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                  onPressed: () => MainNavigationScreen.selectedTabNotifier.value = 2,
+                ),
+                title: Text(
+                  'Profile'.tr,
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                actions: const [],
               ),
-            ),
-          );
-        }
-
-        final driver = auth.driver;
-        if (driver == null) {
-          return const Scaffold(
-            backgroundColor: Color(0xFFF7F9FC),
-            body: Center(
-              child: Text('No profile data found.'),
-            ),
-          );
-        }
-
-        // Dynamically update profile image notifier
-        if (driver.profileImage != ProfileState.profilePhotoUrlNotifier.value) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            ProfileState.profilePhotoUrlNotifier.value = driver.profileImage;
-          });
-        }
-
-        final joiningYear = DateTime.tryParse(driver.joiningDate)?.year ?? 2020;
-        final initialLetter = driver.fullName.isNotEmpty ? driver.fullName[0].toUpperCase() : 'D';
-        final statusDisplay = driver.driverStatus.isNotEmpty
-            ? driver.driverStatus.replaceAll('_', ' ').toUpperCase()
-            : 'SENIOR DRIVER';
-        final cityDisplay = driver.address.isNotEmpty
-            ? driver.address.split(',')[0].trim()
-            : 'Hyderabad';
-        final emergencyContact = driver.manager != null && driver.manager!.name.isNotEmpty
-            ? '${driver.manager!.name} · ${driver.phoneNumber}'
-            : 'Fleet Manager · ${driver.phoneNumber}';
-
-        return Scaffold(
-          backgroundColor: const Color(0xFFF7F9FC),
-          // Top Nav updated like other pages (Dark Navy #101C2C with white back button & title)
-          appBar: AppBar(
-            backgroundColor: primaryDark,
-            elevation: 0,
-            centerTitle: false,
-            titleSpacing: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-              onPressed: () => MainNavigationScreen.selectedTabNotifier.value = 2,
-            ),
-            title: Text(
-              'Profile',
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-            actions: const [],
-          ),
           body: SafeArea(
             child: RefreshIndicator(
               onRefresh: () async {
@@ -886,7 +889,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               Expanded(
                                 child: _buildInfoCell(
                                   icon: Icons.mail_outline_rounded,
-                                  label: 'EMAIL',
+                                  label: 'EMAIL'.tr,
                                   value: driver.email,
                                 ),
                               ),
@@ -894,7 +897,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               Expanded(
                                 child: _buildInfoCell(
                                   icon: Icons.phone_outlined,
-                                  label: 'PHONE',
+                                  label: 'PHONE'.tr,
                                   value: driver.phoneNumber,
                                 ),
                               ),
@@ -906,7 +909,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               Expanded(
                                 child: _buildInfoCell(
                                   icon: Icons.location_on_outlined,
-                                  label: 'CITY',
+                                  label: 'CITY'.tr,
                                   value: cityDisplay,
                                 ),
                               ),
@@ -914,7 +917,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               Expanded(
                                 child: _buildInfoCell(
                                   icon: Icons.person_outline_rounded,
-                                  label: 'STATUS',
+                                  label: 'STATUS'.tr,
                                   value: statusDisplay,
                                 ),
                               ),
@@ -926,7 +929,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           // Emergency Contact Row
                           _buildInfoCell(
                             icon: Icons.shield_outlined,
-                            label: 'EMERGENCY CONTACT',
+                            label: 'EMERGENCY CONTACT'.tr,
                             value: emergencyContact,
                           ),
                         ],
@@ -955,7 +958,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'DRIVER CREDENTIALS',
+                            'DRIVER CREDENTIALS'.tr,
                             style: GoogleFonts.poppins(
                               fontSize: 11.5,
                               fontWeight: FontWeight.w700,
@@ -966,7 +969,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           const SizedBox(height: 14),
                           _buildActionTile(
                             icon: Icons.badge_outlined,
-                            title: "Driver's License Details",
+                            title: "Driver's License Details".tr,
                             badge: driver.licenseType.isNotEmpty ? driver.licenseType : 'HMV',
                             onTap: () {
                               _showLicenseDetailsModal(context, driver);
@@ -998,7 +1001,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'APP SETTINGS & SECURITY',
+                            'APP SETTINGS & SECURITY'.tr,
                             style: GoogleFonts.poppins(
                               fontSize: 11.5,
                               fontWeight: FontWeight.w700,
@@ -1009,8 +1012,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           const SizedBox(height: 14),
                           _buildActionTile(
                             icon: Icons.lock_outline_rounded,
-                            title: 'Account Security',
-                            badge: 'Protected',
+                            title: 'Account Security'.tr,
+                            badge: 'Protected'.tr,
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -1022,7 +1025,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _buildActionTile(
                             icon: Icons.security_rounded,
                             title: 'Two-Factor Authentication'.tr,
-                            badge: 'Active',
+                            badge: 'Active'.tr,
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -1034,7 +1037,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _buildActionTile(
                             icon: Icons.notifications_none_rounded,
                             title: 'Push Notifications'.tr,
-                            badge: 'Enabled',
+                            badge: 'Enabled'.tr,
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -1084,7 +1087,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'HELP & ACCOUNT',
+                            'HELP & ACCOUNT'.tr,
                             style: GoogleFonts.poppins(
                               fontSize: 11.5,
                               fontWeight: FontWeight.w700,
@@ -1096,7 +1099,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _buildActionTile(
                             icon: Icons.headset_mic_outlined,
                             title: 'Help & Support'.tr,
-                            badge: '24/7 Live',
+                            badge: '24/7 Live'.tr,
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -1107,7 +1110,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           const Divider(color: Color(0xFFF1F5F9), height: 1),
                           _buildActionTile(
                             icon: Icons.policy_outlined,
-                            title: 'Privacy Policy & Terms',
+                            title: 'Privacy Policy & Terms'.tr,
                             onTap: () {
                               LegalModal.showPrivacy(context);
                             },
@@ -1145,6 +1148,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         );
+      },
+    );
       },
     );
   }

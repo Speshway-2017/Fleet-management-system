@@ -8,6 +8,7 @@ import '../../constants/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/navigation_helper.dart';
+import '../../services/localization_service.dart';
 
 class TwoFactorAuthScreen extends StatefulWidget {
   const TwoFactorAuthScreen({super.key});
@@ -69,8 +70,8 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
       ];
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Backup recovery codes generated successfully.'),
+      SnackBar(
+        content: Text('Backup recovery codes generated successfully.'.tr),
         backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
       ),
@@ -81,8 +82,8 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
     if (_is2faEnabled) {
       if (_selectedMethod == 'SMS' && _phoneController.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please enter a valid phone number to enable 2FA.'),
+          SnackBar(
+            content: Text('Please enter a valid phone number to enable 2FA.'.tr),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
@@ -141,8 +142,8 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
       if (success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Two-factor authentication disabled.'),
+            SnackBar(
+              content: Text('Two-factor authentication disabled.'.tr),
               backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
             ),
@@ -153,7 +154,7 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(auth.errorMessage ?? 'Failed to disable 2FA'),
+              content: Text(auth.errorMessage ?? 'Failed to disable 2FA'.tr),
               backgroundColor: AppColors.error,
               behavior: SnackBarBehavior.floating,
             ),
@@ -167,8 +168,8 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
     final enteredCode = _codeControllers.map((c) => c.text).join();
     if (enteredCode.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter the full 6-digit verification code.'),
+        SnackBar(
+          content: Text('Please enter the full 6-digit verification code.'.tr),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -178,8 +179,8 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
 
     if (_expectedOtp != null && enteredCode != _expectedOtp) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid verification code. Please check the terminal.'),
+        SnackBar(
+          content: Text('Invalid verification code. Please check the terminal.'.tr),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -229,8 +230,8 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
     if (success) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Two-factor authentication configured successfully!'),
+          SnackBar(
+            content: Text('Two-factor authentication configured successfully!'.tr),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
@@ -241,7 +242,7 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(auth.errorMessage ?? 'Failed to configure 2FA'),
+            content: Text(auth.errorMessage ?? 'Failed to configure 2FA'.tr),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
@@ -280,29 +281,34 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
     if (_selectedMethod == 'SMS') {
       final phone = _phoneController.text.trim();
       final last4 = phone.length >= 4 ? phone.substring(phone.length - 4) : '8901';
-      return 'Protect your account by adding an extra layer of security. Enter the 6-digit code sent to your registered mobile number ending in •••• $last4.';
+      return '${'Protect your account by adding an extra layer of security. Enter the 6-digit code sent to your registered mobile number ending in •••• '.tr}$last4.';
     } else if (_selectedMethod == 'Email') {
-      return 'Protect your account by adding an extra layer of security. Enter the 6-digit code sent to your registered email address.';
+      return 'Protect your account by adding an extra layer of security. Enter the 6-digit code sent to your registered email address.'.tr;
     } else {
-      return 'Protect your account by adding an extra layer of security. Enter the 6-digit code generated by your authenticator app.';
+      return 'Protect your account by adding an extra layer of security. Enter the 6-digit code generated by your authenticator app.'.tr;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        if (_isVerificationStep) {
-          setState(() {
-            _isVerificationStep = false;
-          });
-        } else {
-          SafeNavigation.pop(context, fallbackTab: 4);
-        }
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, _, _) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            if (_isVerificationStep) {
+              setState(() {
+                _isVerificationStep = false;
+              });
+            } else {
+              SafeNavigation.pop(context, fallbackTab: 4);
+            }
+          },
+          child: _isVerificationStep ? _buildVerificationScreen() : _buildSettingsScreen(),
+        );
       },
-      child: _isVerificationStep ? _buildVerificationScreen() : _buildSettingsScreen(),
     );
   }
 
@@ -324,7 +330,7 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
           onPressed: () => SafeNavigation.pop(context, fallbackTab: 4),
         ),
         title: Text(
-          'Two-Factor Authentication',
+          'Two-Factor Authentication'.tr,
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -355,7 +361,7 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Enable Two-Factor Auth',
+                            'Enable Two-Factor Auth'.tr,
                             style: GoogleFonts.poppins(
                               fontSize: 15.5,
                               fontWeight: FontWeight.bold,
@@ -364,7 +370,7 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Protect your account using an extra code.',
+                            'Protect your account using an extra code.'.tr,
                             style: GoogleFonts.nunito(
                               fontSize: 13,
                               color: AppColors.textSecondary,
@@ -390,7 +396,7 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
               if (_is2faEnabled) ...[
                 // Authentication Methods
                 Text(
-                  'AUTHENTICATION METHOD',
+                  'AUTHENTICATION METHOD'.tr,
                   style: GoogleFonts.poppins(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
@@ -411,8 +417,8 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
                         value: 'SMS',
                         groupValue: _selectedMethod,
                         activeColor: AppColors.secondary,
-                        title: Text('SMS Text Message', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
-                        subtitle: Text('Receive verification codes via SMS text.', style: GoogleFonts.nunito(fontSize: 12)),
+                        title: Text('SMS Text Message'.tr, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
+                        subtitle: Text('Receive verification codes via SMS text.'.tr, style: GoogleFonts.nunito(fontSize: 12)),
                         onChanged: (val) => setState(() => _selectedMethod = val!),
                       ),
                       const Divider(color: AppColors.divider, height: 1),
@@ -420,8 +426,8 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
                         value: 'Email',
                         groupValue: _selectedMethod,
                         activeColor: AppColors.secondary,
-                        title: Text('Email Address', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
-                        subtitle: Text('Receive verification codes in your inbox.', style: GoogleFonts.nunito(fontSize: 12)),
+                        title: Text('Email Address'.tr, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
+                        subtitle: Text('Receive verification codes in your inbox.'.tr, style: GoogleFonts.nunito(fontSize: 12)),
                         onChanged: (val) => setState(() => _selectedMethod = val!),
                       ),
                       const Divider(color: AppColors.divider, height: 1),
@@ -429,8 +435,8 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
                         value: 'Authenticator',
                         groupValue: _selectedMethod,
                         activeColor: AppColors.secondary,
-                        title: Text('Authenticator App', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
-                        subtitle: Text('Generate security codes using apps like Google Authenticator.', style: GoogleFonts.nunito(fontSize: 12)),
+                        title: Text('Authenticator App'.tr, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
+                        subtitle: Text('Generate security codes using apps like Google Authenticator.'.tr, style: GoogleFonts.nunito(fontSize: 12)),
                         onChanged: (val) => setState(() => _selectedMethod = val!),
                       ),
                     ],
@@ -441,7 +447,7 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
                 // Phone Verification Section (if SMS chosen)
                 if (_selectedMethod == 'SMS') ...[
                   Text(
-                    'VERIFY PHONE NUMBER',
+                    'VERIFY PHONE NUMBER'.tr,
                     style: GoogleFonts.poppins(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -455,9 +461,9 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
                     keyboardType: TextInputType.phone,
                     autovalidateMode: AutovalidateMode.onUserInteraction,
                     validator: (val) {
-                      if (val == null || val.trim().isEmpty) return 'Phone number is required for SMS 2FA';
+                      if (val == null || val.trim().isEmpty) return 'Phone number is required for SMS 2FA'.tr;
                       final clean = val.replaceAll(RegExp(r'\D'), '');
-                      if (clean.length != 10) return 'Phone number must be exactly 10 digits';
+                      if (clean.length != 10) return 'Phone number must be exactly 10 digits'.tr;
                       return null;
                     },
                     style: GoogleFonts.nunito(
@@ -466,7 +472,7 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
                       fontWeight: FontWeight.w500,
                     ),
                     decoration: InputDecoration(
-                      hintText: 'Phone Number',
+                      hintText: 'Phone Number'.tr,
                       fillColor: Colors.white,
                       filled: true,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
@@ -497,7 +503,7 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
 
                 // Backup Recovery Codes
                 Text(
-                  'BACKUP RECOVERY CODES',
+                  'BACKUP RECOVERY CODES'.tr,
                   style: GoogleFonts.poppins(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
@@ -517,7 +523,7 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'Keep these backup recovery codes safe. They can be used to log in if you lose access to your primary authentication device.',
+                        'Keep these backup recovery codes safe. They can be used to log in if you lose access to your primary authentication device.'.tr,
                         style: GoogleFonts.nunito(
                           fontSize: 13,
                           color: AppColors.textSecondary,
@@ -568,7 +574,7 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
                           ),
                         ),
                         child: Text(
-                          _recoveryCodes.isEmpty ? 'Generate Codes' : 'Regenerate Codes',
+                          _recoveryCodes.isEmpty ? 'Generate Codes'.tr : 'Regenerate Codes'.tr,
                           style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -579,7 +585,7 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
 
                 // Security Information Section
                 Text(
-                  'SECURITY INFORMATION',
+                  'SECURITY INFORMATION'.tr,
                   style: GoogleFonts.poppins(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
@@ -603,7 +609,7 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
                           const Icon(Icons.security, color: AppColors.secondary, size: 20),
                           const SizedBox(width: 8),
                           Text(
-                            'How it protects you',
+                            'How it protects you'.tr,
                             style: GoogleFonts.poppins(
                               fontSize: 13.5,
                               fontWeight: FontWeight.bold,
@@ -614,7 +620,7 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Two-Factor Authentication adds an extra layer of defense by requiring both your password and a temporary verification code to access your driver profile, blocking unauthorized log-in attempts even if your password gets compromised.',
+                        'Two-Factor Authentication adds an extra layer of defense by requiring both your password and a temporary verification code to access your driver profile, blocking unauthorized log-in attempts even if your password gets compromised.'.tr,
                         style: GoogleFonts.nunito(
                           fontSize: 13,
                           color: AppColors.textSecondary,
@@ -639,7 +645,7 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
                   elevation: 0,
                 ),
                 child: Text(
-                  _is2faEnabled ? 'Setup 2FA Verification' : 'Save Changes',
+                  _is2faEnabled ? 'Setup 2FA Verification'.tr : 'Save Changes'.tr,
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -676,7 +682,7 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
           },
         ),
         title: Text(
-          'Security',
+          'Security'.tr,
           style: GoogleFonts.poppins(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -778,7 +784,7 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
 
               // Title "Two-Factor Authentication"
               Text(
-                'Two-Factor Authentication',
+                'Two-Factor Authentication'.tr,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
                   fontSize: 22,
@@ -889,7 +895,7 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
                   elevation: 0,
                 ),
                 child: Text(
-                  'Verify & Continue',
+                  'Verify & Continue'.tr,
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -904,7 +910,7 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    "Didn't receive a code? ",
+                    "Didn't receive a code? ".tr,
                     style: GoogleFonts.nunito(
                       fontSize: 14.5,
                       color: AppColors.textSecondary,
@@ -916,7 +922,7 @@ class _TwoFactorAuthScreenState extends State<TwoFactorAuthScreen> {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                       child: Text(
-                        'Resend',
+                        'Resend'.tr,
                         style: GoogleFonts.nunito(
                           fontSize: 14.5,
                           fontWeight: FontWeight.bold,

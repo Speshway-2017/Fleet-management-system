@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/localization_service.dart';
 import '../utils/navigation_helper.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -31,26 +32,31 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> combinedActions = actions ?? const [];
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, _, _) {
+        final List<Widget> combinedActions = actions ?? const [];
 
-    Widget? effectiveLeading = leading;
-    if (effectiveLeading == null && automaticallyImplyLeading) {
-      effectiveLeading = IconButton(
-        icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-        tooltip: 'Back',
-        onPressed: onBack ?? () => SafeNavigation.pop(context, fallbackTab: fallbackTab),
-      );
-    }
+        Widget? effectiveLeading = leading;
+        if (effectiveLeading == null && automaticallyImplyLeading) {
+          effectiveLeading = IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            tooltip: 'Back'.tr,
+            onPressed: onBack ?? () => SafeNavigation.pop(context, fallbackTab: fallbackTab),
+          );
+        }
 
-    return AppBar(
-      title: title ?? (titleText != null ? Text(titleText!) : null),
-      actions: combinedActions,
-      leading: effectiveLeading,
-      automaticallyImplyLeading: false, // Handled safely via effectiveLeading
-      centerTitle: centerTitle,
-      bottom: bottom,
-      backgroundColor: backgroundColor ?? Theme.of(context).appBarTheme.backgroundColor,
-      titleSpacing: titleSpacing ?? (effectiveLeading != null ? 0.0 : null),
+        return AppBar(
+          title: title ?? (titleText != null ? Text(titleText!.tr) : null),
+          actions: combinedActions,
+          leading: effectiveLeading,
+          automaticallyImplyLeading: false, // Handled safely via effectiveLeading
+          centerTitle: centerTitle,
+          bottom: bottom,
+          backgroundColor: backgroundColor ?? Theme.of(context).appBarTheme.backgroundColor,
+          titleSpacing: titleSpacing ?? (effectiveLeading != null ? 0.0 : null),
+        );
+      },
     );
   }
 

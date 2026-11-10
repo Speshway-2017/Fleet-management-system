@@ -5,6 +5,7 @@ import '../../constants/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/navigation_helper.dart';
+import '../../services/localization_service.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -55,8 +56,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     if (_formKey.currentState!.validate()) {
       if (!_hasMinLength || !_hasUppercase || !_hasSpecialChar) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please ensure your new password meets all the password requirements.'),
+          SnackBar(
+            content: Text('Please ensure your new password meets all the password requirements.'.tr),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
@@ -66,8 +67,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
       if (_newPasswordController.text != _confirmNewPasswordController.text) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Passwords do not match. Please verify.'),
+          SnackBar(
+            content: Text('Passwords do not match. Please verify.'.tr),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
@@ -100,8 +101,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       if (success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Password updated successfully!'),
+            SnackBar(
+              content: Text('Password updated successfully!'.tr),
               backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
             ),
@@ -112,7 +113,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(auth.errorMessage ?? 'Failed to update password.'),
+              content: Text(auth.errorMessage ?? 'Failed to update password.'.tr),
               backgroundColor: AppColors.error,
               behavior: SnackBarBehavior.floating,
             ),
@@ -124,226 +125,231 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final bool isSmallScreen = screenWidth < 375;
-    final double paddingValue = isSmallScreen ? 16.0 : 24.0;
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, _, _) {
+        final double screenWidth = MediaQuery.of(context).size.width;
+        final bool isSmallScreen = screenWidth < 375;
+        final double paddingValue = isSmallScreen ? 16.0 : 24.0;
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) SafeNavigation.pop(context, fallbackTab: 4);
-      },
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: CustomAppBar(
-          centerTitle: false,
-          titleSpacing: 0.0,
-          backgroundColor: AppColors.primary,
-          fallbackTab: 4,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => SafeNavigation.pop(context, fallbackTab: 4),
-          ),
-        title: Text(
-          'Change Password',
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        actions: const [],
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.symmetric(horizontal: paddingValue, vertical: 24.0),
-          child: Form(
-            key: _formKey,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Enter your current password and choose a new secure one.',
-                  style: GoogleFonts.nunito(
-                    fontSize: 15.5,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
-                  ),
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop) SafeNavigation.pop(context, fallbackTab: 4);
+          },
+          child: Scaffold(
+            backgroundColor: AppColors.background,
+            appBar: CustomAppBar(
+              centerTitle: false,
+              titleSpacing: 0.0,
+              backgroundColor: AppColors.primary,
+              fallbackTab: 4,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => SafeNavigation.pop(context, fallbackTab: 4),
+              ),
+              title: Text(
+                'Change Password'.tr,
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
-                const SizedBox(height: 28),
-
-                // Current Password Label & Input
-                _buildFieldLabel('Current Password'),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _currentPasswordController,
-                  obscureText: !_isCurrentPasswordVisible,
+              ),
+              actions: const [],
+            ),
+            body: SafeArea(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.symmetric(horizontal: paddingValue, vertical: 24.0),
+                child: Form(
+                  key: _formKey,
                   autovalidateMode: AutovalidateMode.onUserInteraction,
-                  style: GoogleFonts.nunito(
-                    fontSize: 15,
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Current password is required';
-                    }
-                    if (value.length > 20) {
-                      return 'Current password must not exceed 20 characters';
-                    }
-                    return null;
-                  },
-                  decoration: _buildInputDecoration(
-                    hintText: 'Current Password',
-                    isVisible: _isCurrentPasswordVisible,
-                    onToggleVisible: () {
-                      setState(() {
-                        _isCurrentPasswordVisible = !_isCurrentPasswordVisible;
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // New Password Label & Input
-                _buildFieldLabel('New Password'),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _newPasswordController,
-                  obscureText: !_isNewPasswordVisible,
-                  autovalidateMode: AutovalidateMode.onUserInteraction,
-                  style: GoogleFonts.nunito(
-                    fontSize: 15,
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'New password is required';
-                    }
-                    if (value.length < 8) {
-                      return 'Password must be at least 8 characters';
-                    }
-                    if (value.length > 20) {
-                      return 'Password must not exceed 20 characters';
-                    }
-                    if (value.contains(' ')) {
-                      return 'Password must not contain spaces';
-                    }
-                    if (!RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)').hasMatch(value)) {
-                      return 'Password must contain uppercase, lowercase and number';
-                    }
-                    if (value == _currentPasswordController.text) {
-                      return 'New password must be different from current password';
-                    }
-                    return null;
-                  },
-                  decoration: _buildInputDecoration(
-                    hintText: 'New Password',
-                    isVisible: _isNewPasswordVisible,
-                    onToggleVisible: () {
-                      setState(() {
-                        _isNewPasswordVisible = !_isNewPasswordVisible;
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Confirm Password Label & Input
-                _buildFieldLabel('Confirm New Password'),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _confirmNewPasswordController,
-                  obscureText: !_isConfirmNewPasswordVisible,
-                  autovalidateMode: AutovalidateMode.onUserInteraction,
-                  style: GoogleFonts.nunito(
-                    fontSize: 15,
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Confirm password is required';
-                    }
-                    if (value != _newPasswordController.text) {
-                      return 'New password and confirm password do not match';
-                    }
-                    return null;
-                  },
-                  decoration: _buildInputDecoration(
-                    hintText: 'Confirm New Password',
-                    isVisible: _isConfirmNewPasswordVisible,
-                    onToggleVisible: () {
-                      setState(() {
-                        _isConfirmNewPasswordVisible = !_isConfirmNewPasswordVisible;
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Password Requirements Box
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(12.0),
-                    border: Border.all(color: AppColors.divider, width: 1.0),
-                  ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'PASSWORD REQUIREMENTS',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                          letterSpacing: 0.5,
+                        'Enter your current password and choose a new secure one.'.tr,
+                        style: GoogleFonts.nunito(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textSecondary,
                         ),
                       ),
-                      const SizedBox(height: 14),
-                      _buildRequirementRow('At least 8 characters', _hasMinLength),
-                      const SizedBox(height: 10),
-                      _buildRequirementRow('One uppercase letter', _hasUppercase),
-                      const SizedBox(height: 10),
-                      _buildRequirementRow('One special character (!@#\$%^&*)', _hasSpecialChar),
+                      const SizedBox(height: 28),
+
+                      // Current Password Label & Input
+                      _buildFieldLabel('Current Password'.tr),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _currentPasswordController,
+                        obscureText: !_isCurrentPasswordVisible,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        style: GoogleFonts.nunito(
+                          fontSize: 15,
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Current password is required'.tr;
+                          }
+                          if (value.length > 20) {
+                            return 'Current password must not exceed 20 characters'.tr;
+                          }
+                          return null;
+                        },
+                        decoration: _buildInputDecoration(
+                          hintText: 'Current Password'.tr,
+                          isVisible: _isCurrentPasswordVisible,
+                          onToggleVisible: () {
+                            setState(() {
+                              _isCurrentPasswordVisible = !_isCurrentPasswordVisible;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // New Password Label & Input
+                      _buildFieldLabel('New Password'.tr),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _newPasswordController,
+                        obscureText: !_isNewPasswordVisible,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        style: GoogleFonts.nunito(
+                          fontSize: 15,
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'New password is required'.tr;
+                          }
+                          if (value.length < 8) {
+                            return 'Password must be at least 8 characters'.tr;
+                          }
+                          if (value.length > 20) {
+                            return 'Password must not exceed 20 characters'.tr;
+                          }
+                          if (value.contains(' ')) {
+                            return 'Password must not contain spaces'.tr;
+                          }
+                          if (!RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)').hasMatch(value)) {
+                            return 'Password must contain uppercase, lowercase and number'.tr;
+                          }
+                          if (value == _currentPasswordController.text) {
+                            return 'New password must be different from current password'.tr;
+                          }
+                          return null;
+                        },
+                        decoration: _buildInputDecoration(
+                          hintText: 'New Password'.tr,
+                          isVisible: _isNewPasswordVisible,
+                          onToggleVisible: () {
+                            setState(() {
+                              _isNewPasswordVisible = !_isNewPasswordVisible;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Confirm Password Label & Input
+                      _buildFieldLabel('Confirm New Password'.tr),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _confirmNewPasswordController,
+                        obscureText: !_isConfirmNewPasswordVisible,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        style: GoogleFonts.nunito(
+                          fontSize: 15,
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Confirm password is required'.tr;
+                          }
+                          if (value != _newPasswordController.text) {
+                            return 'New password and confirm password do not match'.tr;
+                          }
+                          return null;
+                        },
+                        decoration: _buildInputDecoration(
+                          hintText: 'Confirm New Password'.tr,
+                          isVisible: _isConfirmNewPasswordVisible,
+                          onToggleVisible: () {
+                            setState(() {
+                              _isConfirmNewPasswordVisible = !_isConfirmNewPasswordVisible;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Password Requirements Box
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16.0),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(12.0),
+                          border: Border.all(color: AppColors.divider, width: 1.0),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'PASSWORD REQUIREMENTS'.tr,
+                              style: GoogleFonts.poppins(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            _buildRequirementRow('At least 8 characters'.tr, _hasMinLength),
+                            const SizedBox(height: 10),
+                            _buildRequirementRow('One uppercase letter'.tr, _hasUppercase),
+                            const SizedBox(height: 10),
+                            _buildRequirementRow('One special character (!@#\$%^&*)'.tr, _hasSpecialChar),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Update Password Button
+                      ElevatedButton(
+                        onPressed: _updatePassword,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.secondary, // orange button
+                          minimumSize: const Size(double.infinity, 54),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          'Update Password'.tr,
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
                     ],
                   ),
                 ),
-                const SizedBox(height: 32),
-
-                // Update Password Button
-                ElevatedButton(
-                  onPressed: _updatePassword,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.secondary, // orange button
-                    minimumSize: const Size(double.infinity, 54),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    'Update Password',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
-    ),
+        );
+      },
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/localization_service.dart';
 
 /// Shows a bottom sheet modal to contact Manager/Fleet Staff via External Apps:
 /// - WhatsApp
@@ -102,7 +103,7 @@ void showExternalContactOptionsModal(
                             ),
                           ),
                           Text(
-                            'Fleet Dispatcher Manager • $phone',
+                            '${'Fleet Dispatcher Manager'.tr} • $phone',
                             style: GoogleFonts.nunito(
                               fontSize: 12,
                               color: const Color(0xFF6B7280),
@@ -122,7 +123,7 @@ void showExternalContactOptionsModal(
                 const SizedBox(height: 20.0),
 
                 Text(
-                  'SELECT EXTERNAL APP',
+                  'SELECT EXTERNAL APP'.tr,
                   style: GoogleFonts.poppins(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -136,8 +137,8 @@ void showExternalContactOptionsModal(
                 _buildContactTile(
                   icon: Icons.chat_bubble_rounded,
                   iconBgColor: const Color(0xFF25D366),
-                  title: 'WhatsApp Messenger',
-                  subtitle: 'Send direct chat & voice notes',
+                  title: 'WhatsApp Messenger'.tr,
+                  subtitle: 'Send direct chat & voice notes'.tr,
                   onTap: () {
                     Navigator.pop(ctx);
                     launchExternal('https://wa.me/$formattedPhone');
@@ -149,8 +150,8 @@ void showExternalContactOptionsModal(
                 _buildContactTile(
                   icon: Icons.phone_in_talk_rounded,
                   iconBgColor: const Color(0xFF2563EB),
-                  title: 'Phone Call / Dialer',
-                  subtitle: 'Call manager via system dialer ($phone)',
+                  title: 'Phone Call / Dialer'.tr,
+                  subtitle: '${'Call manager via system dialer'.tr} ($phone)',
                   onTap: () {
                     Navigator.pop(ctx);
                     launchExternal('tel:$phone');
@@ -162,8 +163,8 @@ void showExternalContactOptionsModal(
                 _buildContactTile(
                   icon: Icons.sms_rounded,
                   iconBgColor: const Color(0xFFD97706),
-                  title: 'SMS Text Message',
-                  subtitle: 'Send standard cellular SMS text',
+                  title: 'SMS Text Message'.tr,
+                  subtitle: 'Send standard cellular SMS text'.tr,
                   onTap: () {
                     Navigator.pop(ctx);
                     launchExternal('sms:$phone');
@@ -175,8 +176,8 @@ void showExternalContactOptionsModal(
                 _buildContactTile(
                   icon: Icons.email_rounded,
                   iconBgColor: const Color(0xFF374151),
-                  title: 'Send Official Email',
-                  subtitle: 'Email dispatcher at $email',
+                  title: 'Send Official Email'.tr,
+                  subtitle: '${'Email dispatcher at'.tr} $email',
                   onTap: () {
                     Navigator.pop(ctx);
                     launchExternal('mailto:$email');
@@ -187,7 +188,7 @@ void showExternalContactOptionsModal(
 
                 // WhatsApp Quick Templates Section
                 Text(
-                  'QUICK WHATSAPP MESSAGES',
+                  'QUICK WHATSAPP MESSAGES'.tr,
                   style: GoogleFonts.poppins(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -199,21 +200,21 @@ void showExternalContactOptionsModal(
 
                 _buildTemplateChip(
                   ctx,
-                  label: '⚡ "I am currently en-route and on schedule."',
+                  label: '⚡ "I am currently en-route and on schedule."'.tr,
                   phone: formattedPhone,
                   launchExternal: launchExternal,
                 ),
                 const SizedBox(height: 6.0),
                 _buildTemplateChip(
                   ctx,
-                  label: '⛽ "Reporting fuel refill & receipt update."',
+                  label: '⛽ "Reporting fuel refill & receipt update."'.tr,
                   phone: formattedPhone,
                   launchExternal: launchExternal,
                 ),
                 const SizedBox(height: 6.0),
                 _buildTemplateChip(
                   ctx,
-                  label: '📍 "Arrived at location / checking in."',
+                  label: '📍 "Arrived at location / checking in."'.tr,
                   phone: formattedPhone,
                   launchExternal: launchExternal,
                 ),

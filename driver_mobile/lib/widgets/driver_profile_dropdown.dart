@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../services/localization_service.dart';
 import '../theme/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -178,7 +179,7 @@ class _DriverProfileDropdownState extends State<DriverProfileDropdown> with Sing
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      'Driver',
+                                      'Driver'.tr,
                                       style: GoogleFonts.nunito(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w500,
@@ -195,7 +196,7 @@ class _DriverProfileDropdownState extends State<DriverProfileDropdown> with Sing
                             // 1. My Profile
                             _buildMenuItem(
                               icon: Icons.person_outline_rounded,
-                              label: 'My Profile',
+                              label: 'My Profile'.tr,
                               textColor: const Color(0xFF374151),
                               iconColor: const Color(0xFF6B7280),
                               onTap: () {
@@ -216,7 +217,7 @@ class _DriverProfileDropdownState extends State<DriverProfileDropdown> with Sing
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Availability Status',
+                                    'Availability Status'.tr,
                                     style: GoogleFonts.nunito(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w600,
@@ -239,7 +240,7 @@ class _DriverProfileDropdownState extends State<DriverProfileDropdown> with Sing
                                           ),
                                           const SizedBox(width: 6),
                                           Text(
-                                            isOnline ? 'Online' : 'Offline',
+                                            isOnline ? 'Online'.tr : 'Offline'.tr,
                                             style: GoogleFonts.poppins(
                                               fontSize: 13,
                                               fontWeight: FontWeight.w600,
@@ -275,7 +276,7 @@ class _DriverProfileDropdownState extends State<DriverProfileDropdown> with Sing
                             // 3. Logout
                             _buildMenuItem(
                               icon: Icons.logout_rounded,
-                              label: 'Logout',
+                              label: 'Logout'.tr,
                               textColor: const Color(0xFFDC2626),
                               iconColor: const Color(0xFFDC2626),
                               hoverColor: const Color(0xFFFEF2F2),
@@ -409,8 +410,8 @@ class _DriverProfileDropdownState extends State<DriverProfileDropdown> with Sing
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Logged out successfully.'),
+        SnackBar(
+          content: Text('Logged out successfully.'.tr),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),

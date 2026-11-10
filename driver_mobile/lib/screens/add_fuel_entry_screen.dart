@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 import '../services/api_service.dart';
 import '../utils/navigation_helper.dart';
+import '../services/localization_service.dart';
 
 /// Driver Module - Add Fuel Entry Screen
 class AddFuelEntryScreen extends StatefulWidget {
@@ -280,7 +281,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                           ),
                         ),
                         Text(
-                          'Fuel Receipt Attachment',
+                          'Fuel Receipt Attachment'.tr,
                           style: GoogleFonts.nunito(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w600,
@@ -291,14 +292,14 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                         const Divider(color: borderGray, height: 1.0),
                         const SizedBox(height: 12.0),
 
-                        _buildReceiptRow('Vehicle Reg', _assignedVehicle),
-                        _buildReceiptRow('Trip ID', _currentTripId ?? 'N/A'),
-                        _buildReceiptRow('Driver Name', _driverName),
-                        _buildReceiptRow('Fuel Station', _selectedStation ?? 'N/A'),
-                        _buildReceiptRow('Fuel Type', _selectedFuelType ?? 'N/A'),
-                        _buildReceiptRow('Quantity', '${_quantityController.text} L'),
-                        _buildReceiptRow('Payment Mode', _selectedPaymentMode ?? 'N/A'),
-                        _buildReceiptRow('File Size', _receiptFileSize),
+                        _buildReceiptRow('Vehicle Reg'.tr, _assignedVehicle),
+                        _buildReceiptRow('Trip ID'.tr, _currentTripId ?? 'N/A'),
+                        _buildReceiptRow('Driver Name'.tr, _driverName),
+                        _buildReceiptRow('Fuel Station'.tr, _selectedStation ?? 'N/A'),
+                        _buildReceiptRow('Fuel Type'.tr, _selectedFuelType ?? 'N/A'),
+                        _buildReceiptRow('Quantity'.tr, '${_quantityController.text} L'),
+                        _buildReceiptRow('Payment Mode'.tr, _selectedPaymentMode ?? 'N/A'),
+                        _buildReceiptRow('File Size'.tr, _receiptFileSize),
 
                         const SizedBox(height: 12.0),
                         const Divider(color: borderGray, height: 1.0),
@@ -308,7 +309,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'TOTAL AMOUNT',
+                              'TOTAL AMOUNT'.tr,
                               style: GoogleFonts.poppins(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w800,
@@ -342,7 +343,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
                       ),
                       child: Text(
-                        'Close Preview',
+                        'Close Preview'.tr,
                         style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
                       ),
                     ),
@@ -384,6 +385,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
   }
 
   void _showWarning(String message) {
+    final msg = message.tr;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -391,7 +393,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
           children: [
             const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
             const SizedBox(width: 8),
-            Expanded(child: Text(message)),
+            Expanded(child: Text(msg)),
           ],
         ),
         backgroundColor: const Color(0xFFDC2626),
@@ -404,19 +406,19 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
   Future<void> _showSubmitFeedback(BuildContext context) async {
     final isVehAssigned = _isVehicleAssigned && _assignedVehicle != 'No Vehicle Assigned' && _assignedVehicle != 'Unassigned' && _assignedVehicle.isNotEmpty;
     if (!isVehAssigned && !_hasActiveTrip) {
-      _showWarning('Fuel refill logging is disabled. Fuel logging requires an assigned vehicle or an active trip.');
+      _showWarning('Fuel refill logging is disabled. Fuel logging requires an assigned vehicle or an active trip.'.tr);
       return;
     }
     if (_selectedStation == null) {
-      _showWarning('Please select a Fuel Station.');
+      _showWarning('Please select a Fuel Station.'.tr);
       return;
     }
     if (_formKey.currentState != null && !_formKey.currentState!.validate()) {
-      _showWarning('Please correct the errors in the form.');
+      _showWarning('Please correct the errors in the form.'.tr);
       return;
     }
     if (_selectedFuelType == null) {
-      _showWarning('Please select a Fuel Type.');
+      _showWarning('Please select a Fuel Type.'.tr);
       return;
     }
 
@@ -483,7 +485,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
             const SizedBox(width: 10.0),
             Expanded(
               child: Text(
-                'Fuel Entry Submitted',
+                'Fuel Entry Submitted'.tr,
                 style: GoogleFonts.poppins(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -498,7 +500,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Your fuel receipt has been uploaded and sent to Fleet Management for verification.',
+              'Your fuel receipt has been uploaded and sent to Fleet Management for verification.'.tr,
               style: GoogleFonts.nunito(
                 fontSize: 13,
                 color: const Color(0xFF6B7280),
@@ -514,13 +516,13 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
               ),
               child: Column(
                 children: [
-                  _buildSummaryRow('Vehicle ID', _assignedVehicle),
-                  _buildSummaryRow('Station', _selectedStation ?? ''),
-                  _buildSummaryRow('Purchase Location', _locationController.text.trim()),
-                  _buildSummaryRow('Fuel Type', _selectedFuelType ?? ''),
-                  _buildSummaryRow('Quantity', '${_quantityController.text} L'),
-                  _buildSummaryRow('Cost', '₹ ${_costController.text}'),
-                  _buildSummaryRow('Status', 'Pending Manager Approval'),
+                  _buildSummaryRow('Vehicle ID'.tr, _assignedVehicle),
+                  _buildSummaryRow('Station'.tr, _selectedStation ?? ''),
+                  _buildSummaryRow('Purchase Location'.tr, _locationController.text.trim()),
+                  _buildSummaryRow('Fuel Type'.tr, _selectedFuelType ?? ''),
+                  _buildSummaryRow('Quantity'.tr, '${_quantityController.text} L'),
+                  _buildSummaryRow('Cost'.tr, '₹ ${_costController.text}'),
+                  _buildSummaryRow('Status'.tr, 'Pending Manager Approval'.tr),
                 ],
               ),
             ),
@@ -539,7 +541,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
             ),
             child: Text(
-              'Done',
+              'Done'.tr,
               style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
             ),
           ),
@@ -586,7 +588,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Form fields reset.'),
+        content: Text('Form fields reset.'.tr),
         duration: const Duration(milliseconds: 1500),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
@@ -598,14 +600,17 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const primaryDark = Color(0xFF101C2C);
-    const bgLight = Color(0xFFF7F8FA);
-    const borderGray = Color(0xFFE2E8F0);
-    const textPrimary = Color(0xFF1F2937);
-    const textSecondary = Color(0xFF6B7280);
-    const primaryOrange = Color(0xFFFF7A1A);
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, _, _) {
+        const primaryDark = Color(0xFF101C2C);
+        const bgLight = Color(0xFFF7F8FA);
+        const borderGray = Color(0xFFE2E8F0);
+        const textPrimary = Color(0xFF1F2937);
+        const textSecondary = Color(0xFF6B7280);
+        const primaryOrange = Color(0xFFFF7A1A);
 
-    return PopScope(
+        return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) SafeNavigation.pop(context, fallbackTab: 1);
@@ -622,7 +627,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
             onPressed: () => SafeNavigation.pop(context, fallbackTab: 1),
           ),
         title: Text(
-          'Add Fuel Entry',
+          'Add Fuel Entry'.tr,
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -642,7 +647,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // 1. ASSIGNED VEHICLE (READ-ONLY FIELD AT THE TOP)
-                _buildFieldLabel('Assigned Vehicle'),
+                _buildFieldLabel('Assigned Vehicle'.tr),
                 const SizedBox(height: 6.0),
                 _buildReadOnlyFieldContainer(
                   value: _assignedVehicle,
@@ -673,11 +678,11 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                 const SizedBox(height: 14.0),
 
                 // Field: Fuel Station * (Dropdown Selector)
-                _buildRequiredLabel('Fuel Station'),
+                _buildRequiredLabel('Fuel Station'.tr),
                 const SizedBox(height: 6.0),
                 _buildStyledDropdown(
                   value: _selectedStation,
-                  hintText: 'Select Fuel Station',
+                  hintText: 'Select Fuel Station'.tr,
                   items: _fuelStations,
                   prefixIcon: Icons.local_gas_station_outlined,
                   onChanged: (val) {
@@ -711,11 +716,11 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildRequiredLabel('Fuel Type'),
+                          _buildRequiredLabel('Fuel Type'.tr),
                           const SizedBox(height: 6.0),
                           _buildStyledDropdown(
                             value: _selectedFuelType,
-                            hintText: 'Select Fuel Type',
+                            hintText: 'Select Fuel Type'.tr,
                             items: _fuelTypes,
                             onChanged: (val) {
                               if (val != null) setState(() => _selectedFuelType = val);
@@ -729,7 +734,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildRequiredLabel('Quantity (Liters)'),
+                          _buildRequiredLabel('Quantity (Liters)'.tr),
                           const SizedBox(height: 6.0),
                           _buildStyledTextField(
                             controller: _quantityController,
@@ -759,7 +764,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildRequiredLabel('Fuel Cost (₹)'),
+                          _buildRequiredLabel('Fuel Cost (₹)'.tr),
                           const SizedBox(height: 6.0),
                           _buildStyledTextField(
                             controller: _costController,
@@ -781,7 +786,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildRequiredLabel('Odometer Reading (KM)'),
+                          _buildRequiredLabel('Odometer Reading (KM)'.tr),
                           const SizedBox(height: 6.0),
                           _buildStyledTextField(
                             controller: _odometerController,
@@ -811,7 +816,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildRequiredLabel('Date & Time'),
+                          _buildRequiredLabel('Date & Time'.tr),
                           const SizedBox(height: 6.0),
                           _buildStyledTextField(
                             controller: _dateTimeController,
@@ -830,11 +835,11 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildRequiredLabel('Payment Mode'),
+                          _buildRequiredLabel('Payment Mode'.tr),
                           const SizedBox(height: 6.0),
                           _buildStyledDropdown(
                             value: _selectedPaymentMode,
-                            hintText: 'Select Payment Mode',
+                            hintText: 'Select Payment Mode'.tr,
                             items: _paymentModes,
                             onChanged: (val) {
                               if (val != null) setState(() => _selectedPaymentMode = val);
@@ -849,7 +854,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
               const SizedBox(height: 16.0),
 
               // Field: Notes (Optional)
-              _buildFieldLabel('Notes (Optional)'),
+              _buildFieldLabel('Notes (Optional)'.tr),
               const SizedBox(height: 6.0),
               _buildNotesField(
                 controller: _notesController,
@@ -860,7 +865,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
 
               // 4. UPLOAD FUEL RECEIPT SECTION
               Text(
-                'Upload Fuel Receipt',
+                'Upload Fuel Receipt'.tr,
                 style: GoogleFonts.poppins(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -897,7 +902,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                     ),
                     const SizedBox(height: 8.0),
                     Text(
-                      'Tap to upload or drag and drop',
+                      'Tap to upload or drag and drop'.tr,
                       style: GoogleFonts.poppins(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -906,7 +911,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                     ),
                     const SizedBox(height: 2.0),
                     Text(
-                      'Supported formats: JPG, PNG, PDF (Max 10MB)',
+                      'Supported formats: JPG, PNG, PDF (Max 10MB)'.tr,
                       style: GoogleFonts.nunito(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w500,
@@ -922,7 +927,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                           child: OutlinedButton.icon(
                             onPressed: () => _pickReceiptImage(ImageSource.camera),
                             icon: const Icon(Icons.camera_alt_outlined, size: 18),
-                            label: const Text('Camera'),
+                            label: Text('Camera'.tr),
                             style: OutlinedButton.styleFrom(
                               backgroundColor: Colors.white,
                               foregroundColor: primaryDark,
@@ -943,7 +948,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                           child: OutlinedButton.icon(
                             onPressed: () => _pickReceiptImage(ImageSource.gallery),
                             icon: const Icon(Icons.photo_library_outlined, size: 18),
-                            label: const Text('Gallery'),
+                            label: Text('Gallery'.tr),
                             style: OutlinedButton.styleFrom(
                               backgroundColor: Colors.white,
                               foregroundColor: primaryDark,
@@ -973,7 +978,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Receipt Preview',
+                      'Receipt Preview'.tr,
                       style: GoogleFonts.poppins(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -996,7 +1001,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'Receipt Uploaded Successfully',
+                            'Receipt Uploaded Successfully'.tr,
                             style: GoogleFonts.poppins(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -1151,7 +1156,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                       const SizedBox(width: 8.0),
                       Expanded(
                         child: Text(
-                          'This fuel entry will be submitted to your Fleet Manager for approval.',
+                          'This fuel entry will be submitted to your Fleet Manager for approval.'.tr,
                           style: GoogleFonts.nunito(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -1196,7 +1201,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                       : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text('Submit Fuel Entry'),
+                            Text('Submit Fuel Entry'.tr),
                             const SizedBox(width: 8.0),
                             const Icon(
                               Icons.send_rounded,
@@ -1216,7 +1221,7 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
                 child: OutlinedButton.icon(
                   onPressed: _resetForm,
                   icon: const Icon(Icons.refresh_rounded, size: 18),
-                  label: const Text('Reset Form'),
+                  label: Text('Reset Form'.tr),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: primaryDark,
                     side: const BorderSide(color: primaryDark, width: 1.5),
@@ -1239,7 +1244,9 @@ class _AddFuelEntryScreenState extends State<AddFuelEntryScreen> {
     ),
   ),
   );
-}
+      },
+    );
+  }
 
   // Read-Only Field Builder (Assigned Vehicle & Current Trip ID)
   Widget _buildReadOnlyFieldContainer({

@@ -8,6 +8,7 @@ import '../widgets/custom_card.dart';
 import '../widgets/document_preview_dialog.dart';
 import '../services/api_service.dart';
 import '../utils/navigation_helper.dart';
+import '../services/localization_service.dart';
 
 class InvoiceScreen extends StatefulWidget {
   final String? invoiceId;
@@ -230,12 +231,15 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
 
   Future<void> _openPdfUrl(String url) async {
     if (url.isEmpty) return;
-    await DocumentPreviewDialog.open(context, title: 'Trip Invoice', documentUrl: url);
+    await DocumentPreviewDialog.open(context, title: 'Trip Invoice'.tr, documentUrl: url);
   }
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
+    return ValueListenableBuilder<String>(
+      valueListenable: LocalizationService.currentLanguageNotifier,
+      builder: (context, _, _) {
+        return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) SafeNavigation.pop(context, fallbackTab: 3);
@@ -246,7 +250,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           centerTitle: false,
           fallbackTab: 3,
           title: Text(
-            'Trip Invoice',
+            'Trip Invoice'.tr,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: AppColors.background,
               fontWeight: FontWeight.bold,
@@ -283,6 +287,8 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       ),
     ),
     );
+      },
+    );
   }
 
   Widget _buildNoInvoiceCard(BuildContext context) {
@@ -311,7 +317,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Invoice Not Generated',
+            'Invoice Not Generated'.tr,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
               color: AppColors.primaryText,
@@ -319,7 +325,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Invoice not generated yet.',
+            'Invoice not generated yet.'.tr,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: AppColors.secondaryText,
             ),
@@ -582,8 +588,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'INVOICE NUMBER',
+                  Text('INVOICE NUMBER'.tr,
                     style: TextStyle(
                       color: AppColors.secondaryText,
                       fontSize: 10,
@@ -610,8 +615,8 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoRow('Invoice Date', date),
-              _buildInfoRow('Trip ID', tripDisplayId, alignRight: true),
+              _buildInfoRow('Invoice Date'.tr, date),
+              _buildInfoRow('Trip ID'.tr, tripDisplayId, alignRight: true),
             ],
           ),
         ],
@@ -635,12 +640,12 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.location_on_outlined, color: AppColors.secondary, size: 20),
-              SizedBox(width: 8),
+              const Icon(Icons.location_on_outlined, color: AppColors.secondary, size: 20),
+              const SizedBox(width: 8),
               Text(
-                'Route & Address Details',
+                'Route & Address Details'.tr,
                 style: TextStyle(
                   color: AppColors.primaryText,
                   fontWeight: FontWeight.bold,
@@ -651,7 +656,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           ),
           const SizedBox(height: 14),
           _buildAddressBox(
-            title: 'FROM ADDRESS',
+            title: 'FROM ADDRESS'.tr,
             company: fromCompany,
             contact: fromContact,
             mobile: fromMobile,
@@ -660,7 +665,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           ),
           const SizedBox(height: 12),
           _buildAddressBox(
-            title: 'TO ADDRESS',
+            title: 'TO ADDRESS'.tr,
             company: toCompany,
             contact: toContact,
             mobile: toMobile,
@@ -712,12 +717,12 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           const SizedBox(height: 6),
           Row(
             children: [
-              Expanded(child: _buildMiniDetail('Contact', contact)),
-              Expanded(child: _buildMiniDetail('Mobile', mobile)),
+              Expanded(child: _buildMiniDetail('Contact'.tr, contact)),
+              Expanded(child: _buildMiniDetail('Mobile'.tr, mobile)),
             ],
           ),
           const SizedBox(height: 6),
-          _buildMiniDetail('Address', fullAddress),
+          _buildMiniDetail('Address'.tr, fullAddress),
         ],
       ),
     );
@@ -760,12 +765,12 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.inventory_2_outlined, color: AppColors.secondary, size: 20),
-              SizedBox(width: 8),
+              const Icon(Icons.inventory_2_outlined, color: AppColors.secondary, size: 20),
+              const SizedBox(width: 8),
               Text(
-                'Cargo & Asset Info',
+                'Cargo & Asset Info'.tr,
                 style: TextStyle(
                   color: AppColors.primaryText,
                   fontWeight: FontWeight.bold,
@@ -777,8 +782,8 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _buildInfoRow('Cargo Type', cargoType.toString())),
-              Expanded(child: _buildInfoRow('Cargo Weight', cargoWeight.toString(), alignRight: true)),
+              Expanded(child: _buildInfoRow('Cargo Type'.tr, cargoType.toString())),
+              Expanded(child: _buildInfoRow('Cargo Weight'.tr, cargoWeight.toString(), alignRight: true)),
             ],
           ),
           const Padding(
@@ -787,8 +792,8 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           ),
           Row(
             children: [
-              Expanded(child: _buildInfoRow('Vehicle', '$vehicleName ($vehiclePlate)')),
-              Expanded(child: _buildInfoRow('Driver', driverName.toString(), alignRight: true)),
+              Expanded(child: _buildInfoRow('Vehicle'.tr, '$vehicleName ($vehiclePlate)')),
+              Expanded(child: _buildInfoRow('Driver'.tr, driverName.toString(), alignRight: true)),
             ],
           ),
         ],
@@ -799,10 +804,10 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(left: 4.0, bottom: 8.0),
+        Padding(
+          padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
           child: Text(
-            'ATTACHED INVOICE DOCUMENT',
+            'ATTACHED INVOICE DOCUMENT'.tr,
             style: TextStyle(
               color: AppColors.secondaryText,
               fontSize: 11,
@@ -838,8 +843,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      const Text(
-                        'Tap to open PDF document',
+                      Text('Tap to open PDF document'.tr,
                         style: TextStyle(
                           color: AppColors.secondaryText,
                           fontSize: 12,
@@ -864,8 +868,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           ElevatedButton.icon(
             onPressed: () => _openPdfUrl(pdfUrl),
             icon: const Icon(Icons.picture_as_pdf, color: Colors.white, size: 20),
-            label: const Text(
-              'Open PDF Invoice',
+            label: Text('Open PDF Invoice'.tr,
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,

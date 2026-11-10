@@ -598,26 +598,6 @@ export const updateDriverProfile = async (req, res, next) => {
           });
         }
       }
-
-      // Check if notification preferences or app settings were changed
-      const prefFields = ['notificationPreferences', 'language', 'isDarkMode', 'twoFactorEnabled', 'twoFactorMethod', 'twoFactorPhone'];
-      const prefsChanged = prefFields.some(f => updateData[f] !== undefined);
-
-      if (prefsChanged && !profileChanged && !targetNewPassword) {
-        await createAndEmitNotification({
-          io,
-          recipient: driverId,
-          recipientRole: 'DRIVER',
-          type: 'info',
-          title: 'Settings & Preferences Updated',
-          message: 'Your notification preferences and account settings have been saved.',
-          priority: 'low',
-          metadata: {
-            section: 'preferences',
-            updatedAt: new Date()
-          }
-        });
-      }
     } catch (notifErr) {
       console.error('[DriverApi] Error creating notification for driver settings update:', notifErr);
     }
