@@ -118,7 +118,8 @@ export const submitRequest = async (req, res, next) => {
     }
 
     // Check if manager already has an active plan
-    if (req.user.subscriptionStatus === 'ACTIVE') {
+    const isExpired = req.user.subscriptionExpiry && new Date() > new Date(req.user.subscriptionExpiry);
+    if (req.user.subscriptionStatus === 'ACTIVE' && !isExpired) {
       return sendError(res, 400, 'Manager already has an active subscription plan.');
     }
 

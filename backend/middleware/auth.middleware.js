@@ -32,7 +32,7 @@ export const protect = async (req, res, next) => {
     if (user.role === 'FLEET_MANAGER') {
       if (user.subscriptionStatus === 'ACTIVE' && user.subscriptionExpiry && new Date() > new Date(user.subscriptionExpiry)) {
         user.subscriptionStatus = 'EXPIRED';
-        await user.save();
+        await User.updateOne({ _id: user._id }, { $set: { subscriptionStatus: 'EXPIRED' } });
       }
     }
 

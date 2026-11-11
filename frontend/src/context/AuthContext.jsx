@@ -11,9 +11,21 @@ const ROLE_MAP = {
 };
 
 function normalizeUser(backendUser) {
+  if (!backendUser) return null;
+  const isManager = backendUser.role === "FLEET_MANAGER" || backendUser.role === "manager";
+  let subscriptionStatus = backendUser.subscriptionStatus || "INACTIVE";
+
+  if (isManager && backendUser.subscriptionExpiry) {
+    const expiry = new Date(backendUser.subscriptionExpiry);
+    if (!isNaN(expiry.getTime()) && new Date() > expiry) {
+      subscriptionStatus = "EXPIRED";
+    }
+  }
+
   return {
     ...backendUser,
     role: ROLE_MAP[backendUser.role] ?? backendUser.role,
+    subscriptionStatus,
   };
 }
 
@@ -49,7 +61,7 @@ export function AuthProvider({ children }) {
     }
     try {
       const stored = sessionStorage.getItem("user") || (localStorage.getItem("rememberMe") === "true" ? localStorage.getItem("user") : null);
-      return stored ? JSON.parse(stored) : null;
+      return stored ? normalizeUser(JSON.parse(stored)) : null;
     } catch {
       return null;
     }

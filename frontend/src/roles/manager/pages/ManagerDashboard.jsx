@@ -10,7 +10,7 @@ import KPICard from "@/components/common/KPICard";
 import StatusBadge from "@/components/common/StatusBadge";
 import { Phone, MapPin, ExternalLink, Activity, AlertTriangle, ShieldCheck, Truck, Users } from "lucide-react";
 import { animateDashboardEntrance } from "@/utils/animeUtils";
-import { getDaysRemaining } from "@/utils/dateUtils";
+import { getDaysRemaining, isSubscriptionExpired } from "@/utils/dateUtils";
 import { formatCurrency } from "@/utils/currencyFormatter";
 
 export default function ManagerDashboard() {
@@ -511,34 +511,77 @@ export default function ManagerDashboard() {
     <div ref={dashboardRef} className="w-full px-4 sm:px-6 lg:px-8 py-6 bg-[#FAFBFC] min-h-screen font-nunito text-slate-800 select-none">
       <Breadcrumb />
 
-      {/* Subscription Warning Banners */}
-      {user?.subscriptionStatus === 'ACTIVE' && getDaysRemaining(user?.subscriptionExpiry, user?.subscriptionStatus) !== '--' && getDaysRemaining(user?.subscriptionExpiry, user?.subscriptionStatus) <= 10 && (
-        <div 
-          data-dash-banner
-          style={{ backgroundColor: "#1E293B", borderColor: "rgba(245, 158, 11, 0.4)" }}
-          className="mb-6 p-4 rounded-2xl border flex items-center justify-between shadow-md transition-all duration-300 hover:shadow-lg"
-        >
-          <div className="flex items-center gap-3">
-            <span className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 shrink-0">
-              <Icon icon="material-symbols:warning-outline" className="w-5 h-5 text-amber-400" />
-            </span>
-            <div className="min-w-0">
-              <p style={{ color: "#FFFFFF" }} className="text-xs font-black font-poppins">
-                Subscription Warning: Expiring Soon
-              </p>
-              <p style={{ color: "#FDE68A" }} className="text-xs font-bold font-poppins mt-0.5">
-                Your subscription will expire in {getDaysRemaining(user?.subscriptionExpiry, user?.subscriptionStatus)} days on {new Date(user.subscriptionExpiry).toLocaleDateString("en-IN")}.
-              </p>
+      {/* Subscription Warning & Expiry Banners */}
+      {(() => {
+        const isExpired = isSubscriptionExpired(user?.subscriptionExpiry, user?.subscriptionStatus);
+        const daysLeft = getDaysRemaining(user?.subscriptionExpiry, user?.subscriptionStatus);
+
+        if (isExpired) {
+          const planTitle = typeof user?.subscriptionPlan === 'object' ? user.subscriptionPlan?.name : 'Fleet Basic';
+          return (
+            <div 
+              data-dash-banner
+              style={{ backgroundColor: "#1E293B", borderColor: "rgba(239, 68, 68, 0.4)" }}
+              className="mb-6 p-4 rounded-2xl border flex items-center justify-between shadow-md transition-all duration-300 hover:shadow-lg bg-red-950/20"
+            >
+              <div className="flex items-center gap-3">
+                <span className="p-2.5 rounded-xl bg-rose-500/20 text-rose-400 shrink-0">
+                  <Icon icon="material-symbols:error-outline" className="w-5 h-5 text-rose-400" />
+                </span>
+                <div className="min-w-0">
+                  <p style={{ color: "#FFFFFF" }} className="text-xs font-black font-poppins flex items-center gap-2">
+                    <span>Subscription Plan Expired</span>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-red-500/20 text-red-300 border border-red-500/40">
+                      Expired
+                    </span>
+                  </p>
+                  <p style={{ color: "#FCA5A5" }} className="text-xs font-bold font-poppins mt-0.5">
+                    Your {planTitle} subscription expired on {user?.subscriptionExpiry ? new Date(user.subscriptionExpiry).toLocaleDateString("en-IN") : 'recently'}. Please renew your plan to restore full operations.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate("/manager/subscription")}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 active:scale-97 text-white text-xs font-extrabold rounded-xl shadow-xs hover:shadow-sm transition-all duration-200 cursor-pointer whitespace-nowrap"
+              >
+                Renew Now
+              </button>
             </div>
-          </div>
-          <button
-            onClick={() => navigate("/manager/subscription")}
-            className="px-4 py-2 bg-[#A14000] hover:bg-[#853400] active:scale-97 text-white text-xs font-extrabold rounded-xl shadow-xs hover:shadow-sm transition-all duration-200 cursor-pointer whitespace-nowrap"
-          >
-            Renew Plan
-          </button>
-        </div>
-      )}
+          );
+        }
+
+        if (user?.subscriptionStatus === 'ACTIVE' && daysLeft !== '--' && daysLeft > 0 && daysLeft <= 10) {
+          return (
+            <div 
+              data-dash-banner
+              style={{ backgroundColor: "#1E293B", borderColor: "rgba(245, 158, 11, 0.4)" }}
+              className="mb-6 p-4 rounded-2xl border flex items-center justify-between shadow-md transition-all duration-300 hover:shadow-lg"
+            >
+              <div className="flex items-center gap-3">
+                <span className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 shrink-0">
+                  <Icon icon="material-symbols:warning-outline" className="w-5 h-5 text-amber-400" />
+                </span>
+                <div className="min-w-0">
+                  <p style={{ color: "#FFFFFF" }} className="text-xs font-black font-poppins">
+                    Subscription Warning: Expiring Soon
+                  </p>
+                  <p style={{ color: "#FDE68A" }} className="text-xs font-bold font-poppins mt-0.5">
+                    Your subscription will expire in {daysLeft} days on {new Date(user.subscriptionExpiry).toLocaleDateString("en-IN")}.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate("/manager/subscription")}
+                className="px-4 py-2 bg-[#A14000] hover:bg-[#853400] active:scale-97 text-white text-xs font-extrabold rounded-xl shadow-xs hover:shadow-sm transition-all duration-200 cursor-pointer whitespace-nowrap"
+              >
+                Renew Plan
+              </button>
+            </div>
+          );
+        }
+
+        return null;
+      })()}
 
       {/* Page Title & Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">

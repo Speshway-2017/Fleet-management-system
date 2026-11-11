@@ -16,6 +16,7 @@ import {
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { managerApi } from "../api/managerApi";
+import { isSubscriptionExpired } from "@/utils/dateUtils";
 
 const getImageUrl = (url) => {
   if (!url) return "";
@@ -204,15 +205,39 @@ export default function ProfilePage() {
             </div>
 
             <div>
-              <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block">Active Plan</span>
-              <p className="text-xs font-bold text-[#A14000] mt-1 font-poppins font-semibold">
+              <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block">Subscription Plan</span>
+              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                <p className="text-xs font-bold text-[#A14000] font-poppins font-semibold">
+                  {(() => {
+                    const p = orgObj?.plan || (typeof user?.subscriptionPlan === 'object' ? user?.subscriptionPlan?.name : user?.subscriptionPlan);
+                    if (!p) return "Basic";
+                    if (typeof p === 'string' && p.length === 24) return "Basic";
+                    return p;
+                  })()}
+                </p>
                 {(() => {
-                  const p = orgObj?.plan || (typeof user?.subscriptionPlan === 'object' ? user?.subscriptionPlan?.name : user?.subscriptionPlan);
-                  if (!p) return "Basic";
-                  if (typeof p === 'string' && p.length === 24) return "Basic";
-                  return p;
+                  const isExpired = isSubscriptionExpired(user?.subscriptionExpiry, user?.subscriptionStatus);
+                  if (isExpired) {
+                    return (
+                      <span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase bg-red-100 text-red-700 border border-red-200">
+                        Expired
+                      </span>
+                    );
+                  }
+                  if (user?.subscriptionStatus === 'ACTIVE') {
+                    return (
+                      <span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase bg-emerald-100 text-emerald-700 border border-emerald-200">
+                        Active
+                      </span>
+                    );
+                  }
+                  return (
+                    <span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase bg-slate-100 text-slate-600 border border-slate-200">
+                      Inactive
+                    </span>
+                  );
                 })()}
-              </p>
+              </div>
             </div>
 
             <div className="sm:col-span-2">

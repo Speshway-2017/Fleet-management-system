@@ -33,6 +33,21 @@ export default function DriverDashboard() {
 
   useEffect(() => {
     fetchData();
+
+    const handleProfileSync = () => {
+      driverApi.getProfile().then(res => {
+        if (res?.success && res.data) {
+          setDriverProfile(res.data);
+        }
+      }).catch(() => {});
+    };
+
+    window.addEventListener("profileUpdated", handleProfileSync);
+    window.addEventListener("dutyStatusChanged", handleProfileSync);
+    return () => {
+      window.removeEventListener("profileUpdated", handleProfileSync);
+      window.removeEventListener("dutyStatusChanged", handleProfileSync);
+    };
   }, []);
 
   // Socket updates
@@ -171,6 +186,12 @@ export default function DriverDashboard() {
     activeTripStatuses.includes((currentTrip.status || "").toLowerCase().trim())
   );
 
+  const isDriverOnDuty = Boolean(
+    driverProfile?.isDuty ??
+    driverProfile?.isOnline ??
+    (driverProfile?.driverStatus && driverProfile.driverStatus !== "OFFLINE" && driverProfile.driverStatus !== "OFF_DUTY")
+  );
+
   return (
     <div className="space-y-8 font-nunito pb-12">
       {/* Top Banner Greeting & Quick Summary */}
@@ -179,9 +200,22 @@ export default function DriverDashboard() {
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 text-[#A14000] text-xs font-bold font-poppins uppercase tracking-wider">
-              <Calendar className="w-4 h-4 shrink-0" />
-              <span>{new Date().toLocaleDateString("en-US", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <div className="flex items-center gap-1.5 text-[#A14000] text-xs font-bold font-poppins uppercase tracking-wider">
+                <Calendar className="w-4 h-4 shrink-0" />
+                <span>{new Date().toLocaleDateString("en-US", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              </div>
+              <span className="text-slate-300">•</span>
+              <div
+                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black font-poppins uppercase tracking-wider border ${
+                  isDriverOnDuty
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-slate-100 text-slate-600 border-slate-200"
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${isDriverOnDuty ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+                <span>{isDriverOnDuty ? "Shift: On Duty" : "Shift: Off Duty"}</span>
+              </div>
             </div>
             <h1 className="text-2xl md:text-3xl font-extrabold font-poppins text-slate-900 mt-2 break-words">
               {getTimeGreeting()}, <span className="text-[#A14000]">{driverName}</span>

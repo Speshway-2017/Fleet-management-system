@@ -4844,9 +4844,15 @@ export const getSupportSettings = async (req, res, next) => {
       phone: user?.phone || '+919876543210',
       email: user?.email || 'manager@fleet.com',
       whatsappNumber: user?.whatsappNumber || user?.phone || '+919876543210',
-      dispatchName: user?.dispatchName || user?.jobTitle || 'Central Dispatch Desk',
-      dispatchPhone: user?.dispatchPhone || user?.phone || '+919876543211',
-      dispatchEmail: user?.dispatchEmail || user?.email || 'dispatch@fleet.com'
+      dispatchName: (user?.dispatchName && user.dispatchName.trim() && user.dispatchName.trim() !== 'Fleet Manager')
+        ? user.dispatchName.trim()
+        : 'Central Dispatch Desk',
+      dispatchPhone: (user?.dispatchPhone && user.dispatchPhone.trim() && user.dispatchPhone.trim() !== (user?.phone || ''))
+        ? user.dispatchPhone.trim()
+        : '+919876543211',
+      dispatchEmail: (user?.dispatchEmail && user.dispatchEmail.trim() && user.dispatchEmail.trim() !== (user?.email || ''))
+        ? user.dispatchEmail.trim()
+        : 'dispatch@fleet.com'
     }, 'Support settings retrieved');
   } catch (error) {
     next(error);

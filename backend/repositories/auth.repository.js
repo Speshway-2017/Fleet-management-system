@@ -15,7 +15,13 @@ export const createUser = async (userData) => {
 };
 
 export const findUserById = async (id) => {
-  let user = await User.findById(id).populate('organization').select('-password');
+  let user = await User.findById(id).populate('organization').populate('subscriptionPlan').select('-password');
+  if (user && user.role === 'FLEET_MANAGER') {
+    if (user.subscriptionStatus === 'ACTIVE' && user.subscriptionExpiry && new Date() > new Date(user.subscriptionExpiry)) {
+      user.subscriptionStatus = 'EXPIRED';
+      await User.updateOne({ _id: user._id }, { $set: { subscriptionStatus: 'EXPIRED' } });
+    }
+  }
   if (!user) {
     const driver = await Driver.findById(id).select('-password');
     if (driver) {

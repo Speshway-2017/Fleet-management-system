@@ -25,7 +25,8 @@ import {
   Sun,
   Moon,
   ChevronRight,
-  Home
+  Home,
+  RefreshCw
 } from "lucide-react";
 
 export default function DriverLayout() {
@@ -107,6 +108,8 @@ export default function DriverLayout() {
           isOnline: newStatus,
           driverStatus: newStatus ? "AVAILABLE" : "OFFLINE"
         }));
+        window.dispatchEvent(new CustomEvent("profileUpdated"));
+        window.dispatchEvent(new CustomEvent("dutyStatusChanged", { detail: { isDuty: newStatus } }));
         toast.success(`Duty status updated to ${newStatus ? "ON DUTY" : "OFF DUTY"}`);
       }
     } catch (err) {
@@ -215,16 +218,29 @@ export default function DriverLayout() {
         </div>
         <div className="flex items-center space-x-2">
           <button
+            type="button"
             onClick={handleToggleDuty}
             disabled={updatingDuty}
-            className={`px-3 py-1 text-xs font-semibold rounded-full flex items-center gap-1.5 transition font-poppins ${
+            title={isOnDuty ? "Status: ON DUTY (Click to switch to Off Duty)" : "Status: OFF DUTY (Click to switch to On Duty)"}
+            className={`px-3 py-1.5 text-xs font-bold rounded-full flex items-center gap-2 transition font-poppins border shadow-2xs cursor-pointer ${
               isOnDuty
-                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                : "bg-slate-100 text-slate-600 border border-slate-200"
+                ? "bg-emerald-950/90 text-emerald-300 border-emerald-600/70"
+                : "bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700"
             }`}
           >
-            <Power className="w-3 h-3" />
-            {isOnDuty ? "ON DUTY" : "OFF DUTY"}
+            {updatingDuty ? (
+              <RefreshCw className="w-3 h-3 animate-spin text-current shrink-0" />
+            ) : isOnDuty ? (
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+            ) : (
+              <span className="inline-flex rounded-full h-2 w-2 bg-slate-400 shrink-0"></span>
+            )}
+            <span className="text-[11px] font-extrabold uppercase tracking-wide">
+              {updatingDuty ? "..." : isOnDuty ? "On Duty" : "Off Duty"}
+            </span>
           </button>
         </div>
       </div>
@@ -244,23 +260,6 @@ export default function DriverLayout() {
               <span className="text-[10px] text-[#A14000] font-extrabold font-poppins uppercase tracking-wider mt-1 block">Driver Portal</span>
             </div>
           </Link>
-        </div>
-
-        {/* Driver Profile Card in Sidebar */}
-        <div className="p-4 border-b border-slate-800/80 bg-transparent">
-          {/* Duty Toggle Button */}
-          <button
-            onClick={handleToggleDuty}
-            disabled={updatingDuty}
-            className={`w-full py-1.5 px-3 rounded-lg text-xs font-extrabold font-poppins flex items-center justify-center gap-2 transition cursor-pointer ${
-              isOnDuty
-                ? "bg-emerald-950/80 text-[#6EE7B7] border border-emerald-700/60 hover:bg-emerald-900/90"
-                : "bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700"
-            }`}
-          >
-            <span className={`w-2.5 h-2.5 rounded-full ${isOnDuty ? "bg-[#6EE7B7] animate-pulse" : "bg-slate-400"}`} />
-            <span>{isOnDuty ? "Status: ON DUTY" : "Status: OFF DUTY"}</span>
-          </button>
         </div>
 
         {/* Navigation Items */}
@@ -317,6 +316,50 @@ export default function DriverLayout() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Redesigned On Duty / Off Duty Status Badge Button */}
+            <button
+              type="button"
+              onClick={handleToggleDuty}
+              disabled={updatingDuty}
+              title={isOnDuty ? "Status: ON DUTY (Click to switch to Off Duty)" : "Status: OFF DUTY (Click to switch to On Duty)"}
+              className={`group relative flex items-center gap-2.5 px-3.5 py-1.5 rounded-full text-xs font-bold font-poppins transition-all duration-200 cursor-pointer select-none border shadow-2xs hover:shadow-xs active:scale-98 ${
+                isOnDuty
+                  ? "bg-emerald-50/90 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border-emerald-300/90 dark:border-emerald-700/70 hover:bg-emerald-100/90 dark:hover:bg-emerald-900/60 hover:border-emerald-400"
+                  : "bg-slate-100/90 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-300/80 dark:border-slate-700 hover:bg-slate-200/80 dark:hover:bg-slate-700 hover:border-slate-400"
+              }`}
+            >
+              {/* Dynamic Beacon / Dot */}
+              {updatingDuty ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-current shrink-0" />
+              ) : isOnDuty ? (
+                <span className="relative flex h-2.5 w-2.5 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </span>
+              ) : (
+                <span className="inline-flex rounded-full h-2.5 w-2.5 bg-slate-400 dark:bg-slate-500 shrink-0"></span>
+              )}
+
+              {/* Status Label */}
+              <span className="tracking-wider uppercase text-[11px] font-black whitespace-nowrap">
+                {updatingDuty ? "Updating..." : isOnDuty ? "On Duty" : "Off Duty"}
+              </span>
+
+              {/* Micro Switch Slider Affordance */}
+              <div
+                aria-hidden="true"
+                className={`relative inline-flex h-4 w-7 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                  isOnDuty ? "bg-emerald-500 dark:bg-emerald-400" : "bg-slate-300 dark:bg-slate-600"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                    isOnDuty ? "translate-x-3" : "translate-x-0"
+                  }`}
+                />
+              </div>
+            </button>
+
             <div className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}

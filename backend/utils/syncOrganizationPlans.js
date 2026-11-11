@@ -11,6 +11,20 @@ import SubscriptionRequest from '../models/SubscriptionRequest.js';
  */
 export const syncOrganizationPlans = async () => {
   try {
+    // 0. Automatically expire overdue manager subscriptions
+    const now = new Date();
+    const expiredResult = await User.updateMany(
+      {
+        role: { $in: ['FLEET_MANAGER', 'fleet_manager'] },
+        subscriptionStatus: 'ACTIVE',
+        subscriptionExpiry: { $ne: null, $lt: now }
+      },
+      { $set: { subscriptionStatus: 'EXPIRED' } }
+    );
+    if (expiredResult.modifiedCount > 0) {
+      console.log(`✅ [SYNC] Expired ${expiredResult.modifiedCount} overdue fleet manager subscriptions.`);
+    }
+
     // 1. Ensure all subscription requests and users reference valid, existing plans
     const allActivePlans = await SubscriptionPlan.find({}).lean();
     if (allActivePlans && allActivePlans.length > 0) {
@@ -58,6 +72,8 @@ export const syncOrganizationPlans = async () => {
 
       let highestManagerTier = null;
       for (const m of managers) {
+        const isMExpired = m.subscriptionStatus === 'EXPIRED' || (m.subscriptionExpiry && new Date() > new Date(m.subscriptionExpiry));
+        if (isMExpired) continue;
         const pName = m.subscriptionPlan?.name ? String(m.subscriptionPlan.name).toLowerCase() : '';
         if (pName) {
           if (pName.includes('enterprise')) {
