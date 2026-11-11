@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import axiosClient from "@/api/axiosClient";
-import { getDaysRemaining } from "@/utils/dateUtils";
+import { getDaysRemaining, isSubscriptionExpired } from "@/utils/dateUtils";
 
 export default function SubscriptionPage() {
   const { user, refreshProfile } = useAuth();
@@ -14,6 +14,10 @@ export default function SubscriptionPage() {
   const [pendingRequest, setPendingRequest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [requestingPlanId, setRequestingPlanId] = useState(null);
+
+  const isExpired = isSubscriptionExpired(user?.subscriptionExpiry, user?.subscriptionStatus);
+  const effectiveStatus = isExpired ? "EXPIRED" : (user?.subscriptionStatus || "INACTIVE");
+  const hasActivePlan = effectiveStatus === "ACTIVE";
 
   // Sync state
   const loadSubscriptionData = async () => {
@@ -35,6 +39,7 @@ export default function SubscriptionPage() {
   };
 
   useEffect(() => {
+    refreshProfile?.();
     loadSubscriptionData();
   }, []);
 
@@ -101,19 +106,28 @@ export default function SubscriptionPage() {
               <span className="font-poppins font-bold text-[#1B2430] dark:text-white text-sm truncate">
                 {user?.subscriptionPlan && typeof user.subscriptionPlan === 'object' 
                   ? user.subscriptionPlan.name 
-                  : plans.find(p => p._id === user?.subscriptionPlan)?.name || "None"}
+                  : plans.find(p => p._id === user?.subscriptionPlan)?.name || (user?.subscriptionPlan ? "Basic" : "None")}
               </span>
               <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold tracking-wide uppercase ${
-                user?.subscriptionStatus === "ACTIVE" 
+                effectiveStatus === "ACTIVE" 
                   ? "bg-green-100 dark:bg-green-950/60 text-green-700 dark:text-emerald-300 border border-green-200 dark:border-green-800/50" 
-                  : "bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-rose-300 border border-red-200 dark:border-red-800/50"
+                  : effectiveStatus === "EXPIRED"
+                    ? "bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-rose-300 border border-red-200 dark:border-red-800/50"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
               }`}>
-                {user?.subscriptionStatus || "INACTIVE"}
+                {effectiveStatus}
               </span>
             </div>
-            {user?.subscriptionStatus === "ACTIVE" && user?.subscriptionExpiry && (
+            {effectiveStatus === "ACTIVE" && user?.subscriptionExpiry && (
               <div className="text-[11px] text-gray-500 dark:text-white font-medium mt-1">
                 Expires: <span className="font-bold text-gray-700 dark:text-white">{new Date(user.subscriptionExpiry).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}</span> ({getDaysRemaining(user?.subscriptionExpiry, user?.subscriptionStatus)} days left)
+              </div>
+            )}
+            {effectiveStatus === "EXPIRED" && user?.subscriptionExpiry && (
+              <div className="text-[11px] text-red-600 dark:text-rose-400 font-semibold mt-1 flex items-center gap-1">
+                <span>Expired on:</span>
+                <span className="font-bold">{new Date(user.subscriptionExpiry).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                <span className="text-[10px] text-red-500 font-bold">(Plan Expired)</span>
               </div>
             )}
             {pendingRequest && (
@@ -149,25 +163,33 @@ export default function SubscriptionPage() {
               const userPlanId = user?.subscriptionPlan && typeof user.subscriptionPlan === 'object'
                 ? user.subscriptionPlan._id
                 : user?.subscriptionPlan;
-              const isCurrent = userPlanId === plan._id;
+              const isCurrentPlanMatch = userPlanId === plan._id;
+              const isCurrentActive = isCurrentPlanMatch && hasActivePlan;
+              const isCurrentExpired = isCurrentPlanMatch && isExpired;
               const isRequested = pendingRequest?.plan?._id === plan._id;
-              const hasActivePlan = user?.subscriptionStatus === "ACTIVE";
-              const isDisableChoose = hasActivePlan && !isCurrent;
+              const isDisableChoose = hasActivePlan && !isCurrentPlanMatch;
               
               return (
                 <div 
                   key={plan._id}
                   className={`p-6 rounded-2xl border bg-white dark:bg-[#0F172A] shadow-sm relative flex flex-col justify-between h-full transition-all duration-200 hover:-translate-y-1 hover:shadow-md ${
-                    isCurrent 
+                    isCurrentActive 
                       ? "border-green-500 ring-2 ring-green-500/20" 
-                      : isRequested
-                        ? "border-blue-400 ring-2 ring-blue-500/20"
-                        : "border-gray-200 dark:border-[#1E293B] hover:border-gray-300 dark:hover:border-slate-700"
+                      : isCurrentExpired
+                        ? "border-rose-400/80 ring-2 ring-rose-400/20"
+                        : isRequested
+                          ? "border-blue-400 ring-2 ring-blue-500/20"
+                          : "border-gray-200 dark:border-[#1E293B] hover:border-gray-300 dark:hover:border-slate-700"
                   }`}
                 >
-                  {isCurrent && (
+                  {isCurrentActive && (
                     <span className="absolute top-3 right-3 px-2 py-0.5 rounded bg-green-500 text-white text-[8px] font-bold uppercase tracking-wider z-10">
                       Active Plan
+                    </span>
+                  )}
+                  {isCurrentExpired && (
+                    <span className="absolute top-3 right-3 px-2 py-0.5 rounded bg-rose-600 text-white text-[8px] font-bold uppercase tracking-wider z-10">
+                      Plan Expired
                     </span>
                   )}
                   {isRequested && (
@@ -234,24 +256,28 @@ export default function SubscriptionPage() {
                   <div className="mt-auto pt-6">
                     <button
                       onClick={() => handleRequestSubscription(plan._id)}
-                      disabled={!!pendingRequest || isCurrent || requestingPlanId === plan._id || isDisableChoose}
+                      disabled={!!pendingRequest || isCurrentActive || requestingPlanId === plan._id || isDisableChoose}
                       className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all active:scale-[0.98] cursor-pointer text-center ${
-                        isCurrent
+                        isCurrentActive
                           ? "bg-green-600 text-white opacity-90 cursor-default"
-                          : isRequested
-                            ? "bg-blue-600 text-white opacity-90 cursor-default"
-                            : (pendingRequest || isDisableChoose)
-                              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                              : "bg-[#A14000] text-white hover:bg-[#853400] shadow-sm shadow-[#A14000]/20"
+                          : isCurrentExpired
+                            ? "bg-[#A14000] hover:bg-[#853400] text-white shadow-sm shadow-[#A14000]/20"
+                            : isRequested
+                              ? "bg-blue-600 text-white opacity-90 cursor-default"
+                              : (pendingRequest || isDisableChoose)
+                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                : "bg-[#A14000] text-white hover:bg-[#853400] shadow-sm shadow-[#A14000]/20"
                       }`}
                     >
                       {requestingPlanId === plan._id 
                         ? "Submitting..." 
-                        : isCurrent 
+                        : isCurrentActive 
                           ? "Currently Active" 
-                          : isRequested 
-                            ? "Request Submitted" 
-                            : "Choose Plan"}
+                          : isCurrentExpired
+                            ? "Renew Plan"
+                            : isRequested 
+                              ? "Request Submitted" 
+                              : "Choose Plan"}
                     </button>
                   </div>
                 </div>

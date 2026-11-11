@@ -357,6 +357,15 @@ const startServer = async () => {
     console.log(`🌐  CORS allowed for: Frontend (localhost:5173), Flutter Web, and Mobile Clients`);
   });
 
+  // Periodic background check to expire overdue subscriptions
+  setInterval(async () => {
+    try {
+      await syncOrganizationPlans();
+    } catch (e) {
+      // silent background check
+    }
+  }, 10 * 60 * 1000);
+
   server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
       console.error(`❌  Port ${PORT} is already in use by another process. Terminate the conflicting process or change the port.`);

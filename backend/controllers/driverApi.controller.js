@@ -2065,26 +2065,37 @@ export const getDriverDocumentById = async (req, res, next) => {
 export const getDriverSupportInfo = async (req, res, next) => {
   try {
     let manager = null;
-    const driverDoc = await Driver.findById(req.user._id).populate('assignedManager');
+    const driverDoc = await resolveCurrentDriver(req) || await Driver.findById(req.user._id);
     if (driverDoc && driverDoc.assignedManager) {
-      manager = driverDoc.assignedManager;
+      if (mongoose.Types.ObjectId.isValid(driverDoc.assignedManager)) {
+        manager = await User.findById(driverDoc.assignedManager);
+      } else if (driverDoc.assignedManager._id) {
+        manager = driverDoc.assignedManager;
+      }
     }
     if (!manager) {
       manager = await User.findOne({ role: { $in: ['FLEET_MANAGER', 'MANAGER'] } });
     }
 
-    const officeName = manager?.primaryHub || (manager?.name ? `${manager.name} Office` : 'Fleet Manager Office');
+    const managerName = manager?.name || manager?.officeName || manager?.primaryHub || 'Fleet Manager Office';
     const phone = manager?.phone || '+919876543210';
     const email = manager?.email || 'manager@fleet.com';
     const whatsapp = manager?.whatsappNumber || manager?.phone || '+919876543210';
 
-    const dispatchName = manager?.jobTitle || 'Central Dispatch Desk';
-    const dispatchPhone = manager?.dispatchPhone || manager?.phone || '+919876543211';
-    const dispatchEmail = manager?.dispatchEmail || manager?.email || 'dispatch@fleet.com';
+    // Dispatcher represents the 24/7 operations control desk and must never duplicate fleet manager details
+    const dispatchName = (manager?.dispatchName && manager.dispatchName.trim() && manager.dispatchName.trim() !== 'Fleet Manager' && manager.dispatchName.trim() !== managerName)
+      ? manager.dispatchName.trim()
+      : 'Central Dispatch Desk';
+    const dispatchPhone = (manager?.dispatchPhone && manager.dispatchPhone.trim() && manager.dispatchPhone.trim() !== phone)
+      ? manager.dispatchPhone.trim()
+      : '+919876543211';
+    const dispatchEmail = (manager?.dispatchEmail && manager.dispatchEmail.trim() && manager.dispatchEmail.trim() !== email)
+      ? manager.dispatchEmail.trim()
+      : 'dispatch@fleet.com';
 
     return sendSuccess(res, 200, {
       manager: {
-        name: officeName,
+        name: managerName,
         phone,
         email,
         whatsapp

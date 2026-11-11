@@ -82,6 +82,12 @@ export const loginUser = async ({ email, password, role }) => {
   }
 
   const userRole = user.role || 'DRIVER';
+  if (userRole === 'FLEET_MANAGER') {
+    if (user.subscriptionStatus === 'ACTIVE' && user.subscriptionExpiry && new Date() > new Date(user.subscriptionExpiry)) {
+      user.subscriptionStatus = 'EXPIRED';
+      await User.updateOne({ _id: user._id }, { $set: { subscriptionStatus: 'EXPIRED' } });
+    }
+  }
   const token = generateToken({ id: user._id, role: userRole });
   return {
     token,

@@ -112,7 +112,7 @@ class LocalizationService {
         final startIdx = key.indexOf(trimmed);
         final prefix = key.substring(0, startIdx);
         final suffix = key.substring(startIdx + trimmed.length);
-        return '${prefix}${langMap[trimmed]!}${suffix}';
+        return '$prefix${langMap[trimmed]!}$suffix';
       }
     }
     // Fallback to English (US)
@@ -126,7 +126,7 @@ class LocalizationService {
         final startIdx = key.indexOf(trimmed);
         final prefix = key.substring(0, startIdx);
         final suffix = key.substring(startIdx + trimmed.length);
-        return '${prefix}${enMap[trimmed]!}${suffix}';
+        return '$prefix${enMap[trimmed]!}$suffix';
       }
     }
     return key;
