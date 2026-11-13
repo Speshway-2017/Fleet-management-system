@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, ChevronDown, LogOut, Settings, HelpCircle, UserCheck } from "lucide-react";
+import { User, ChevronDown, LogOut, Settings, HelpCircle } from "lucide-react";
 import { driverApi } from "@/api/driverApi";
 import toast from "react-hot-toast";
 
@@ -91,7 +91,17 @@ export default function UserProfileCard({
         onClick={() => setIsOpen((prev) => !prev)}
         className="flex items-center gap-3 p-1.5 hover:bg-gray-100/80 dark:hover:bg-slate-800/60 rounded-2xl focus:outline-none transition-all duration-150 cursor-pointer"
       >
-        <div className="relative">
+        <div
+          onClick={(e) => {
+            if (profilePath) {
+              e.stopPropagation();
+              setIsOpen(false);
+              navigate(profilePath);
+            }
+          }}
+          className="relative cursor-pointer transition-transform hover:scale-105"
+          title={`View ${profileLabel || 'Profile'}`}
+        >
           <div className="w-[40px] h-[40px] rounded-full bg-[#A14000]/10 border border-[#A14000]/20 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
             {user?.profileImage || user?.avatarUrl ? (
               <img

@@ -137,7 +137,7 @@ export default function DriverLayout() {
       documents: "Compliance Documents",
       notifications: "Alerts & Notifications",
       support: "Help & Support",
-      settings: "Profile Settings",
+      settings: "Account Settings",
       profile: "Driver Profile"
     };
 
@@ -386,9 +386,9 @@ export default function DriverLayout() {
               user={driverProfile || user || { fullName: driverName }}
               roleLabel="Driver"
               profileLabel="Profile"
-              profilePath="/driver/settings"
-              settingsPath={null}
-              showSettings={false}
+              profilePath="/driver/profile"
+              settingsPath="/driver/settings"
+              showSettings={true}
               showSupport={false}
               showStatusToggle={false}
               onLogout={handleLogout}

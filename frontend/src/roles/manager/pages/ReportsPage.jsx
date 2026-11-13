@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import DashboardSkeletonLoader from "@/components/common/DashboardSkeletonLoader";
 import { Icon } from "@iconify/react";
+import { ChevronDown, RefreshCw } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import { formatEmployeeId } from "@/utils/employeeIdFormatter";
@@ -755,125 +756,161 @@ export default function ReportsPage() {
           
           {/* FILTER CONTROLS */}
           <div className="bg-white border border-[#E7EAF0] p-6 rounded-2xl shadow-md space-y-4 print:hidden select-none">
-            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-100">
-              <Icon icon="mdi:filter-outline" className="w-5 h-5 text-[#A14000]" />
-              <h3 className="font-poppins font-bold text-sm text-gray-800">Report Configuration</h3>
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <Icon icon="mdi:filter-outline" className="w-5 h-5 text-[#A14000]" />
+                <h3 className="font-poppins font-bold text-sm text-gray-800">Report Configuration</h3>
+              </div>
+              {(selectedVehicleId !== "All" || selectedDriverId !== "All" || selectedBranch !== "All" || dateRange !== "This Month" || selectedReport !== "Utilization") && (
+                <button
+                  onClick={() => {
+                    setSelectedReport("Utilization");
+                    setSelectedVehicleId("All");
+                    setSelectedDriverId("All");
+                    setSelectedBranch("All");
+                    setDateRange("This Month");
+                  }}
+                  className="text-xs text-[#EF4444] hover:underline font-bold flex items-center gap-1 cursor-pointer transition-all"
+                  title="Reset all filters to defaults"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>Reset Filters</span>
+                </button>
+              )}
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 items-start">
               {/* Filter: Report Selector */}
               <div className="flex flex-col">
-                <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider mb-1.5">Select Report</label>
-                <select
-                  value={selectedReport}
-                  onChange={(e) => setSelectedReport(e.target.value)}
-                  className="px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-[#A14000]"
-                >
-                  <option value="Utilization">Vehicle Utilization</option>
-                  <option value="Performance">Driver Performance</option>
-                  <option value="Fuel">Fuel Consumption</option>
-                  <option value="Maintenance">Maintenance Cost</option>
-                  <option value="Trips">Trip Summary</option>
-                  <option value="Expenses">Expense Analysis</option>
-                </select>
+                <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider mb-1.5 block">Select Report</label>
+                <div className="relative">
+                  <select
+                    value={selectedReport}
+                    onChange={(e) => setSelectedReport(e.target.value)}
+                    className="w-full h-[44px] pl-3.5 pr-8 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-[#A14000] appearance-none cursor-pointer transition-all"
+                  >
+                    <option value="Utilization">Vehicle Utilization</option>
+                    <option value="Performance">Driver Performance</option>
+                    <option value="Fuel">Fuel Consumption</option>
+                    <option value="Maintenance">Maintenance Cost</option>
+                    <option value="Trips">Trip Summary</option>
+                    <option value="Expenses">Expense Analysis</option>
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
               </div>
 
               {/* Filter: Date Range Selector */}
               <div className="flex flex-col">
-                <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider mb-1.5">Date Range</label>
-                <select
-                  value={dateRange}
-                  onChange={(e) => setDateRange(e.target.value)}
-                  className="px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-[#A14000]"
-                >
-                  <option value="Today">Today</option>
-                  <option value="This Week">This Week</option>
-                  <option value="This Month">This Month</option>
-                  <option value="This Year">This Year</option>
-                  <option value="Custom Date Range">Custom Range</option>
-                </select>
+                <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider mb-1.5 block">Date Range</label>
+                <div className="relative">
+                  <select
+                    value={dateRange}
+                    onChange={(e) => setDateRange(e.target.value)}
+                    className="w-full h-[44px] pl-3.5 pr-8 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-[#A14000] appearance-none cursor-pointer transition-all"
+                  >
+                    <option value="Today">Today</option>
+                    <option value="This Week">This Week</option>
+                    <option value="This Month">This Month</option>
+                    <option value="This Year">This Year</option>
+                    <option value="Custom Date Range">Custom Range</option>
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
               </div>
 
               {/* Filter: Vehicle */}
               <div className="flex flex-col">
-                <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider mb-1.5">Vehicle</label>
-                <select
-                  value={selectedVehicleId}
-                  onChange={(e) => setSelectedVehicleId(e.target.value)}
-                  className="px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-[#A14000]"
-                >
-                  <option value="All">All Vehicles</option>
-                  {vehicles.map(v => (
-                    <option key={v._id} value={v._id}>
-                      {v.brand} {v.model} ({v.vehicleNumber})
-                    </option>
-                  ))}
-                </select>
+                <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider mb-1.5 block">Vehicle</label>
+                <div className="relative">
+                  <select
+                    value={selectedVehicleId}
+                    onChange={(e) => setSelectedVehicleId(e.target.value)}
+                    className="w-full h-[44px] pl-3.5 pr-8 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-[#A14000] appearance-none cursor-pointer transition-all"
+                  >
+                    <option value="All">All Vehicles</option>
+                    {vehicles.map(v => (
+                      <option key={v._id} value={v._id}>
+                        {v.brand} {v.model} ({v.vehicleNumber})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
               </div>
 
               {/* Filter: Driver */}
               <div className="flex flex-col">
-                <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider mb-1.5">Driver</label>
-                <select
-                  value={selectedDriverId}
-                  onChange={(e) => setSelectedDriverId(e.target.value)}
-                  className="px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-[#A14000]"
-                >
-                  <option value="All">All Drivers</option>
-                  {drivers.map(d => (
-                    <option key={d._id} value={d._id}>
-                      {d.fullName} ({formatEmployeeId(d.employeeId)})
-                    </option>
-                  ))}
-                </select>
+                <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider mb-1.5 block">Driver</label>
+                <div className="relative">
+                  <select
+                    value={selectedDriverId}
+                    onChange={(e) => setSelectedDriverId(e.target.value)}
+                    className="w-full h-[44px] pl-3.5 pr-8 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-[#A14000] appearance-none cursor-pointer transition-all"
+                  >
+                    <option value="All">All Drivers</option>
+                    {drivers.map(d => (
+                      <option key={d._id} value={d._id}>
+                        {d.fullName} ({formatEmployeeId(d.employeeId)})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
               </div>
 
               {/* Filter: Branch */}
               <div className="flex flex-col">
-                <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider mb-1.5">Branch / Depot</label>
-                <select
-                  value={selectedBranch}
-                  onChange={(e) => setSelectedBranch(e.target.value)}
-                  className="px-3.5 py-2.5 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-[#A14000]"
-                >
-                  <option value="All">All Branches</option>
-                  <option value="Pune">Pune</option>
-                  <option value="Mumbai">Mumbai</option>
-                  <option value="Delhi">Delhi</option>
-                  <option value="Bengaluru">Bengaluru</option>
-                  <option value="Chennai">Chennai</option>
-                  <option value="Hyderabad">Hyderabad</option>
-                </select>
+                <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider mb-1.5 block">Branch / Depot</label>
+                <div className="relative">
+                  <select
+                    value={selectedBranch}
+                    onChange={(e) => setSelectedBranch(e.target.value)}
+                    className="w-full h-[44px] pl-3.5 pr-8 border border-[#E7EAF0] rounded-xl text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-[#A14000] appearance-none cursor-pointer transition-all"
+                  >
+                    <option value="All">All Branches</option>
+                    <option value="Pune">Pune</option>
+                    <option value="Mumbai">Mumbai</option>
+                    <option value="Delhi">Delhi</option>
+                    <option value="Bengaluru">Bengaluru</option>
+                    <option value="Chennai">Chennai</option>
+                    <option value="Hyderabad">Hyderabad</option>
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-end gap-2">
-                <button
-                  onClick={handleExportExcel}
-                  disabled={isViewOnly}
-                  className={`flex-1 py-2.5 border border-[#E7EAF0] hover:bg-gray-50 rounded-xl text-xs font-bold text-gray-600 flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
-                  title={isViewOnly ? "This feature is available after activating a subscription." : "Export to CSV / Excel"}
-                >
-                  <Icon icon="mdi:file-excel" className="w-4 h-4 text-emerald-600" />
-                  Excel
-                </button>
-                <button
-                  onClick={handlePrint}
-                  disabled={isViewOnly}
-                  className={`flex-1 py-2.5 bg-black text-white hover:bg-gray-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95 animate-fade-in ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
-                  title={isViewOnly ? "This feature is available after activating a subscription." : "Print Report or Save as PDF"}
-                >
-                  <Icon icon="mdi:printer" className="w-4 h-4" />
-                  Print / PDF
-                </button>
+              {/* Action Buttons Column */}
+              <div className="flex flex-col">
+                <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider mb-1.5 block">Export Options</label>
+                <div className="flex items-center gap-2 w-full">
+                  <button
+                    onClick={handleExportExcel}
+                    disabled={isViewOnly}
+                    className={`flex-1 h-[44px] px-2.5 border border-[#E7EAF0] bg-white hover:bg-gray-50 rounded-xl text-xs font-bold text-gray-700 flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 whitespace-nowrap min-w-0 ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
+                    title={isViewOnly ? "This feature is available after activating a subscription." : "Export to CSV / Excel"}
+                  >
+                    <Icon icon="mdi:file-excel" className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="truncate">Excel</span>
+                  </button>
+                  <button
+                    onClick={handlePrint}
+                    disabled={isViewOnly}
+                    className={`flex-1 h-[44px] px-2.5 bg-black text-white hover:bg-gray-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95 whitespace-nowrap min-w-0 animate-fade-in ${isViewOnly ? "opacity-50 cursor-not-allowed" : ""}`}
+                    title={isViewOnly ? "This feature is available after activating a subscription." : "Print Report or Save as PDF"}
+                  >
+                    <Icon icon="mdi:printer" className="w-4 h-4 text-white shrink-0" />
+                    <span className="truncate">PDF</span>
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Custom Date Picker Inputs */}
             {dateRange === "Custom Date Range" && (
-              <div className="grid grid-cols-2 gap-4 max-w-md pt-2 animate-fade-in">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 pt-3 border-t border-[#E7EAF0]/60 animate-fade-in items-start">
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider mb-1.5">Start Date</label>
+                  <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider mb-1.5 block">Start Date</label>
                   <CustomDatePicker
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
@@ -881,7 +918,7 @@ export default function ReportsPage() {
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider mb-1.5">End Date</label>
+                  <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider mb-1.5 block">End Date</label>
                   <CustomDatePicker
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}

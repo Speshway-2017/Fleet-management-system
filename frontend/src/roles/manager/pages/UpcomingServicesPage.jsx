@@ -9,7 +9,8 @@ import {
   Search,
   Filter,
   Truck,
-  ArrowLeft
+  ArrowLeft,
+  ChevronDown
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Breadcrumb from "@/components/common/Breadcrumb";
@@ -179,26 +180,18 @@ export default function UpcomingServicesPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 select-none">
-          <button
-            onClick={() => navigate("/manager/maintenance")}
-            className="px-4 py-2 bg-white text-[#64748B] hover:text-[#1E293B] border border-[#E7EAF0] rounded-xl text-xs font-bold transition-all cursor-pointer"
-          >
-            Overview
-          </button>
-          <button
-            onClick={() => navigate("/manager/maintenance/upcoming")}
-            className="px-4 py-2 bg-[#A14000] text-white border border-[#A14000] rounded-xl text-xs font-bold transition-all cursor-pointer"
-          >
-            Upcoming Services
-          </button>
-          <button
-            onClick={() => navigate("/manager/maintenance/tickets")}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm border border-indigo-600"
-          >
-            <Ticket className="w-3.5 h-3.5" />
-            <span>View Driver Tickets</span>
-          </button>
+        <div className="flex items-center gap-3 select-none">
+          <div className="relative min-w-[200px]">
+            <select
+              value="/manager/maintenance/upcoming"
+              onChange={(e) => navigate(e.target.value)}
+              className="w-full pl-3.5 pr-8 py-2 h-[38px] bg-white border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none cursor-pointer"
+            >
+              <option value="/manager/maintenance">Vehicle Issue Tickets</option>
+              <option value="/manager/maintenance/upcoming">Upcoming Services</option>
+            </select>
+            <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
         </div>
       </div>
 
@@ -240,28 +233,42 @@ export default function UpcomingServicesPage() {
 
       {/* Queue lists (Full Width) */}
       <div className="space-y-4 mt-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h3 className="font-poppins font-black text-lg text-[#1E293B]">Schedule Garage Queue</h3>
 
-          <div className="flex flex-col select-none">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#94A3B8]" />
-              <input
-                type="text"
-                maxLength={50}
-                placeholder="Search queue..."
-                value={search}
-                onChange={handleSearchChange}
-                className={`pl-8 pr-4 py-1.5 border rounded-xl text-xs focus:outline-none font-medium w-[180px] bg-white transition-all ${
-                  searchError
-                    ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                    : "border-[#E7EAF0] focus:border-[#A14000]"
-                }`}
-              />
+          <div className="flex flex-wrap items-center gap-3 select-none">
+            <div className="relative min-w-[190px]">
+              <select
+                value="/manager/maintenance/upcoming"
+                onChange={(e) => navigate(e.target.value)}
+                className="w-full pl-3.5 pr-8 py-1.5 h-[36px] bg-white border border-[#E7EAF0] rounded-xl text-xs font-bold text-[#1E293B] focus:outline-none focus:border-[#A14000] appearance-none cursor-pointer"
+              >
+                <option value="/manager/maintenance">Vehicle Issue Tickets</option>
+                <option value="/manager/maintenance/upcoming">Upcoming Services</option>
+              </select>
+              <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
-            {searchError && (
-              <p className="text-xs text-red-500 mt-1 font-medium font-poppins">{searchError}</p>
-            )}
+
+            <div className="flex flex-col select-none">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#94A3B8]" />
+                <input
+                  type="text"
+                  maxLength={50}
+                  placeholder="Search queue..."
+                  value={search}
+                  onChange={handleSearchChange}
+                  className={`pl-8 pr-4 py-1.5 h-[36px] border rounded-xl text-xs focus:outline-none font-medium w-[180px] bg-white transition-all ${
+                    searchError
+                      ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                      : "border-[#E7EAF0] focus:border-[#A14000]"
+                  }`}
+                />
+              </div>
+              {searchError && (
+                <p className="text-xs text-red-500 mt-1 font-medium font-poppins">{searchError}</p>
+              )}
+            </div>
           </div>
         </div>
 

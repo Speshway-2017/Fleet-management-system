@@ -699,8 +699,8 @@ class ApiService {
     return await get('/driver/invoices/trip/$tripId');
   }
 
-  static Future<dynamic> getAssignedVehicle() async {
-    return await get('/driver/vehicle');
+  static Future<dynamic> getAssignedVehicle({bool forceRefresh = false}) async {
+    return await get('/driver/vehicle', forceRefresh: forceRefresh);
   }
 
   static Future<dynamic> getDriverMaintenance() async {

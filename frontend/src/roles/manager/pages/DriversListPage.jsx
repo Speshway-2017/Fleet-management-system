@@ -363,7 +363,6 @@ export default function DriversListPage() {
               </button>
             )}
           </div>
-          <span>Showing <strong>{currentRows.length}</strong> of {filteredDrivers.length} drivers</span>
         </div>
       </div>
 
