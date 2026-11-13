@@ -74,18 +74,23 @@ export const setGoogleTranslateCookie = (langCode) => {
     const paths = ["/", "/admin", "/manager", "/driver"];
     const domains = ["", hostname, `.${hostname}`];
 
-    if (!langCode || langCode === "en") {
-      paths.forEach((p) => {
-        domains.forEach((d) => {
-          const domPart = d ? `; domain=${d}` : "";
-          document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${p}${domPart}`;
-        });
+    // Clear existing cookies across common paths and domains
+    paths.forEach((p) => {
+      domains.forEach((d) => {
+        const domPart = d ? `; domain=${d}` : "";
+        document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${p}${domPart}`;
       });
-    } else {
+      document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${p};`;
+    });
+
+    if (langCode && langCode !== "en") {
       document.cookie = `googtrans=/en/${langCode}; path=/;`;
       if (hostname && hostname !== "localhost") {
         document.cookie = `googtrans=/en/${langCode}; path=/; domain=.${hostname};`;
       }
+      paths.forEach((p) => {
+        document.cookie = `googtrans=/en/${langCode}; path=${p};`;
+      });
     }
   } catch (err) {
     console.warn("Could not set translation cookie:", err);
@@ -135,16 +140,14 @@ export const applyApplicationLanguage = (langNameOrCode, reloadIfNecessary = fal
   document.documentElement.lang = langCode;
   document.documentElement.dir = langCode === "ar" ? "rtl" : "ltr";
 
+  setGoogleTranslateCookie(langCode);
   triggerGoogleTranslate(langCode);
 
   window.dispatchEvent(new CustomEvent("app:language-changed", { detail: { language: langName, code: langCode } }));
 
   if (reloadIfNecessary) {
-    const currentCookie = (document.cookie.match(/googtrans=([^;]+)/) || [])[1];
-    const expectedCookie = langCode === "en" ? "" : `/en/${langCode}`;
-    if (currentCookie !== expectedCookie) {
-      setGoogleTranslateCookie(langCode);
+    setTimeout(() => {
       window.location.reload();
-    }
+    }, 300);
   }
 };

@@ -300,31 +300,32 @@ body::-webkit-scrollbar,
 
 /* Hide scrollbars for certain elements, but keep functionality */
 .scrollbar-hide::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .scrollbar-hide::-webkit-scrollbar-track {
-  background: transparent;
+  background: transparent !important;
 }
 
 .scrollbar-hide::-webkit-scrollbar-thumb {
-  background: transparent;
-  border-radius: 3px;
+  background: transparent !important;
 }
 
 .scrollbar-hide:hover::-webkit-scrollbar-thumb {
-  background: #475569;
+  background: transparent !important;
 }
 
-/* For Firefox */
+/* For Firefox and IE/Edge */
 .scrollbar-hide {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+  scrollbar-color: transparent transparent !important;
 }
 
 .scrollbar-hide:hover {
-  scrollbar-color: #475569 transparent;
+  scrollbar-color: transparent transparent !important;
 }
 
 /* Hide scrollbar completely */

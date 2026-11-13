@@ -30,6 +30,7 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
   static bool? _cachedIsAssigned;
 
   bool _isLoading = false;
+  bool _isChecking = false;
   bool _isAssigned = false;
   Map<String, dynamic>? _vehicle;
 
@@ -39,13 +40,30 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
     if (_cachedVehicle != null) {
       _vehicle = _cachedVehicle;
       _isAssigned = _cachedIsAssigned ?? true;
+      _isLoading = false;
+    } else {
+      _isLoading = true;
     }
     _fetchVehicleData();
   }
 
-  Future<void> _fetchVehicleData() async {
+  Future<void> _fetchVehicleData({bool forceRefresh = false, bool showFeedback = false}) async {
+    if (!mounted) return;
+    setState(() {
+      _isChecking = true;
+      if (_vehicle == null && _cachedVehicle == null) {
+        _isLoading = true;
+      }
+    });
+
+    if (forceRefresh) {
+      _cachedVehicle = null;
+      _cachedIsAssigned = null;
+      ApiService.clearApiCache('/driver/vehicle');
+    }
+
     try {
-      final response = await ApiService.getAssignedVehicle();
+      final response = await ApiService.getAssignedVehicle(forceRefresh: forceRefresh);
       if (mounted) {
         if (response != null && response['success'] == true) {
           final data = response['data'];
@@ -57,7 +75,19 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
               _isAssigned = true;
               _vehicle = vehMap;
               _isLoading = false;
+              _isChecking = false;
             });
+            if (showFeedback && mounted) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Vehicle details updated successfully'.tr),
+                  backgroundColor: const Color(0xFF10B981),
+                  duration: const Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
           } else {
             _cachedVehicle = null;
             _cachedIsAssigned = false;
@@ -65,7 +95,19 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
               _isAssigned = false;
               _vehicle = null;
               _isLoading = false;
+              _isChecking = false;
             });
+            if (showFeedback && mounted) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('No vehicle assigned currently'.tr),
+                  backgroundColor: const Color(0xFF101C2C),
+                  duration: const Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
           }
         } else {
           _cachedVehicle = null;
@@ -74,7 +116,19 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
             _isAssigned = false;
             _vehicle = null;
             _isLoading = false;
+            _isChecking = false;
           });
+          if (showFeedback && mounted) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('No vehicle assigned currently'.tr),
+                backgroundColor: const Color(0xFF101C2C),
+                duration: const Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
         }
       }
     } catch (_) {
@@ -83,7 +137,19 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
           _isAssigned = _cachedIsAssigned ?? false;
           _vehicle = _cachedVehicle;
           _isLoading = false;
+          _isChecking = false;
         });
+        if (showFeedback && mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Unable to reach server. Please try again.'.tr),
+              backgroundColor: const Color(0xFFEF4444),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       }
     }
   }
@@ -127,7 +193,25 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
                 color: Colors.white,
               ),
             ),
-            actions: const [],
+            actions: [
+              IconButton(
+                tooltip: 'Refresh'.tr,
+                icon: _isChecking
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.refresh_rounded, color: Colors.white),
+                onPressed: _isChecking
+                    ? null
+                    : () => _fetchVehicleData(forceRefresh: true, showFeedback: true),
+              ),
+              const SizedBox(width: 8),
+            ],
           ),
           body: SafeArea(
             child: _isLoading
@@ -138,13 +222,7 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
                   )
                 : RefreshIndicator(
                     onRefresh: () async {
-                      _cachedVehicle = null;
-                      _cachedIsAssigned = null;
-                      ApiService.clearApiCache('/driver/vehicle');
-                      await Future.any([
-                        _fetchVehicleData(),
-                        Future.delayed(const Duration(milliseconds: 500)),
-                      ]);
+                      await _fetchVehicleData(forceRefresh: true);
                     },
                     color: primaryOrange,
                     child: SingleChildScrollView(
@@ -222,14 +300,30 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
-                onPressed: _fetchVehicleData,
-                icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 18),
+                onPressed: _isChecking
+                    ? null
+                    : () => _fetchVehicleData(forceRefresh: true, showFeedback: true),
+                icon: _isChecking
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.refresh_rounded, color: Colors.white, size: 18),
                 label: Text(
-                  'Check Again'.tr,
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.white),
+                  _isChecking ? 'Checking...'.tr : 'Check Again'.tr,
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: Colors.white,
+                  ),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryDark,
+                  disabledBackgroundColor: primaryDark.withValues(alpha: 0.7),
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
@@ -295,7 +389,7 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
                 builder: (context) => VehicleDetailsScreen(vehicle: veh),
               ),
             );
-            _fetchVehicleData();
+            _fetchVehicleData(forceRefresh: true);
           },
         ),
         VehicleActionTile(
@@ -308,7 +402,7 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
                 builder: (context) => VehicleStatusScreen(vehicle: veh),
               ),
             );
-            _fetchVehicleData();
+            _fetchVehicleData(forceRefresh: true);
           },
         ),
         VehicleActionTile(
@@ -323,7 +417,7 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
                 builder: (context) => VehicleMaintenanceScreen(vehicle: veh),
               ),
             );
-            _fetchVehicleData();
+            _fetchVehicleData(forceRefresh: true);
           },
         ),
         VehicleActionTile(
@@ -336,7 +430,7 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
                 builder: (context) => VehicleDocumentsScreen(vehicle: veh),
               ),
             );
-            _fetchVehicleData();
+            _fetchVehicleData(forceRefresh: true);
           },
         ),
 

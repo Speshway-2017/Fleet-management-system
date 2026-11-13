@@ -504,6 +504,7 @@ export const updateDriverProfile = async (req, res, next) => {
       }
       if (updateData.password) syncUserFields.password = updateData.password;
       if (updateData.profileImage) syncUserFields.profileImage = updateData.profileImage;
+      if (updateData.language) syncUserFields.language = updateData.language;
 
       if (Object.keys(syncUserFields).length > 0) {
         await User.updateMany(

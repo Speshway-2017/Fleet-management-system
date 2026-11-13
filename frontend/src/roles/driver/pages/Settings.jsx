@@ -4,12 +4,11 @@ import driverApi from "../api/driverApi";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { applyApplicationLanguage, LANGUAGE_OPTIONS, getLanguageName } from "@/utils/languageUtils";
+import { applyApplicationLanguage, LANGUAGE_OPTIONS, getLanguageName, getLanguageCode } from "@/utils/languageUtils";
 import { toast } from "react-hot-toast";
 import {
   Settings,
   KeyRound,
-  User,
   Save,
   Eye,
   EyeOff,
@@ -24,37 +23,32 @@ import {
   Globe,
   Sliders,
   CheckCircle2,
-  Smartphone
+  Smartphone,
+  ChevronDown,
+  RefreshCw
 } from "lucide-react";
 
 export default function DriverSettingsPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { theme, toggleTheme, setTheme, isDark } = useTheme();
+  const { theme, setTheme, isDark } = useTheme();
   const { currentLanguage, setLanguage: setGlobalLanguage } = useLanguage();
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Password Change States
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
 
-  const [updating, setUpdating] = useState(false);
-  const [savingProfile, setSavingProfile] = useState(false);
+  // Preferences & App Settings
   const [savingPreferences, setSavingPreferences] = useState(false);
-
-  // Profile details state
-  const [name, setName] = useState(user?.fullName || user?.name || "Driver");
-  const [phoneNumber, setPhoneNumber] = useState(user?.phone || user?.phoneNumber || user?.phoneNo || "");
-  const [email, setEmail] = useState(user?.email || "");
-  const [licenseNumber, setLicenseNumber] = useState(user?.licenseNumber || "");
-  const [profileImage, setProfileImage] = useState("");
-
-  // Notification Preferences & App Settings
+  const [updatingLanguage, setUpdatingLanguage] = useState(false);
   const [language, setLanguage] = useState(currentLanguage || "English");
   const [notificationPreferences, setNotificationPreferences] = useState({
     pushNotifications: true,
@@ -69,88 +63,36 @@ export default function DriverSettingsPage() {
     vibration: true
   });
 
-  // Validation States
-  const [profileErrors, setProfileErrors] = useState({});
-  const [profileTouched, setProfileTouched] = useState({});
+  // Password Validation States
   const [passwordErrors, setPasswordErrors] = useState({});
   const [passwordTouched, setPasswordTouched] = useState({});
-
-  const validateProfileField = (field, value) => {
-    switch (field) {
-      case "name": {
-        const val = (value || "").trim();
-        if (!val) return "Full name is required.";
-        if (val.length < 2) return "Full name must be at least 2 characters.";
-        if (val.length > 50) return "Full name must not exceed 50 characters.";
-        if (/\d/.test(val)) return "Full name must contain letters only (numbers are not allowed).";
-        if (!/^[a-zA-Z\s.'-]+$/.test(val)) return "Full name contains invalid characters.";
-        if (/(.)\1{3,}/i.test(val)) return "Repeated characters are not allowed.";
-        return "";
-      }
-      case "phoneNumber": {
-        const val = (value || "").trim();
-        if (!val) return "Phone number is required.";
-        const clean = val.replace(/^(\+91|91|0)/, "").replace(/\D/g, "");
-        if (clean.length !== 10) return "Phone number must contain exactly 10 digits.";
-        if (!/^[1-9]/.test(clean)) return "Phone number must start with 1-9 (cannot start with 0).";
-        if (/^(\d)\1{9}$/.test(clean)) return "Please enter a valid active phone number.";
-        return "";
-      }
-      case "email": {
-        const val = (value || "").trim();
-        if (!val) return "";
-        if (/\s/.test(val)) return "Email address must not contain spaces.";
-        if (val.length > 80) return "Email must not exceed 80 characters.";
-        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-        if (!emailRegex.test(val)) return "Please enter a valid email address.";
-        return "";
-      }
-      case "licenseNumber": {
-        const val = (value || "").trim();
-        if (!val) return "License number is required.";
-        if (val.length < 5) return "License number must be at least 5 characters.";
-        if (val.length > 20) return "License number must not exceed 20 characters.";
-        if (!/^[A-Z0-9\s\-/]+$/i.test(val)) return "License number contains invalid characters.";
-        if (!/[a-zA-Z]/.test(val) || !/[0-9]/.test(val)) return "License number must contain alphanumeric characters.";
-        if (/(.)\1{4,}/i.test(val)) return "Repeated characters are not allowed.";
-        return "";
-      }
-      default:
-        return "";
-    }
-  };
 
   const validatePasswordField = (field, value, allValues = {}) => {
     switch (field) {
       case "currentPassword": {
         const val = value || "";
-        if (!val) return "Current password is required.";
-        if (val.length > 20) return "Current password must not exceed 20 characters.";
+        if (!val) return "Current password is required to authorize changes.";
         return "";
       }
       case "newPassword": {
         const val = value || "";
         if (!val) return "New password is required.";
         if (val.length < 8) return "Password must be at least 8 characters.";
-        if (val.length > 20) return "Password must not exceed 20 characters.";
-        if (/\s/.test(val)) return "Password must not contain spaces.";
-        if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(val)) {
-          return "Password must contain uppercase, lowercase and number.";
-        }
-        if (/(.)\1{3,}/i.test(val)) return "Repeated characters are not allowed.";
-        const cur = allValues.currentPassword !== undefined ? allValues.currentPassword : currentPassword;
-        if (cur && val === cur) {
-          return "New password must be different from current password.";
+        if (val.length > 50) return "Password must not exceed 50 characters.";
+        if (!/[A-Z]/.test(val)) return "Must contain at least one uppercase letter (A-Z).";
+        if (!/[a-z]/.test(val)) return "Must contain at least one lowercase letter (a-z).";
+        if (!/\d/.test(val)) return "Must contain at least one number (0-9).";
+        if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(val)) return "Must contain at least one special character.";
+        if (allValues.currentPassword && val === allValues.currentPassword) {
+          return "New password cannot be identical to current password.";
         }
         return "";
       }
       case "confirmPassword": {
         const val = value || "";
-        if (!val) return "Confirm password is required.";
-        if (val.length > 20) return "Confirm password must not exceed 20 characters.";
-        const newPass = allValues.newPassword !== undefined ? allValues.newPassword : newPassword;
-        if (val !== newPass) {
-          return "New password and confirm password do not match.";
+        if (!val) return "Please re-type to confirm your new password.";
+        if (allValues.newPassword && val !== allValues.newPassword) {
+          return "Passwords do not match. Please re-enter.";
         }
         return "";
       }
@@ -159,71 +101,30 @@ export default function DriverSettingsPage() {
     }
   };
 
-  const handleProfileChange = (field, value) => {
-    if (field === "name") setName(value);
-    if (field === "phoneNumber") setPhoneNumber(value);
-    if (field === "email") setEmail(value);
-    if (field === "licenseNumber") setLicenseNumber(value);
-
-    setProfileTouched(prev => ({ ...prev, [field]: true }));
-    const err = validateProfileField(field, value);
-    setProfileErrors(prev => ({ ...prev, [field]: err }));
-  };
-
-  const handleProfileBlur = (field, value) => {
-    setProfileTouched(prev => ({ ...prev, [field]: true }));
-    const err = validateProfileField(field, value);
-    setProfileErrors(prev => ({ ...prev, [field]: err }));
-  };
-
-  const validateAllProfile = () => {
-    const fields = { name, phoneNumber, email, licenseNumber };
-    const errs = {};
-    let isValid = true;
-    Object.keys(fields).forEach(key => {
-      const err = validateProfileField(key, fields[key]);
-      if (err) {
-        errs[key] = err;
-        isValid = false;
-      }
-    });
-    setProfileErrors(errs);
-    setProfileTouched({
-      name: true,
-      phoneNumber: true,
-      email: true,
-      licenseNumber: true
-    });
-    return isValid;
-  };
-
-  const handlePasswordChange = (field, value) => {
+  const handlePasswordFieldChange = (field, value) => {
     if (field === "currentPassword") setCurrentPassword(value);
-    if (field === "newPassword") {
-      setNewPassword(value);
-      if (confirmPassword) {
-        const confErr = validatePasswordField("confirmPassword", confirmPassword, { newPassword: value });
-        setPasswordErrors(prev => ({ ...prev, confirmPassword: confErr }));
-      }
-    }
+    if (field === "newPassword") setNewPassword(value);
     if (field === "confirmPassword") setConfirmPassword(value);
 
     setPasswordTouched(prev => ({ ...prev, [field]: true }));
-    const err = validatePasswordField(field, value, {
+    const allValues = {
       currentPassword: field === "currentPassword" ? value : currentPassword,
       newPassword: field === "newPassword" ? value : newPassword,
       confirmPassword: field === "confirmPassword" ? value : confirmPassword
-    });
+    };
+    const err = validatePasswordField(field, value, allValues);
     setPasswordErrors(prev => ({ ...prev, [field]: err }));
+
+    if (field === "newPassword" && passwordTouched.confirmPassword) {
+      const confirmErr = validatePasswordField("confirmPassword", confirmPassword, allValues);
+      setPasswordErrors(prev => ({ ...prev, confirmPassword: confirmErr }));
+    }
   };
 
-  const handlePasswordBlur = (field, value) => {
+  const handlePasswordFieldBlur = (field, value) => {
     setPasswordTouched(prev => ({ ...prev, [field]: true }));
-    const err = validatePasswordField(field, value, {
-      currentPassword,
-      newPassword,
-      confirmPassword
-    });
+    const allValues = { currentPassword, newPassword, confirmPassword };
+    const err = validatePasswordField(field, value, allValues);
     setPasswordErrors(prev => ({ ...prev, [field]: err }));
   };
 
@@ -248,8 +149,37 @@ export default function DriverSettingsPage() {
   };
 
   useEffect(() => {
-    fetchProfile();
+    fetchDriverSettings();
   }, []);
+
+  useEffect(() => {
+    if (currentLanguage) {
+      setLanguage(getLanguageName(currentLanguage));
+    }
+  }, [currentLanguage]);
+
+  const fetchDriverSettings = async () => {
+    try {
+      const res = await driverApi.getProfile();
+      if (res?.success && res.data) {
+        const d = res.data;
+        if (d.language) {
+          const validLang = getLanguageName(d.language);
+          setLanguage(validLang || "English");
+        } else {
+          setLanguage(currentLanguage ? getLanguageName(currentLanguage) : "English");
+        }
+        if (d.notificationPreferences) {
+          setNotificationPreferences(prev => ({
+            ...prev,
+            ...d.notificationPreferences
+          }));
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching driver settings:", err);
+    }
+  };
 
   const handleThemeChange = (newTheme) => {
     setTheme(newTheme);
@@ -263,42 +193,46 @@ export default function DriverSettingsPage() {
     }
   };
 
-  const fetchProfile = async () => {
-    try {
-      const res = await driverApi.getProfile();
-      if (res?.success && res.data) {
-        const d = res.data;
-        setName(d.fullName || d.name || user?.fullName || user?.name || "Driver");
-        setPhoneNumber(d.phone || d.phoneNumber || user?.phone || user?.phoneNumber || user?.phoneNo || "");
-        setEmail(d.email || user?.email || "");
-        setLicenseNumber(d.licenseNumber || user?.licenseNumber || "");
-        if (d.profileImage) setProfileImage(d.profileImage);
-        if (d.language) {
-          const validLang = getLanguageName(d.language);
-          setLanguage(validLang || "English");
-        } else {
-          setLanguage("English");
-        }
-        if (d.notificationPreferences) {
-          setNotificationPreferences(prev => ({
-            ...prev,
-            ...d.notificationPreferences
-          }));
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching profile details in settings:", err);
-    }
-  };
-
-  const handleLanguageChange = (newLang) => {
-    const validLang = getLanguageName(newLang || "English");
+  const handleUpdateLanguage = async (newLang) => {
+    const targetLang = newLang || language;
+    const validLang = getLanguageName(targetLang || "English");
+    const langCode = getLanguageCode(validLang);
     setLanguage(validLang);
-    applyApplicationLanguage(validLang, false);
-    if (setGlobalLanguage) {
-      setGlobalLanguage(validLang, false);
+    setUpdatingLanguage(true);
+
+    try {
+      // 1. Immediately apply to storage, cookies, and document
+      applyApplicationLanguage(validLang, false);
+      if (setGlobalLanguage) {
+        setGlobalLanguage(validLang, false);
+      }
+
+      // 2. Persist language to backend database for the driver
+      await driverApi.updateProfile({
+        language: validLang
+      });
+
+      // 3. Dispatch events for real-time synchronization across UI
+      window.dispatchEvent(new CustomEvent("profileUpdated"));
+      window.dispatchEvent(new CustomEvent("app:language-changed", { detail: { language: validLang, code: langCode } }));
+
+      toast.success(`Language successfully updated to ${validLang}!`);
+
+      // 4. Smooth reload to ensure all UI elements and layout re-render cleanly
+      setTimeout(() => {
+        window.location.reload();
+      }, 400);
+    } catch (err) {
+      console.error("Language update error:", err);
+      // Fallback: apply locally and inform user
+      applyApplicationLanguage(validLang, false);
+      toast.success(`Language set to ${validLang}`);
+      setTimeout(() => {
+        window.location.reload();
+      }, 400);
+    } finally {
+      setUpdatingLanguage(false);
     }
-    toast.success(`Language set to ${validLang}`);
   };
 
   const handleTogglePref = (key) => {
@@ -313,6 +247,7 @@ export default function DriverSettingsPage() {
     setSavingPreferences(true);
     try {
       const validLang = getLanguageName(language);
+      const langCode = getLanguageCode(validLang);
       applyApplicationLanguage(validLang, false);
       if (setGlobalLanguage) {
         setGlobalLanguage(validLang, false);
@@ -324,7 +259,9 @@ export default function DriverSettingsPage() {
       });
       if (res?.success) {
         toast.success("Notification preferences and app settings saved!");
+        window.dispatchEvent(new CustomEvent("profileUpdated"));
         window.dispatchEvent(new Event("notificationsUpdated"));
+        window.dispatchEvent(new CustomEvent("app:language-changed", { detail: { language: validLang, code: langCode } }));
       }
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to save preferences");
@@ -333,77 +270,32 @@ export default function DriverSettingsPage() {
     }
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image file size must be under 5MB");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setProfileImage(reader.result);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleSaveProfileDetails = async (e) => {
-    e.preventDefault();
-    if (!validateAllProfile()) {
-      toast.error("Please fix all profile validation errors before saving.");
-      return;
-    }
-    setSavingProfile(true);
-    try {
-      const res = await driverApi.updateProfile({
-        fullName: name.trim(),
-        name: name.trim(),
-        phone: phoneNumber.trim(),
-        phoneNumber: phoneNumber.trim(),
-        email: email.trim(),
-        licenseNumber: licenseNumber.trim(),
-        profileImage
-      });
-      if (res?.success) {
-        toast.success("Profile details & avatar updated successfully!");
-        fetchProfile();
-        window.dispatchEvent(new Event("profileUpdated"));
-        window.dispatchEvent(new Event("notificationsUpdated"));
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to update profile details");
-    } finally {
-      setSavingProfile(false);
-    }
-  };
-
   const handleChangePassword = async (e) => {
     e.preventDefault();
     if (!validateAllPassword()) {
-      toast.error("Please fix all password errors before updating.");
+      toast.error("Please satisfy all password security requirements.");
       return;
     }
 
-    setUpdating(true);
+    setUpdatingPassword(true);
     try {
-      const res = await driverApi.updateProfile({
+      const res = await driverApi.changePassword({
         currentPassword,
         newPassword
       });
 
       if (res?.success) {
-        toast.success("Password changed successfully!");
+        toast.success("Password updated successfully! Please keep it secure.");
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
-        setPasswordErrors({});
         setPasswordTouched({});
-        window.dispatchEvent(new Event("notificationsUpdated"));
+        setPasswordErrors({});
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to change password");
+      toast.error(err.response?.data?.message || "Failed to update password");
     } finally {
-      setUpdating(false);
+      setUpdatingPassword(false);
     }
   };
 
@@ -424,153 +316,36 @@ export default function DriverSettingsPage() {
   };
 
   return (
-    <div className="max-w-4xl space-y-8 font-nunito pb-12">
+    <div className="w-full max-w-4xl space-y-8 font-nunito pb-12">
       {/* Header */}
-      <div>
+      <div className="pb-6 border-b border-slate-200 dark:border-slate-800">
         <h1 className="text-2xl font-black font-poppins text-slate-900 dark:text-white flex items-center gap-2">
           <Settings className="w-6 h-6 text-[#A14000]" />
           Driver Account Settings
         </h1>
         <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">
-          Configure security, password change, profile details, language preferences, and portal theme.
+          Configure security, password management, portal theme, language preferences, and notification alerts.
         </p>
       </div>
 
-      {/* Driver Profile Details */}
+      {/* 1. Security & Password Change */}
       <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-6">
         <h2 className="text-base font-bold font-poppins text-slate-900 dark:text-white flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
-          <User className="w-5 h-5 text-[#A14000]" /> Profile Information
-        </h2>
-
-        <form onSubmit={handleSaveProfileDetails} className="space-y-6 max-w-2xl" noValidate>
-          {/* Profile Picture Upload Avatar Box */}
-          <div className="flex items-center gap-4 p-4 bg-slate-50/80 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-800">
-            <div className="relative w-16 h-16 rounded-full overflow-hidden bg-[#FFDBCC]/60 dark:bg-[#A14000]/30 border-2 border-[#A14000]/50 flex items-center justify-center text-[#A14000] dark:text-white font-bold font-poppins text-xl shrink-0 shadow-sm">
-              {profileImage ? (
-                <img src={profileImage} alt={name} className="w-full h-full object-cover" />
-              ) : (
-                (name || "D").charAt(0).toUpperCase()
-              )}
-            </div>
-            <div>
-              <label className="block text-xs font-bold font-poppins text-slate-900 dark:text-white">Profile Photo</label>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Upload a clean headshot. JPG, PNG up to 5MB.</p>
-              <label className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#A14000] hover:bg-[#853400] text-white text-xs font-bold rounded-lg cursor-pointer transition shadow-xs">
-                <span>Upload New Image</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-              </label>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">Driver Full Name *</label>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => handleProfileChange("name", e.target.value)}
-                onBlur={(e) => handleProfileBlur("name", e.target.value)}
-                placeholder="Enter driver name"
-                className={`mt-1 block w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-slate-900 dark:text-white text-xs font-semibold focus:outline-none transition-colors ${
-                  profileTouched.name && profileErrors.name
-                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500 focus:border-red-500"
-                    : "border-slate-300 dark:border-slate-700 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
-                }`}
-              />
-              {profileTouched.name && profileErrors.name && (
-                <p className="text-red-500 text-[11px] font-semibold mt-1">{profileErrors.name}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">Phone Number *</label>
-              <input
-                type="text"
-                required
-                value={phoneNumber}
-                onChange={(e) => handleProfileChange("phoneNumber", e.target.value)}
-                onBlur={(e) => handleProfileBlur("phoneNumber", e.target.value)}
-                placeholder="Enter 10-digit phone number"
-                className={`mt-1 block w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-slate-900 dark:text-white text-xs font-semibold focus:outline-none transition-colors ${
-                  profileTouched.phoneNumber && profileErrors.phoneNumber
-                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500 focus:border-red-500"
-                    : "border-slate-300 dark:border-slate-700 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
-                }`}
-              />
-              {profileTouched.phoneNumber && profileErrors.phoneNumber && (
-                <p className="text-red-500 text-[11px] font-semibold mt-1">{profileErrors.phoneNumber}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">Email Address</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => handleProfileChange("email", e.target.value)}
-                onBlur={(e) => handleProfileBlur("email", e.target.value)}
-                placeholder="driver@fleet.com"
-                className={`mt-1 block w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-slate-900 dark:text-white text-xs focus:outline-none transition-colors ${
-                  profileTouched.email && profileErrors.email
-                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500 focus:border-red-500"
-                    : "border-slate-300 dark:border-slate-700 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
-                }`}
-              />
-              {profileTouched.email && profileErrors.email && (
-                <p className="text-red-500 text-[11px] font-semibold mt-1">{profileErrors.email}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">License Number *</label>
-              <input
-                type="text"
-                required
-                value={licenseNumber}
-                onChange={(e) => handleProfileChange("licenseNumber", e.target.value)}
-                onBlur={(e) => handleProfileBlur("licenseNumber", e.target.value)}
-                placeholder="DL-XXXX-XXXXXX"
-                className={`mt-1 block w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-slate-900 dark:text-white text-xs focus:outline-none transition-colors ${
-                  profileTouched.licenseNumber && profileErrors.licenseNumber
-                    ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500 focus:border-red-500"
-                    : "border-slate-300 dark:border-slate-700 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
-                }`}
-              />
-              {profileTouched.licenseNumber && profileErrors.licenseNumber && (
-                <p className="text-red-500 text-[11px] font-semibold mt-1">{profileErrors.licenseNumber}</p>
-              )}
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={savingProfile}
-            className="py-2.5 px-5 bg-[#A14000] hover:bg-[#853400] text-white font-bold font-poppins rounded-xl text-xs transition disabled:opacity-50 shadow-sm flex items-center gap-2 cursor-pointer"
-          >
-            <Save className="w-4 h-4" />
-            <span>{savingProfile ? "Saving Profile..." : "Update Profile Details"}</span>
-          </button>
-        </form>
-      </div>
-
-      {/* Security & Password Change */}
-      <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-6">
-        <h2 className="text-base font-bold font-poppins text-slate-900 dark:text-white flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
-          <KeyRound className="w-5 h-5 text-[#A14000]" /> Change Security Password
+          <KeyRound className="w-5 h-5 text-[#A14000]" /> Security & Password Management
         </h2>
 
         <form onSubmit={handleChangePassword} className="space-y-4 max-w-lg" noValidate>
           <div>
             <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">Current Password *</label>
-            <div className="relative mt-1">
+            <div className="relative mt-2">
               <input
                 type={showCurrentPassword ? "text" : "password"}
                 required
                 value={currentPassword}
-                onChange={(e) => handlePasswordChange("currentPassword", e.target.value)}
-                onBlur={(e) => handlePasswordBlur("currentPassword", e.target.value)}
-                className={`block w-full px-3.5 py-2.5 pr-10 bg-white dark:bg-slate-900 border rounded-xl text-slate-900 dark:text-white text-xs font-medium focus:outline-none transition-colors ${
+                onChange={(e) => handlePasswordFieldChange("currentPassword", e.target.value)}
+                onBlur={(e) => handlePasswordFieldBlur("currentPassword", e.target.value)}
+                placeholder="••••••••"
+                className={`block w-full px-4 py-3 bg-white dark:bg-slate-900/80 border rounded-xl text-slate-900 dark:text-white text-xs focus:outline-none transition-colors ${
                   passwordTouched.currentPassword && passwordErrors.currentPassword
                     ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500 focus:border-red-500"
                     : "border-slate-300 dark:border-slate-700 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
@@ -579,8 +354,7 @@ export default function DriverSettingsPage() {
               <button
                 type="button"
                 onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none p-1 transition cursor-pointer"
-                title={showCurrentPassword ? "Hide password" : "Show password"}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -592,14 +366,15 @@ export default function DriverSettingsPage() {
 
           <div>
             <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">New Password *</label>
-            <div className="relative mt-1">
+            <div className="relative mt-2">
               <input
                 type={showNewPassword ? "text" : "password"}
                 required
                 value={newPassword}
-                onChange={(e) => handlePasswordChange("newPassword", e.target.value)}
-                onBlur={(e) => handlePasswordBlur("newPassword", e.target.value)}
-                className={`block w-full px-3.5 py-2.5 pr-10 bg-white dark:bg-slate-900 border rounded-xl text-slate-900 dark:text-white text-xs font-medium focus:outline-none transition-colors ${
+                onChange={(e) => handlePasswordFieldChange("newPassword", e.target.value)}
+                onBlur={(e) => handlePasswordFieldBlur("newPassword", e.target.value)}
+                placeholder="••••••••"
+                className={`block w-full px-4 py-3 bg-white dark:bg-slate-900/80 border rounded-xl text-slate-900 dark:text-white text-xs focus:outline-none transition-colors ${
                   passwordTouched.newPassword && passwordErrors.newPassword
                     ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500 focus:border-red-500"
                     : "border-slate-300 dark:border-slate-700 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
@@ -608,8 +383,7 @@ export default function DriverSettingsPage() {
               <button
                 type="button"
                 onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none p-1 transition cursor-pointer"
-                title={showNewPassword ? "Hide password" : "Show password"}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -621,14 +395,15 @@ export default function DriverSettingsPage() {
 
           <div>
             <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">Confirm New Password *</label>
-            <div className="relative mt-1">
+            <div className="relative mt-2">
               <input
                 type={showConfirmPassword ? "text" : "password"}
                 required
                 value={confirmPassword}
-                onChange={(e) => handlePasswordChange("confirmPassword", e.target.value)}
-                onBlur={(e) => handlePasswordBlur("confirmPassword", e.target.value)}
-                className={`block w-full px-3.5 py-2.5 pr-10 bg-white dark:bg-slate-900 border rounded-xl text-slate-900 dark:text-white text-xs font-medium focus:outline-none transition-colors ${
+                onChange={(e) => handlePasswordFieldChange("confirmPassword", e.target.value)}
+                onBlur={(e) => handlePasswordFieldBlur("confirmPassword", e.target.value)}
+                placeholder="••••••••"
+                className={`block w-full px-4 py-3 bg-white dark:bg-slate-900/80 border rounded-xl text-slate-900 dark:text-white text-xs focus:outline-none transition-colors ${
                   passwordTouched.confirmPassword && passwordErrors.confirmPassword
                     ? "border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500 focus:border-red-500"
                     : "border-slate-300 dark:border-slate-700 focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000]"
@@ -637,8 +412,7 @@ export default function DriverSettingsPage() {
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none p-1 transition cursor-pointer"
-                title={showConfirmPassword ? "Hide password" : "Show password"}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -648,148 +422,183 @@ export default function DriverSettingsPage() {
             )}
           </div>
 
+          <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200/80 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
+            <span className="font-bold text-slate-700 dark:text-slate-300 block">Password Requirements:</span>
+            <ul className="list-disc list-inside space-y-0.5">
+              <li>At least 8 characters long</li>
+              <li>Must contain at least 1 uppercase and 1 lowercase letter</li>
+              <li>Must contain at least 1 numeric digit and 1 special symbol</li>
+            </ul>
+          </div>
+
           <button
             type="submit"
-            disabled={updating}
-            className="py-2.5 px-5 bg-[#A14000] hover:bg-[#853400] text-white font-bold font-poppins rounded-xl text-xs transition disabled:opacity-50 shadow-sm cursor-pointer"
+            disabled={updatingPassword}
+            className="px-6 py-2.5 bg-[#A14000] hover:bg-[#853400] text-white text-xs font-bold font-poppins rounded-xl transition shadow-sm disabled:opacity-50 flex items-center gap-2 cursor-pointer"
           >
-            {updating ? "Updating Password..." : "Update Password"}
+            {updatingPassword ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            <span>{updatingPassword ? "Updating Password..." : "Update Password"}</span>
           </button>
         </form>
       </div>
 
-      {/* Notification Preferences */}
-      <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-6">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-          <div>
-            <h2 className="text-base font-bold font-poppins text-slate-900 dark:text-white flex items-center gap-2">
-              <Bell className="w-5 h-5 text-[#A14000]" /> Notification & Alert Preferences
-            </h2>
-            <p className="text-slate-500 dark:text-slate-400 text-xs mt-0.5">
-              Control your real-time dispatches, system alerts, and notification channels.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[
-            { key: "tripUpdates", label: "Trip Dispatches & Updates", desc: "Receive immediate dispatches and trip assignments" },
-            { key: "routeChanges", label: "Route & Geofence Changes", desc: "Live detours, stop alterations, and navigation updates" },
-            { key: "trafficWarnings", label: "Traffic & Road Conditions", desc: "Real-time congestion and route hazard alerts" },
-            { key: "fuelWarnings", label: "Fuel & Refuel Reminders", desc: "Low fuel warnings and approved pump stations" },
-            { key: "emergencyAlerts", label: "Emergency & SOS Broadcasts", desc: "High priority safety bulletins from fleet manager" },
-            { key: "pushNotifications", label: "In-App / Push Notifications", desc: "Push alerts to your device while active" },
-            { key: "smsNotifications", label: "SMS Text Messages", desc: "Critical dispatch info delivered via SMS" },
-            { key: "sound", label: "Sound Effects & Chimes", desc: "Play audible chime on incoming dispatches" }
-          ].map((item) => (
-            <div
-              key={item.key}
-              onClick={() => handleTogglePref(item.key)}
-              className="flex items-start justify-between p-3.5 bg-slate-50/80 dark:bg-slate-900/60 rounded-xl border border-slate-200/70 dark:border-slate-800 cursor-pointer hover:border-[#A14000]/40 transition"
-            >
-              <div className="space-y-0.5 pr-3">
-                <div className="text-xs font-bold font-poppins text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <span>{item.label}</span>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
-                  {item.desc}
-                </p>
-              </div>
-              <div
-                className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 ease-in-out shrink-0 mt-0.5 ${
-                  notificationPreferences[item.key] ? "bg-[#A14000]" : "bg-slate-300 dark:bg-slate-700"
-                }`}
-              >
-                <div
-                  className={`w-4.5 h-4.5 rounded-full bg-white transition-transform duration-200 ease-in-out shadow-xs ${
-                    notificationPreferences[item.key] ? "translate-x-4.5" : "translate-x-0"
-                  }`}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          disabled={savingPreferences}
-          onClick={handleSavePreferences}
-          className="py-2.5 px-5 bg-[#A14000] hover:bg-[#853400] text-white font-bold font-poppins rounded-xl text-xs transition disabled:opacity-50 shadow-sm flex items-center gap-2 cursor-pointer"
-        >
-          <Save className="w-4 h-4" />
-          <span>{savingPreferences ? "Saving Preferences..." : "Save Notification Preferences"}</span>
-        </button>
-      </div>
-
-      {/* App & Language Preferences */}
+      {/* 2. Portal Appearance & Theme */}
       <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-6">
         <h2 className="text-base font-bold font-poppins text-slate-900 dark:text-white flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
-          <Globe className="w-5 h-5 text-[#A14000]" /> App & Regional Preferences
+          <Sun className="w-5 h-5 text-[#A14000]" /> Portal Appearance & Theme
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
+          <button
+            type="button"
+            onClick={() => handleThemeChange("light")}
+            className={`p-4 rounded-2xl border text-left flex items-center justify-between transition-all duration-200 cursor-pointer ${
+              !isDark
+                ? "border-[#A14000] bg-amber-50/50 dark:bg-amber-950/20 ring-2 ring-[#A14000]/20"
+                : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-amber-100 text-[#A14000] dark:bg-amber-950 dark:text-amber-400">
+                <Sun className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-bold font-poppins text-slate-900 dark:text-white">Light Theme</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Standard crisp bright dashboard</p>
+              </div>
+            </div>
+            {!isDark && <CheckCircle2 className="w-5 h-5 text-[#A14000]" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleThemeChange("dark")}
+            className={`p-4 rounded-2xl border text-left flex items-center justify-between transition-all duration-200 cursor-pointer ${
+              isDark
+                ? "border-[#A14000] bg-amber-50/50 dark:bg-amber-950/20 ring-2 ring-[#A14000]/20"
+                : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-slate-800 text-amber-400">
+                <Moon className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-bold font-poppins text-slate-900 dark:text-white">Dark Theme</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Night mode optimized palette</p>
+              </div>
+            </div>
+            {isDark && <CheckCircle2 className="w-5 h-5 text-[#A14000]" />}
+          </button>
+        </div>
+      </div>
+
+      {/* 3. System Preferences & Language */}
+      <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-6">
+        <h2 className="text-base font-bold font-poppins text-slate-900 dark:text-white flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <Globe className="w-5 h-5 text-[#A14000]" /> System Preferences & Language
+        </h2>
+
+        <div className="space-y-6 max-w-2xl">
+          {/* Preferred Language Selection */}
           <div>
             <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">
-              App Language
+              Preferred Application Language
             </label>
-            <select
-              value={language}
-              onChange={(e) => handleLanguageChange(e.target.value)}
-              className="mt-1 block w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs font-medium focus:ring-1 focus:ring-[#A14000] focus:border-[#A14000] outline-none cursor-pointer"
-            >
-              {LANGUAGE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              Select your primary regional language. All driver menus, trip instructions, and notifications will render in this language.
+            </p>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-2">
+              <div className="relative w-full sm:w-80">
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  disabled={updatingLanguage}
+                  className="w-full px-4 py-2.5 bg-white dark:bg-slate-900/80 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#A14000]/20 focus:border-[#A14000] cursor-pointer appearance-none pr-10 shadow-xs transition disabled:opacity-50"
+                >
+                  {language && !LANGUAGE_OPTIONS.some((opt) => opt.value === language || opt.label === language) && (
+                    <option value={language} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+                      {language}
+                    </option>
+                  )}
+                  {LANGUAGE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 dark:text-slate-500">
+                  <ChevronDown className="w-4 h-4" />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={updatingLanguage}
+                onClick={() => handleUpdateLanguage(language)}
+                className="px-5 py-2.5 bg-[#A14000] hover:bg-[#853400] text-white text-xs font-bold font-poppins rounded-xl transition shadow-xs disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shrink-0"
+              >
+                {updatingLanguage ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+                <span>{updatingLanguage ? "Updating Language..." : "Update Language"}</span>
+              </button>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold font-poppins text-slate-700 dark:text-slate-300 uppercase">
-              Portal Theme
-            </label>
-            <div className="mt-1 flex items-center gap-2">
+          {/* Operational Notification Preferences Toggles */}
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-4">
+            <h3 className="text-xs font-bold font-poppins text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+              <Bell className="w-4 h-4 text-[#A14000]" /> Push & SMS Alerts
+            </h3>
+
+            <div className="space-y-3">
+              {[
+                { key: "pushNotifications", label: "Push Notifications", desc: "Real-time alerts for active assigned trips and dispatch instructions" },
+                { key: "smsNotifications", label: "SMS Notifications", desc: "Emergency roadside and dispatch contact text messages" },
+                { key: "tripUpdates", label: "Trip Status Updates", desc: "Automatic reminders when planned departure time approaches" },
+                { key: "trafficWarnings", label: "Traffic & Route Deviation Alerts", desc: "Audible route alerts and weather speed warnings" },
+                { key: "sound", label: "Audible Notification Chimes", desc: "Play sound effect upon new dispatch message or ticket update" },
+                { key: "vibration", label: "Haptic Vibration", desc: "Trigger phone vibration on high priority trip dispatches" }
+              ].map(({ key, label, desc }) => (
+                <div
+                  key={key}
+                  onClick={() => handleTogglePref(key)}
+                  className="flex items-center justify-between p-3.5 bg-slate-50/80 dark:bg-slate-900/40 rounded-xl border border-slate-200/60 dark:border-slate-800 cursor-pointer hover:bg-slate-100/60 dark:hover:bg-slate-800/50 transition-colors"
+                >
+                  <div className="space-y-0.5 pr-3">
+                    <p className="text-xs font-bold font-poppins text-slate-900 dark:text-white">{label}</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">{desc}</p>
+                  </div>
+                  <div
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                      notificationPreferences[key] ? "bg-[#A14000]" : "bg-slate-300 dark:bg-slate-700"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                        notificationPreferences[key] ? "translate-x-4" : "translate-x-0"
+                      }`}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 flex justify-start">
               <button
                 type="button"
-                onClick={() => handleThemeChange("light")}
-                className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
-                  !isDark
-                    ? "bg-[#FFDBCC]/40 border-[#A14000] text-[#A14000]"
-                    : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
-                }`}
+                disabled={savingPreferences}
+                onClick={handleSavePreferences}
+                className="px-6 py-2.5 bg-[#A14000] hover:bg-[#853400] text-white text-xs font-bold font-poppins rounded-xl transition shadow-sm disabled:opacity-50 flex items-center gap-2 cursor-pointer"
               >
-                <Sun className="w-4 h-4" />
-                <span>Light</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleThemeChange("dark")}
-                className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
-                  isDark
-                    ? "bg-[#A14000]/20 border-[#A14000] text-amber-500"
-                    : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
-                }`}
-              >
-                <Moon className="w-4 h-4" />
-                <span>Dark</span>
+                {savingPreferences ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>{savingPreferences ? "Saving Settings..." : "Save Preferences"}</span>
               </button>
             </div>
           </div>
         </div>
-
-        <button
-          type="button"
-          disabled={savingPreferences}
-          onClick={handleSavePreferences}
-          className="py-2.5 px-5 bg-[#A14000] hover:bg-[#853400] text-white font-bold font-poppins rounded-xl text-xs transition disabled:opacity-50 shadow-sm flex items-center gap-2 cursor-pointer"
-        >
-          <Save className="w-4 h-4" />
-          <span>{savingPreferences ? "Saving Settings..." : "Save App Preferences"}</span>
-        </button>
       </div>
 
-      {/* Danger Zone: Account Deletion */}
+      {/* 4. Danger Zone / Account Deletion */}
       <div className="bg-red-50/50 dark:bg-red-950/20 border border-red-200/80 dark:border-red-900/50 rounded-2xl p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
@@ -802,7 +611,7 @@ export default function DriverSettingsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 self-start sm:self-center flex-shrink-0">
+          <div className="flex items-center gap-3 self-start sm:self-center shrink-0">
             <NavLink
               to="/account-deletion"
               className="text-xs font-bold text-red-700 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:underline flex items-center gap-1"
@@ -827,13 +636,13 @@ export default function DriverSettingsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
           <div className="bg-white dark:bg-[#0F172A] rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 dark:border-slate-800 space-y-5">
             <div className="flex items-start justify-between gap-3">
-              <div className="h-12 w-12 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center flex-shrink-0">
+              <div className="h-12 w-12 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <button
                 type="button"
                 onClick={() => setShowDeleteModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>

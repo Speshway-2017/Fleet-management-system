@@ -50,7 +50,8 @@ export function SettingsProvider({ children }) {
       });
 
       setPlatformSettings(cleanData);
-      if (cleanData.language) {
+      const existingSavedLanguage = localStorage.getItem("app_language");
+      if (cleanData.language && !existingSavedLanguage) {
         applyApplicationLanguage(cleanData.language);
       }
     } catch (error) {

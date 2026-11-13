@@ -241,20 +241,22 @@ export default function DriversManagementPage() {
             <ChevronDown className="w-4 h-4 text-[#64748B] dark:text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
         </div>
-        <div className="flex items-center justify-between border-t border-[#E7EAF0]/60 dark:border-slate-800 pt-4">
-          {(search || statusFilter !== "All Statuses" || licenseFilter !== "All Types") && (
-            <button onClick={() => { setSearch(""); setSearchError(""); setStatusFilter("All Statuses"); setLicenseFilter("All Types"); }} className="text-xs text-[#EF4444] hover:underline font-bold flex items-center gap-1 cursor-pointer">
-              <RefreshCw className="w-3 h-3" /><span>Reset</span>
+        {(search || statusFilter !== "All Statuses" || licenseFilter !== "All Types") && (
+          <div className="flex items-center justify-start border-t border-[#E7EAF0]/60 dark:border-slate-800 pt-3">
+            <button
+              onClick={() => {
+                setSearch("");
+                setSearchError("");
+                setStatusFilter("All Statuses");
+                setLicenseFilter("All Types");
+              }}
+              className="text-xs text-[#EF4444] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+            >
+              <RefreshCw className="w-3 h-3" />
+              <span>Reset</span>
             </button>
-          )}
-          <div className="text-xs text-[#64748B] dark:text-white font-medium font-poppins ml-auto">
-            {loading ? (
-              <span className="inline-block w-32 h-4 bg-slate-200 dark:bg-slate-700 animate-pulse rounded" />
-            ) : (
-              <>Showing <strong>{displayedDrivers.length}</strong> of {filteredDrivers.length} drivers</>
-            )}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Drivers Table */}
