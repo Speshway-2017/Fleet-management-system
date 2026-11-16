@@ -47,7 +47,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
       ),
       builder: (BuildContext context) {
-        final languages = ['English (US)', 'Spanish', 'French', 'German', 'Hindi'];
+        final languages = LocalizationService.supportedLanguages;
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,

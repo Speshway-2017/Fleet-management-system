@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/notification_provider.dart';
 import '../screens/main_navigation_screen.dart';
+import '../screens/notifications/notifications_screen.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -144,7 +145,10 @@ class FcmService {
           );
 
           // Auto-refresh notifications list
-          Provider.of<NotificationProvider>(context, listen: false).fetchNotifications();
+          try {
+            Provider.of<NotificationProvider>(context, listen: false).fetchNotifications();
+          } catch (_) {}
+          NotificationsScreen.fetchNotificationsFromServer().catchError((_) {});
         }
       });
 
@@ -192,6 +196,9 @@ class FcmService {
     // Pop any active sub-screens/details screens
     Navigator.of(context).popUntil((route) => route.isFirst);
     // Refresh the notifications feed
-    Provider.of<NotificationProvider>(context, listen: false).fetchNotifications();
+    try {
+      Provider.of<NotificationProvider>(context, listen: false).fetchNotifications();
+    } catch (_) {}
+    NotificationsScreen.fetchNotificationsFromServer().catchError((_) {});
   }
 }

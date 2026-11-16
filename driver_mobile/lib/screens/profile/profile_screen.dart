@@ -327,13 +327,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
       ),
       builder: (BuildContext sheetContext) {
-        const languages = [
-          'English (US)',
-          'Spanish',
-          'French',
-          'German',
-          'Hindi',
-        ];
+        final languages = LocalizationService.supportedLanguages;
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),

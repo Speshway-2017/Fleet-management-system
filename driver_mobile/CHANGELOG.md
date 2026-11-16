@@ -2,6 +2,36 @@
 
 All notable changes to the Fleet Driver Mobile application will be documented in this file.
 
+## [2.16.00] - 2026-11-16
+
+### Dynamic Notification Badge & Zero-Unread Synchronization
+- **Permanent Resolution for Default Notification Badge on Home Screen (`dashboard_screen.dart`, `main_navigation_screen.dart`, `fcm_service.dart`)**:
+  - Resolved the issue where the red dot notification badge was hardcoded inside the home dashboard header's bell icon stack and displayed unconditionally even when there were zero unread notifications.
+  - **Reactive Notification Bell Badge (`dashboard_screen.dart`)**:
+    - Wrapped the notification bell icon button with a `ValueListenableBuilder<int>` listening to `NotificationsScreen.unreadCountNotifier`.
+    - Only renders the red dot indicator container (`Color(0xFFEF4444)`) when `unreadCount > 0`, completely hiding the badge when all notifications are read or none exist.
+    - Added asynchronous refresh `NotificationsScreen.fetchNotificationsFromServer()` after returning from `Navigator.push` to `NotificationsScreen`, ensuring the badge disappears immediately when the user reads or clears notifications.
+    - Incorporated `NotificationsScreen.fetchNotificationsFromServer()` into `_loadDashboardData()` parallel `Future.wait` batch, `initState()`, and tab switch handlers.
+  - **Prewarming & Push Synchronization (`main_navigation_screen.dart`, `fcm_service.dart`)**:
+    - Updated `_prewarmAppData()` in `MainNavigationScreen` to call `NotificationsScreen.fetchNotificationsFromServer()` on app launch instead of raw unparsed endpoint calls, hydrating the unread badge count immediately upon boot.
+    - Connected `FcmService` foreground and notification tap handlers to call `NotificationsScreen.fetchNotificationsFromServer()`, keeping the badge synchronized across remote push notifications.
+- **Vehicle Overview Top Navigation Cleanup (`vehicle_overview_screen.dart`)**:
+  - Removed the refresh icon button (`Icons.refresh_rounded`) from the top `AppBar` actions in `VehicleOverviewScreen`.
+  - Streamlined the header navigation layout while maintaining pull-to-refresh (`RefreshIndicator`) functionality across the screen and the standalone "Check Again" action on the unassigned vehicle card.
+- **Streamlined Language Selection (`localization_service.dart`, `profile_screen.dart`, `settings_screen.dart`)**:
+  - Updated `LocalizationService.supportedLanguages` and the language bottom sheet selector on `ProfileScreen` and `SettingsScreen` to present only **English (US)** and **Hindi** options.
+  - Removed secondary languages (Spanish, French, German) from the active user-facing selection list while preserving the underlying translation dictionaries for backward compatibility.
+  - Updated automated widget tests in `test/widget_test.dart` to assert the updated language list and verify full Hindi language switching.
+- **Permanent Resolution for Workspace & Driver Mobile File Errors (`analysis_options.yaml`, `.vscode/settings.json`)**:
+  - Configured `"dart.projectSearchPaths": ["driver_mobile"]` in `.vscode/settings.json` to guarantee the Dart Language Server discovers and binds the nested Flutter project and its package config.
+  - Excluded `build/**`, `.dart_tool/**`, and platform folders in `driver_mobile/analysis_options.yaml` and root `analysis_options.yaml` to prevent false-positive diagnostics on build artifacts and transforms.
+  - Excluded `driver_mobile/android/**` and `build/**` from Java Language Server scanning (`java.import.exclusions`) to permanently eliminate false-positive classpath errors.
+  - Cleaned stale build outputs with `flutter clean` and re-indexed all dependencies cleanly via `flutter pub get`.
+- **Telugu (తెలుగు) Regional Language Support (`localization_service.dart`, `profile_screen.dart`, `settings_screen.dart`, `widget_test.dart`)**:
+  - Added **Telugu** to `LocalizationService.supportedLanguages` (`['English (US)', 'Hindi', 'Telugu']`) and wired `Locale('te', 'IN')` with normalization (`telugu`, `te`, `te_in`, `తెలుగు`).
+  - Introduced a comprehensive 731-key Telugu translation dictionary (`'Telugu': { ... }`) across all app modules: Dashboard, Active/Upcoming/Completed Trips, Vehicle Overview & Telemetry, Compliance Documents, Fuel Logs, Support Tickets, Profile, and Notifications.
+  - Enabled immediate reactive UI translation across the Profile and Settings language selector bottom sheets.
+
 ## [2.15.00] - 2026-11-09
 
 ### Comprehensive Multi-Screen Text Localization Across All 5 Languages
