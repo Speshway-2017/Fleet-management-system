@@ -75,6 +75,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     MainNavigationScreen.selectedTabNotifier.addListener(_onTabChanged);
     _loadDashboardData();
+    NotificationsScreen.fetchNotificationsFromServer().catchError((_) {});
     
     // Register socket listeners for instant updates
     SocketService.onEvent('notification:new', _onSocketEvent);
@@ -177,6 +178,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ApiService.get('/driver/trips/current'),
         ApiService.get('/driver/dashboard'),
         ApiService.get('/driver/trips'),
+        NotificationsScreen.fetchNotificationsFromServer().catchError((_) {}),
       ]);
 
       final profile = results[0] as Map<String, dynamic>?;
@@ -642,51 +644,60 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                                 const SizedBox(width: 7),
 
-                                // Notification Bell Button with Red Dot Badge
-                                InkWell(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => const NotificationsScreen(),
+                                // Notification Bell Button with Reactive Red Dot Badge
+                                ValueListenableBuilder<int>(
+                                  valueListenable: NotificationsScreen.unreadCountNotifier,
+                                  builder: (context, unreadCount, _) {
+                                    return InkWell(
+                                      onTap: () async {
+                                        await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => const NotificationsScreen(),
+                                          ),
+                                        );
+                                        if (mounted) {
+                                          NotificationsScreen.fetchNotificationsFromServer().catchError((_) {});
+                                        }
+                                      },
+                                      borderRadius: BorderRadius.circular(20),
+                                      child: Container(
+                                        width: 33,
+                                        height: 33,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.white.withValues(alpha: 0.10),
+                                          border: Border.all(
+                                            color: Colors.white.withValues(alpha: 0.18),
+                                            width: 1.0,
+                                          ),
+                                        ),
+                                        child: Stack(
+                                          alignment: Alignment.center,
+                                          children: [
+                                            const Icon(
+                                              Icons.notifications_none_rounded,
+                                              color: Colors.white,
+                                              size: 19,
+                                            ),
+                                            if (unreadCount > 0)
+                                              Positioned(
+                                                right: 5,
+                                                top: 5,
+                                                child: Container(
+                                                  width: 7,
+                                                  height: 7,
+                                                  decoration: const BoxDecoration(
+                                                    color: Color(0xFFEF4444),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
                                       ),
                                     );
                                   },
-                                  borderRadius: BorderRadius.circular(20),
-                                  child: Container(
-                                    width: 33,
-                                    height: 33,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Colors.white.withValues(alpha: 0.10),
-                                      border: Border.all(
-                                        color: Colors.white.withValues(alpha: 0.18),
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        const Icon(
-                                          Icons.notifications_none_rounded,
-                                          color: Colors.white,
-                                          size: 19,
-                                        ),
-                                        Positioned(
-                                          right: 5,
-                                          top: 5,
-                                          child: Container(
-                                            width: 7,
-                                            height: 7,
-                                            decoration: const BoxDecoration(
-                                              color: Color(0xFFEF4444),
-                                              shape: BoxShape.circle,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
                                 ),
                               ],
                             ),

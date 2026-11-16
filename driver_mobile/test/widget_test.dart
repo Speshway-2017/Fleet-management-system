@@ -521,19 +521,21 @@ void main() {
     await tester.tap(find.text('App Language'));
     await tester.pumpAndSettle();
 
-    // Verify Language selection modal is displayed
+    // Verify Language selection modal is displayed with English, Hindi, and Telugu
     expect(find.text('Select Language'), findsOneWidget);
-    expect(find.text('Spanish'), findsOneWidget);
+    expect(find.text('English (US)'), findsWidgets);
     expect(find.text('Hindi'), findsOneWidget);
+    expect(find.text('Telugu'), findsOneWidget);
+    expect(find.text('Spanish'), findsNothing);
 
-    // Tap Spanish
-    await tester.tap(find.text('Spanish'));
+    // Tap Hindi
+    await tester.tap(find.text('Hindi'));
     await tester.pumpAndSettle();
 
-    // Verify modal dismissed, snackbar displayed in selected language, and badge updated to Spanish
+    // Verify modal dismissed, snackbar displayed in selected language, and badge updated to Hindi
     expect(find.text('Select Language'), findsNothing);
-    expect(find.text('${'Language changed to'.tr} Spanish.'), findsOneWidget);
-    expect(find.text('Spanish'), findsOneWidget);
+    expect(find.text('${'Language changed to'.tr} Hindi.'), findsOneWidget);
+    expect(find.text('Hindi'), findsOneWidget);
 
     // Reset language back to English (US) for subsequent tests
     LocalizationService.setLanguage('English (US)');

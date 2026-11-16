@@ -53,7 +53,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ApiService.getDriverMaintenance().catchError((_) => null),
           ApiService.getDriverTickets().catchError((_) => null),
           ApiService.getDriverFuelRecords().catchError((_) => null),
-          ApiService.getDriverNotifications().catchError((_) => null),
+          NotificationsScreen.fetchNotificationsFromServer().catchError((_) => null),
           ApiService.get('/driver/trips?status=Completed').catchError((_) => null),
         ]);
       } catch (_) {}

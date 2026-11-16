@@ -193,25 +193,6 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
                 color: Colors.white,
               ),
             ),
-            actions: [
-              IconButton(
-                tooltip: 'Refresh'.tr,
-                icon: _isChecking
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Icon(Icons.refresh_rounded, color: Colors.white),
-                onPressed: _isChecking
-                    ? null
-                    : () => _fetchVehicleData(forceRefresh: true, showFeedback: true),
-              ),
-              const SizedBox(width: 8),
-            ],
           ),
           body: SafeArea(
             child: _isLoading
