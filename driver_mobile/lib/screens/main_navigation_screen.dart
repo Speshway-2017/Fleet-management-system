@@ -7,7 +7,6 @@ import 'dashboard_screen.dart';
 import 'vehicle_overview_screen.dart';
 import 'fuel_overview_screen.dart';
 import 'trips_screen.dart';
-import 'support_history_screen.dart';
 import 'profile/profile_screen.dart';
 import 'notifications/notifications_screen.dart';
 import '../services/fcm_service.dart';

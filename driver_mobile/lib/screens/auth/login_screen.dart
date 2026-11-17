@@ -9,7 +9,6 @@ import '../../widgets/legal_modal.dart';
 import '../main_navigation_screen.dart';
 import 'forgot_password_screen.dart';
 import 'login_identifier_screen.dart';
-import '../../main.dart';
 
 class LoginScreen extends StatefulWidget {
   final String? initialIdentifier;

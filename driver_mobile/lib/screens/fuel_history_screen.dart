@@ -6,7 +6,7 @@ import '../utils/navigation_helper.dart';
 import 'fuel_entry_details_screen.dart';
 
 /// Driver Module - Fuel History Screen
-/// 
+///
 /// Fetches live fuel entries from MongoDB (`GET /api/driver/fuel`).
 /// Displays Date, Vehicle, Fuel Station, Amount, Liters, Receipt Thumbnail,
 /// Approval Status badge (Green for Approved, Yellow for Pending, Red for Rejected),
@@ -26,11 +26,15 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
   List<dynamic> _fuelEntries = [];
   int _selectedFilterIndex = 0;
   final List<String> _filters = ['All', 'Approved', 'Pending', 'Rejected'];
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  String _searchQuery = '';
   bool _isAssigned = false;
 
   @override
   void initState() {
     super.initState();
+    _searchFocusNode.addListener(() => setState(() {}));
     if (_cachedFuelEntries != null) {
       _fuelEntries = _cachedFuelEntries!;
       _isAssigned = _cachedIsAssigned ?? false;
@@ -42,6 +46,13 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
       });
     }
     _fetchFuelRecords();
+  }
+
+  @override
+  void dispose() {
+    _searchFocusNode.dispose();
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchFuelRecords() async {
@@ -66,7 +77,9 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
       bool assigned = false;
       if (vehRes != null && vehRes['success'] == true) {
         final vData = vehRes['data'];
-        if (vData != null && vData['assigned'] == true && vData['vehicle'] != null) {
+        if (vData != null &&
+            vData['assigned'] == true &&
+            vData['vehicle'] != null) {
           assigned = true;
         }
       }
@@ -96,19 +109,63 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
   }
 
   List<dynamic> get _filteredEntries {
-    if (_selectedFilterIndex == 0) return _fuelEntries;
-    final filterName = _filters[_selectedFilterIndex];
-    return _fuelEntries.where((e) {
-      final status = (e['approvalStatus'] ?? 'Pending').toString();
-      return status.toLowerCase() == filterName.toLowerCase();
-    }).toList();
+    var list = _fuelEntries;
+    if (_selectedFilterIndex != 0) {
+      final filterName = _filters[_selectedFilterIndex];
+      list = list.where((e) {
+        final status = (e['approvalStatus'] ?? 'Pending').toString();
+        return status.toLowerCase() == filterName.toLowerCase();
+      }).toList();
+    }
+    if (_searchQuery.trim().isNotEmpty) {
+      final q = _searchQuery.trim().toLowerCase();
+      list = list.where((e) {
+        final station = (e['fuelStation'] ?? e['station'] ?? '')
+            .toString()
+            .toLowerCase();
+        final vehicle =
+            (e['vehicleId'] ??
+                    (e['vehicle'] is Map
+                        ? e['vehicle']['vehicleNumber']
+                        : '') ??
+                    '')
+                .toString()
+                .toLowerCase();
+        final city = (e['purchaseLocation'] ?? e['city'] ?? '')
+            .toString()
+            .toLowerCase();
+        final amount = (e['amount'] ?? '').toString().toLowerCase();
+        final liters = (e['liters'] ?? '').toString().toLowerCase();
+        final reason = (e['rejectionReason'] ?? '').toString().toLowerCase();
+        return station.contains(q) ||
+            vehicle.contains(q) ||
+            city.contains(q) ||
+            amount.contains(q) ||
+            liters.contains(q) ||
+            reason.contains(q);
+      }).toList();
+    }
+    return list;
   }
 
   String _formatDate(dynamic dateStr) {
     if (dateStr == null || dateStr.toString().isEmpty) return 'N/A';
     try {
       final dt = DateTime.parse(dateStr.toString());
-      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      final months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
       final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
       final ampm = dt.hour >= 12 ? 'PM' : 'AM';
       final min = dt.minute.toString().padLeft(2, '0');
@@ -158,164 +215,234 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
               ),
               actions: const [],
             ),
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(primaryOrange),
-                ),
-              )
-            : RefreshIndicator(
-                onRefresh: () async {
-                  _cachedFuelEntries = null;
-                  _cachedIsAssigned = null;
-                  ApiService.clearApiCache('/driver/fuel');
-                  ApiService.clearApiCache('/driver/vehicle');
-                  await Future.any([
-                    _fetchFuelRecords(),
-                    Future.delayed(const Duration(milliseconds: 500)),
-                  ]);
-                },
-                color: primaryOrange,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (!_isAssigned) ...[
-                        Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 16.0),
-                          padding: const EdgeInsets.all(14.0),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEFF6FF), // Light blue box
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFBFDBFE)),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Icon(
-                                Icons.info_outline_rounded,
-                                color: Color(0xFF2563EB),
-                                size: 20,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  'No vehicle is currently assigned. You can view your previous records, but new fuel entries will be available once a vehicle is assigned.'.tr,
-                                  style: GoogleFonts.nunito(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF1E40AF),
-                                    height: 1.4,
+            body: SafeArea(
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          primaryOrange,
+                        ),
+                      ),
+                    )
+                  : RefreshIndicator(
+                      onRefresh: () async {
+                        _cachedFuelEntries = null;
+                        _cachedIsAssigned = null;
+                        ApiService.clearApiCache('/driver/fuel');
+                        ApiService.clearApiCache('/driver/vehicle');
+                        await Future.any([
+                          _fetchFuelRecords(),
+                          Future.delayed(const Duration(milliseconds: 500)),
+                        ]);
+                      },
+                      color: primaryOrange,
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20.0,
+                          vertical: 16.0,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (!_isAssigned) ...[
+                              Container(
+                                width: double.infinity,
+                                margin: const EdgeInsets.only(bottom: 16.0),
+                                padding: const EdgeInsets.all(14.0),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFFEFF6FF,
+                                  ), // Light blue box
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color(0xFFBFDBFE),
                                   ),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(
+                                      Icons.info_outline_rounded,
+                                      color: Color(0xFF2563EB),
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        'No vehicle is currently assigned. You can view your previous records, but new fuel entries will be available once a vehicle is assigned.'
+                                            .tr,
+                                        style: GoogleFonts.nunito(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF1E40AF),
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
-                          ),
-                        ),
-                      ],
-                      // 1. Filter Chips Horizontal Scroll
-                      SizedBox(
-                        height: 36,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          physics: const BouncingScrollPhysics(),
-                          itemCount: _filters.length,
-                          separatorBuilder: (context, index) => const SizedBox(width: 8.0),
-                          itemBuilder: (context, index) {
-                            final isSelected = _selectedFilterIndex == index;
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _selectedFilterIndex = index;
-                                });
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: isSelected ? primaryDark : Colors.white,
-                                  borderRadius: BorderRadius.circular(20.0),
-                                  border: Border.all(
-                                    color: isSelected ? primaryDark : borderGray,
-                                    width: 1.0,
-                                  ),
-                                  boxShadow: isSelected
-                                      ? [
-                                          BoxShadow(
-                                            color: primaryDark.withAlpha(40),
-                                            blurRadius: 6,
-                                            offset: const Offset(0, 2),
+                            // 1. Search Bar & Filter Bar Row
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    height: 48,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14.0,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      border: Border.all(
+                                        color: _searchFocusNode.hasFocus
+                                            ? primaryOrange
+                                            : borderGray,
+                                        width: _searchFocusNode.hasFocus ? 1.8 : 1.0,
+                                      ),
+                                      boxShadow: _searchFocusNode.hasFocus
+                                          ? [
+                                              BoxShadow(
+                                                color: primaryOrange.withAlpha(25),
+                                                blurRadius: 6,
+                                                offset: const Offset(0, 1),
+                                              ),
+                                            ]
+                                          : null,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.search_rounded,
+                                          color: _searchFocusNode.hasFocus
+                                              ? primaryOrange
+                                              : textSecondary,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 10.0),
+                                        Expanded(
+                                          child: TextField(
+                                            controller: _searchController,
+                                            focusNode: _searchFocusNode,
+                                            onChanged: (val) {
+                                              setState(() {
+                                                _searchQuery = val;
+                                              });
+                                            },
+                                            decoration: InputDecoration(
+                                              hintText:
+                                                  'Search Station or Vehicle...'
+                                                      .tr,
+                                              hintStyle: GoogleFonts.poppins(
+                                                fontSize: 13.5,
+                                                color: textSecondary,
+                                              ),
+                                              border: InputBorder.none,
+                                              enabledBorder: InputBorder.none,
+                                              focusedBorder: InputBorder.none,
+                                              isDense: true,
+                                              contentPadding: EdgeInsets.zero,
+                                            ),
                                           ),
-                                        ]
-                                      : null,
-                                ),
-                                child: Text(
-                                  _filters[index].tr,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                    color: isSelected ? Colors.white : textPrimary,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-
-                      const SizedBox(height: 20.0),
-
-                      // 2. Fuel History List or Empty State
-                      entriesToDisplay.isEmpty
-                          ? Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(32),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: borderGray),
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.local_gas_station_outlined, size: 64, color: textSecondary),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'No fuel records found'.tr,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: textPrimary,
+                                        ),
+                                        if (_searchQuery.isNotEmpty)
+                                          GestureDetector(
+                                            onTap: () {
+                                              setState(() {
+                                                _searchController.clear();
+                                                _searchQuery = '';
+                                              });
+                                            },
+                                            child: const Icon(
+                                              Icons.close_rounded,
+                                              size: 18,
+                                              color: textSecondary,
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'No fuel logs have been recorded for your profile.'.tr,
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.nunito(fontSize: 14, color: textSecondary),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : ListView.separated(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: entriesToDisplay.length,
-                              separatorBuilder: (context, index) => const SizedBox(height: 14.0),
-                              itemBuilder: (context, index) {
-                                final entry = Map<String, dynamic>.from(entriesToDisplay[index]);
-                                return _buildHistoryCard(context, entry);
-                              },
+                                ),
+                                const SizedBox(width: 10.0),
+                                // Filter Bar dropdown button beside search bar
+                                _buildFilterBar(
+                                  context,
+                                  primaryDark,
+                                  primaryOrange,
+                                  borderGray,
+                                  textPrimary,
+                                  textSecondary,
+                                ),
+                              ],
                             ),
 
-                      const SizedBox(height: 24.0),
-                    ],
-                  ),
-                ),
-              ),
+                            const SizedBox(height: 20.0),
+
+                            // 2. Fuel History List or Empty State
+                            entriesToDisplay.isEmpty
+                                ? Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(32),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: borderGray),
+                                    ),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(
+                                          Icons.local_gas_station_outlined,
+                                          size: 64,
+                                          color: textSecondary,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'No fuel records found'.tr,
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: textPrimary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'No fuel logs have been recorded for your profile.'
+                                              .tr,
+                                          textAlign: TextAlign.center,
+                                          style: GoogleFonts.nunito(
+                                            fontSize: 14,
+                                            color: textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : ListView.separated(
+                                    shrinkWrap: true,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    itemCount: entriesToDisplay.length,
+                                    separatorBuilder: (context, index) =>
+                                        const SizedBox(height: 14.0),
+                                    itemBuilder: (context, index) {
+                                      final entry = Map<String, dynamic>.from(
+                                        entriesToDisplay[index],
+                                      );
+                                      return _buildHistoryCard(context, entry);
+                                    },
+                                  ),
+
+                            const SizedBox(height: 24.0),
+                          ],
+                        ),
+                      ),
+                    ),
             ),
           ),
         );
@@ -348,7 +475,11 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
     final station = entry['fuelStation'] ?? entry['station'] ?? 'Fuel Station';
     final amount = entry['amount'] != null ? '₹ ${entry['amount']}' : '₹ 0.00';
     final liters = entry['liters'] != null ? '${entry['liters']} L' : '0.0 L';
-    final vehicleId = entry['vehicleId'] ?? (entry['vehicle'] is Map ? entry['vehicle']['vehicleNumber'] : 'Vehicle');
+    final vehicleId =
+        entry['vehicleId'] ??
+        (entry['vehicle'] is Map
+            ? entry['vehicle']['vehicleNumber']
+            : 'Vehicle');
     final dateStr = _formatDate(entry['createdAt']);
     final receiptImage = entry['receiptImage'] ?? entry['billUrl'] ?? '';
     final rejectionReason = entry['rejectionReason'] ?? '';
@@ -385,7 +516,11 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.directions_bus_outlined, size: 18, color: primaryDark),
+                    Icon(
+                      Icons.directions_bus_outlined,
+                      size: 18,
+                      color: primaryDark,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       vehicleId.toString(),
@@ -398,7 +533,10 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                   ],
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: statusBg,
                     borderRadius: BorderRadius.circular(20),
@@ -434,7 +572,11 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                         width: 50,
                         height: 50,
                         color: const Color(0xFFF1F5F9),
-                        child: const Icon(Icons.receipt_long_rounded, color: textSecondary, size: 24),
+                        child: const Icon(
+                          Icons.receipt_long_rounded,
+                          color: textSecondary,
+                          size: 24,
+                        ),
                       ),
                     ),
                   ),
@@ -447,7 +589,11 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                       color: const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.local_gas_station_rounded, color: primaryOrange, size: 24),
+                    child: const Icon(
+                      Icons.local_gas_station_rounded,
+                      color: primaryOrange,
+                      size: 24,
+                    ),
                   ),
                   const SizedBox(width: 12),
                 ],
@@ -467,7 +613,11 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                       const SizedBox(height: 3.0),
                       Row(
                         children: [
-                          const Icon(Icons.location_on_rounded, size: 13, color: primaryOrange),
+                          const Icon(
+                            Icons.location_on_rounded,
+                            size: 13,
+                            color: primaryOrange,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             '${'City'.tr}: ${entry['location'] ?? entry['city'] ?? 'N/A'}',
@@ -567,7 +717,11 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626), size: 18),
+                    const Icon(
+                      Icons.error_outline_rounded,
+                      color: Color(0xFFDC2626),
+                      size: 18,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -583,6 +737,129 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                 ),
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterBar(
+    BuildContext context,
+    Color primaryDark,
+    Color primaryOrange,
+    Color borderGray,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
+    final isFiltered = _selectedFilterIndex != 0;
+    final currentFilter = _filters[_selectedFilterIndex];
+
+    return PopupMenuButton<int>(
+      initialValue: _selectedFilterIndex,
+      tooltip: 'Filter Fuel Records',
+      offset: const Offset(0, 52),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14.0),
+        side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.0),
+      ),
+      color: Colors.white,
+      elevation: 6,
+      onSelected: (int index) {
+        setState(() {
+          _selectedFilterIndex = index;
+        });
+      },
+      itemBuilder: (BuildContext context) => <PopupMenuEntry<int>>[
+        PopupMenuItem<int>(
+          enabled: false,
+          height: 32,
+          child: Text(
+            'FILTER BY STATUS'.tr,
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: textSecondary,
+              letterSpacing: 0.8,
+            ),
+          ),
+        ),
+        const PopupMenuDivider(height: 1),
+        ...List.generate(_filters.length, (index) {
+          final isSelected = _selectedFilterIndex == index;
+          return PopupMenuItem<int>(
+            value: index,
+            height: 42,
+            child: Row(
+              children: [
+                Icon(
+                  isSelected
+                      ? Icons.check_circle_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  color: isSelected ? primaryOrange : const Color(0xFF94A3B8),
+                  size: 18,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  _filters[index].tr,
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected ? primaryDark : textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 12.0),
+        decoration: BoxDecoration(
+          color: isFiltered ? primaryDark : Colors.white,
+          borderRadius: BorderRadius.circular(12.0),
+          border: Border.all(
+            color: isFiltered ? primaryDark : borderGray,
+            width: 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isFiltered
+                  ? primaryDark.withAlpha(30)
+                  : Colors.black.withAlpha(6),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.tune_rounded,
+              size: 18,
+              color: isFiltered ? Colors.white : primaryOrange,
+            ),
+            const SizedBox(width: 6),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 80),
+              child: Text(
+                currentFilter.tr,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isFiltered ? Colors.white : textPrimary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 18,
+              color: isFiltered ? Colors.white : textSecondary,
+            ),
           ],
         ),
       ),
