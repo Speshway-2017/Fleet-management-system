@@ -1,14 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import '../services/localization_service.dart';
-import '../theme/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/main_navigation_screen.dart';
 import '../screens/profile/profile_screen.dart';
-import '../main.dart';
+import '../services/localization_service.dart';
+import '../theme/app_colors.dart';
 
 class DriverProfileDropdown extends StatefulWidget {
   final bool isDarkBackground;

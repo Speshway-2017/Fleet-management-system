@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../widgets/driver_avatar.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -16,7 +15,6 @@ import 'two_factor_auth_screen.dart';
 import 'notification_settings_screen.dart';
 import '../../widgets/legal_modal.dart';
 import '../../services/api_service.dart';
-import '../../main.dart';
 import '../../utils/navigation_helper.dart';
 
 class SettingsScreen extends StatefulWidget {

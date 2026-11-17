@@ -16,6 +16,7 @@ class HelpSupportScreen extends StatefulWidget {
 
 class _HelpSupportScreenState extends State<HelpSupportScreen> {
   final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode();
   String _searchQuery = '';
 
   // FAQ Expanded statuses
@@ -24,15 +25,18 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
   final List<Map<String, String>> _faqs = const [
     {
       'question': 'How do I update my vehicle info?',
-      'answer': 'You can update vehicle details under your Profile tab or contact fleet management support to register new vehicles.',
+      'answer':
+          'You can update vehicle details under your Profile tab or contact fleet management support to register new vehicles.',
     },
     {
       'question': 'Where can I see my daily earnings?',
-      'answer': 'Your daily, weekly, and trip earnings can be viewed on the dashboard and details inside the Trips tab.',
+      'answer':
+          'Your daily, weekly, and trip earnings can be viewed on the dashboard and details inside the Trips tab.',
     },
     {
       'question': 'What if the app GPS is lagging?',
-      'answer': 'Ensure you have a strong network connection, enable high accuracy location permissions, or restart the application.',
+      'answer':
+          'Ensure you have a strong network connection, enable high accuracy location permissions, or restart the application.',
     },
   ];
 
@@ -43,6 +47,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
   @override
   void initState() {
     super.initState();
+    _searchFocusNode.addListener(() => setState(() {}));
     _loadSupportInfo();
   }
 
@@ -63,7 +68,8 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
         });
       } else {
         setState(() {
-          _errorMessage = response?['message'] ?? 'Failed to load support contact details';
+          _errorMessage =
+              response?['message'] ?? 'Failed to load support contact details';
           _isLoading = false;
         });
       }
@@ -77,17 +83,19 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
 
   @override
   void dispose() {
+    _searchFocusNode.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
   Future<void> _contactSupport(String channel) async {
     if (_supportInfo == null) return;
-    
+
     if (channel == 'Live Chat') {
       final whatsapp = _supportInfo!['whatsapp'] ?? '';
       if (whatsapp.isNotEmpty) {
-        final whatsappUrl = 'https://wa.me/${whatsapp.replaceAll(RegExp(r'[^\d+]'), '')}';
+        final whatsappUrl =
+            'https://wa.me/${whatsapp.replaceAll(RegExp(r'[^\d+]'), '')}';
         final uri = Uri.parse(whatsappUrl);
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -110,8 +118,6 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
       }
     }
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -151,7 +157,10 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
             body: SafeArea(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: EdgeInsets.symmetric(horizontal: paddingValue, vertical: 24.0),
+                padding: EdgeInsets.symmetric(
+                  horizontal: paddingValue,
+                  vertical: 24.0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -167,40 +176,58 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                     const SizedBox(height: 12),
 
                     // Search Bar
-                    TextField(
-                      controller: _searchController,
-                      onChanged: (val) {
-                        setState(() {
-                          _searchQuery = val.toLowerCase();
-                        });
-                      },
-                      style: GoogleFonts.nunito(
-                        fontSize: 15,
-                        color: AppColors.textPrimary,
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12.0),
+                        border: Border.all(
+                          color: _searchFocusNode.hasFocus
+                              ? const Color(0xFFF97316)
+                              : AppColors.divider,
+                          width: _searchFocusNode.hasFocus ? 1.8 : 1.0,
+                        ),
+                        boxShadow: _searchFocusNode.hasFocus
+                            ? [
+                                BoxShadow(
+                                  color: const Color(0xFFF97316).withAlpha(25),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ]
+                            : null,
                       ),
-                      decoration: InputDecoration(
-                        hintText: 'Search for help articles...'.tr,
-                        hintStyle: GoogleFonts.nunito(
-                          color: AppColors.textDisabled,
+                      child: TextField(
+                        controller: _searchController,
+                        focusNode: _searchFocusNode,
+                        onChanged: (val) {
+                          setState(() {
+                            _searchQuery = val.toLowerCase();
+                          });
+                        },
+                        style: GoogleFonts.nunito(
+                          fontSize: 15,
+                          color: AppColors.textPrimary,
                         ),
-                        prefixIcon: const Icon(
-                          Icons.search,
-                          color: AppColors.textSecondary,
-                        ),
-                        fillColor: Colors.white,
-                        filled: true,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 16.0),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                          borderSide: const BorderSide(color: AppColors.divider, width: 1.0),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                          borderSide: const BorderSide(color: AppColors.divider, width: 1.0),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                        decoration: InputDecoration(
+                          hintText: 'Search for help articles...'.tr,
+                          hintStyle: GoogleFonts.nunito(
+                            color: AppColors.textDisabled,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: _searchFocusNode.hasFocus
+                                ? const Color(0xFFF97316)
+                                : AppColors.textSecondary,
+                            size: 20,
+                          ),
+                          filled: false,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14.0,
+                            vertical: 12.0,
+                          ),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
                         ),
                       ),
                     ),
@@ -295,134 +322,161 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                         color: AppColors.primary, // Deep dark blue #0F1E36
                         borderRadius: BorderRadius.circular(16.0),
                       ),
-                      child: _isLoading 
+                      child: _isLoading
                           ? const Center(
                               child: Padding(
                                 padding: EdgeInsets.symmetric(vertical: 24.0),
                                 child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
                                 ),
                               ),
                             )
                           : _errorMessage != null
-                              ? Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    Text(
-                                      'Still need help?'.tr,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  'Still need help?'.tr,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Could not load support contact details. Click below to retry.'
+                                      .tr,
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 13.5,
+                                    color: const Color(0xFF94A3B8),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton(
+                                  onPressed: _loadSupportInfo,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.secondary,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Retry Connection'.tr,
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  'Still need help?'.tr,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Our fleet operations team (managed by ${_supportInfo?['dispatcherName'] ?? 'Operations'}) is available ${_supportInfo?['workingHours'] ?? '24/7'} to assist you with any on-road issues.',
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 13.5,
+                                    color: const Color(0xFF94A3B8), // slate-400
+                                    height: 1.45,
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+
+                                // Chat Button
+                                if (_supportInfo?['whatsapp'] != null &&
+                                    _supportInfo!['whatsapp']
+                                        .toString()
+                                        .isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                      bottom: 12.0,
+                                    ),
+                                    child: ElevatedButton.icon(
+                                      onPressed: () =>
+                                          _contactSupport('Live Chat'),
+                                      icon: const Icon(
+                                        Icons.chat_bubble_outline_rounded,
                                         color: Colors.white,
+                                        size: 20,
                                       ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'Could not load support contact details. Click below to retry.'.tr,
-                                      style: GoogleFonts.nunito(
-                                        fontSize: 13.5,
-                                        color: const Color(0xFF94A3B8),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    ElevatedButton(
-                                      onPressed: _loadSupportInfo,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.secondary,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12.0),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        'Retry Connection'.tr,
+                                      label: Text(
+                                        'Chat on WhatsApp'.tr,
                                         style: GoogleFonts.poppins(
+                                          fontSize: 15,
                                           fontWeight: FontWeight.bold,
                                           color: Colors.white,
                                         ),
                                       ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            AppColors.secondary, // Fleet Orange
+                                        minimumSize: const Size(
+                                          double.infinity,
+                                          50,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12.0,
+                                          ),
+                                        ),
+                                        elevation: 0,
+                                      ),
                                     ),
-                                  ],
-                                )
-                              : Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    Text(
-                                      'Still need help?'.tr,
+                                  ),
+
+                                // Call Support Button
+                                if (_supportInfo?['phone'] != null &&
+                                    _supportInfo!['phone']
+                                        .toString()
+                                        .isNotEmpty)
+                                  OutlinedButton.icon(
+                                    onPressed: () =>
+                                        _contactSupport('Phone Call'),
+                                    icon: const Icon(
+                                      Icons.phone_outlined,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                    label: Text(
+                                      '${'Call Fleet Support'.tr} (${_supportInfo?['phone']})',
                                       style: GoogleFonts.poppins(
-                                        fontSize: 18,
+                                        fontSize: 15,
                                         fontWeight: FontWeight.bold,
                                         color: Colors.white,
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'Our fleet operations team (managed by ${_supportInfo?['dispatcherName'] ?? 'Operations'}) is available ${_supportInfo?['workingHours'] ?? '24/7'} to assist you with any on-road issues.',
-                                      style: GoogleFonts.nunito(
-                                        fontSize: 13.5,
-                                        color: const Color(0xFF94A3B8), // slate-400
-                                        height: 1.45,
+                                    style: OutlinedButton.styleFrom(
+                                      side: const BorderSide(
+                                        color: Color(0xFF475569),
+                                        width: 1.5,
+                                      ), // slate-600
+                                      minimumSize: const Size(
+                                        double.infinity,
+                                        50,
                                       ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          12.0,
+                                        ),
+                                      ),
+                                      backgroundColor: Colors.transparent,
                                     ),
-                                    const SizedBox(height: 20),
-
-                                    // Chat Button
-                                    if (_supportInfo?['whatsapp'] != null && _supportInfo!['whatsapp'].toString().isNotEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.only(bottom: 12.0),
-                                        child: ElevatedButton.icon(
-                                          onPressed: () => _contactSupport('Live Chat'),
-                                          icon: const Icon(
-                                            Icons.chat_bubble_outline_rounded,
-                                            color: Colors.white,
-                                            size: 20,
-                                          ),
-                                          label: Text(
-                                            'Chat on WhatsApp'.tr,
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppColors.secondary, // Fleet Orange
-                                            minimumSize: const Size(double.infinity, 50),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(12.0),
-                                            ),
-                                            elevation: 0,
-                                          ),
-                                        ),
-                                      ),
-
-                                    // Call Support Button
-                                    if (_supportInfo?['phone'] != null && _supportInfo!['phone'].toString().isNotEmpty)
-                                      OutlinedButton.icon(
-                                        onPressed: () => _contactSupport('Phone Call'),
-                                        icon: const Icon(
-                                          Icons.phone_outlined,
-                                          color: Colors.white,
-                                          size: 20,
-                                        ),
-                                        label: Text(
-                                          '${'Call Fleet Support'.tr} (${_supportInfo?['phone']})',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        style: OutlinedButton.styleFrom(
-                                          side: const BorderSide(color: Color(0xFF475569), width: 1.5), // slate-600
-                                          minimumSize: const Size(double.infinity, 50),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12.0),
-                                          ),
-                                          backgroundColor: Colors.transparent,
-                                        ),
-                                      ),
-                                  ],
-                                ),
+                                  ),
+                              ],
+                            ),
                     ),
                     const SizedBox(height: 16),
                   ],
@@ -506,7 +560,10 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
       child: Column(
         children: [
           ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 2.0),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 2.0,
+            ),
             title: Text(
               question,
               style: GoogleFonts.poppins(
@@ -516,7 +573,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
               ),
             ),
             trailing: Icon(
-              isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+              isExpanded
+                  ? Icons.keyboard_arrow_up_rounded
+                  : Icons.keyboard_arrow_down_rounded,
               color: AppColors.textSecondary,
             ),
             onTap: () {
@@ -528,7 +587,10 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
           if (isExpanded) ...[
             const Divider(color: AppColors.divider, height: 1),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 16.0,
+              ),
               child: Text(
                 answer,
                 style: GoogleFonts.nunito(
@@ -543,6 +605,4 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
       ),
     );
   }
-
-
 }

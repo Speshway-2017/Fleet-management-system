@@ -429,6 +429,7 @@ class LocalizationService {
       // Support History & Filter
       'Track and manage your vehicle issues and support requests.': 'Track and manage your vehicle issues and support requests.',
       'Search Ticket ID or Issue...': 'Search Ticket ID or Issue...',
+      'Search Station or Vehicle...': 'Search Station or Vehicle...',
       'You haven\'t raised any support requests yet.': 'You haven\'t raised any support requests yet.',
       'Report Vehicle Issue (Locked)': 'Report Vehicle Issue (Locked)',
       'TRIP ID': 'TRIP ID',
@@ -1178,6 +1179,7 @@ class LocalizationService {
       // Support History & Filter
       'Track and manage your vehicle issues and support requests.': 'अपने वाहन के मुद्दों और सहायता अनुरोधों को ट्रैक और प्रबंधित करें।',
       'Search Ticket ID or Issue...': 'टिकट आईडी या समस्या खोजें...',
+      'Search Station or Vehicle...': 'स्टेशन या वाहन खोजें...',
       'You haven\'t raised any support requests yet.': 'आपने अभी तक कोई सहायता अनुरोध नहीं उठाया है।',
       'Report Vehicle Issue (Locked)': 'वाहन समस्या की रिपोर्ट करें (लॉक)',
       'TRIP ID': 'यात्रा आईडी',
@@ -1916,6 +1918,7 @@ class LocalizationService {
       'GPS Connected': 'GPS Connected',
       'Track and manage your vehicle issues and support requests.': 'Track and manage your vehicle issues and support requests.',
       'Search Ticket ID or Issue...': 'టికెట్ ID లేదా సమస్యను వెతకండి...',
+      'Search Station or Vehicle...': 'స్టేషన్ లేదా వాహనాన్ని వెతకండి...',
       'You haven\'t raised any support requests yet.': 'మీరు ఇంకా ఎలాంటి సపోర్ట్ అభ్యర్థనలను సృష్టించలేదు.',
       'Report Vehicle Issue (Locked)': 'Report Vehicle Issue (Locked)',
       'TRIP ID': 'ట్రిప్ ID',
@@ -2660,6 +2663,7 @@ class LocalizationService {
       // Support History & Filter
       'Track and manage your vehicle issues and support requests.': 'Rastree y gestione los problemas del vehículo y solicitudes de soporte.',
       'Search Ticket ID or Issue...': 'Buscar ID del Ticket o Problema...',
+      'Search Station or Vehicle...': 'Buscar estación o vehículo...',
       'You haven\'t raised any support requests yet.': 'Aún no ha creado ninguna solicitud de soporte.',
       'Report Vehicle Issue (Locked)': 'Reportar Problema (Bloqueado)',
       'TRIP ID': 'ID DEL VIAJE',
@@ -3409,6 +3413,7 @@ class LocalizationService {
       // Support History & Filter
       'Track and manage your vehicle issues and support requests.': 'Suivez et gérez les problèmes de vos véhicules et vos demandes d\'assistance.',
       'Search Ticket ID or Issue...': 'Rechercher un ID de ticket ou un problème...',
+      'Search Station or Vehicle...': 'Rechercher une station ou un véhicule...',
       'You haven\'t raised any support requests yet.': 'Vous n\'avez pas encore soumis de demande d\'assistance.',
       'Report Vehicle Issue (Locked)': 'Signaler un Problème (Verrouillé)',
       'TRIP ID': 'ID DU TRAJET',
@@ -4158,6 +4163,7 @@ class LocalizationService {
       // Support History & Filter
       'Track and manage your vehicle issues and support requests.': 'Verfolgen und verwalten Sie Ihre Fahrzeugprobleme und Supportanfragen.',
       'Search Ticket ID or Issue...': 'Ticket-ID oder Problem suchen...',
+      'Search Station or Vehicle...': 'Tankstelle oder Fahrzeug suchen...',
       'You haven\'t raised any support requests yet.': 'Sie haben noch keine Supportanfragen eingereicht.',
       'Report Vehicle Issue (Locked)': 'Fahrzeugproblem melden (Gesperrt)',
       'TRIP ID': 'FAHRT-ID',

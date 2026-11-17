@@ -1,26 +1,20 @@
-import '../services/localization_service.dart';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../utils/date_formatter.dart';
-import 'profile/profile_screen.dart';
-import 'trip_details_screen.dart';
-import 'completed_trip_details_screen.dart';
-import 'vehicle_overview_screen.dart';
-import 'main_navigation_screen.dart';
-import 'notifications/notifications_screen.dart';
-import 'notifications/notification_details_screen.dart';
-import 'settings/settings_screen.dart';
-import 'fuel_overview_screen.dart';
-import 'support_history_screen.dart';
-import '../widgets/driver_profile_dropdown.dart';
-
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/localization_service.dart';
 import '../services/location_service.dart';
 import '../services/socket_service.dart';
+import '../utils/date_formatter.dart';
+import 'completed_trip_details_screen.dart';
+import 'main_navigation_screen.dart';
+import 'notifications/notifications_screen.dart';
+import 'profile/profile_screen.dart';
+import 'support_history_screen.dart';
+import 'trip_details_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});

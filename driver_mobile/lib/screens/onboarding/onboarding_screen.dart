@@ -8,7 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
-import '../auth/login_screen.dart';
 import '../auth/login_identifier_screen.dart';
 import '../main_navigation_screen.dart';
 
