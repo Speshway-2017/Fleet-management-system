@@ -670,7 +670,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 : '${'Fleet Manager'.tr} · ${driver.phoneNumber}';
 
             return Scaffold(
-              backgroundColor: const Color(0xFFF7F9FC),
+              backgroundColor: const Color(0xFFF4F6FA),
               // Top Nav updated like other pages (Dark Navy #101C2C with white back button & title)
               appBar: AppBar(
                 backgroundColor: primaryDark,
@@ -678,8 +678,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 centerTitle: false,
                 titleSpacing: 0,
                 leading: IconButton(
-                  icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-                  onPressed: () => MainNavigationScreen.selectedTabNotifier.value = 2,
+                  icon: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: Colors.white,
+                  ),
+                  onPressed: () =>
+                      MainNavigationScreen.selectedTabNotifier.value = 2,
                 ),
                 title: Text(
                   'Profile'.tr,
@@ -691,457 +695,636 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 actions: const [],
               ),
-          body: SafeArea(
-            child: RefreshIndicator(
-              onRefresh: () async {
-                ApiService.clearApiCache();
-                await Future.any([
-                  auth.refreshProfile(),
-                  Future.delayed(const Duration(milliseconds: 500)),
-                ]);
-              },
-              color: orangePrimary,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 1. TOP PROFILE HERO CARD
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20.0),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24.0),
-                        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 14,
-                            offset: const Offset(0, 4),
+              body: SafeArea(
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    ApiService.clearApiCache();
+                    await Future.any([
+                      auth.refreshProfile(),
+                      Future.delayed(const Duration(milliseconds: 500)),
+                    ]);
+                  },
+                  color: orangePrimary,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 14.0,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 1. TOP PROFILE HERO CARD (Navy Gradient Banner + Color-Coded Info Tiles)
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(22.0),
+                            border: Border.all(
+                              color: const Color(0xFFE6ECF4),
+                              width: 1.0,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF0F172A)
+                                    .withValues(alpha: 0.05),
+                                blurRadius: 18,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Avatar, Name, Phone & Edit Button Row
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
+                          clipBehavior: Clip.antiAlias,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Avatar Squircle (Warm Pastel Orange Background with Orange Accent)
+                              // Executive Deep Navy Top Header
                               Container(
-                                width: 56,
-                                height: 56,
-                                decoration: BoxDecoration(
-                                  color: orangeLightBg,
-                                  borderRadius: BorderRadius.circular(18),
-                                  border: Border.all(color: orangeBorder, width: 1.2),
+                                padding: const EdgeInsets.all(18.0),
+                                decoration: const BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Color(0xFF0B1626),
+                                      Color(0xFF13263E),
+                                      Color(0xFF1B3452),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
                                 ),
-                                clipBehavior: Clip.antiAlias,
-                                child: ValueListenableBuilder<String>(
-                                  valueListenable: ProfileState.profilePhotoUrlNotifier,
-                                  builder: (context, photoUrl, _) {
-                                    final activeUrl = photoUrl.isNotEmpty ? photoUrl : driver.profileImage;
-                                    if (activeUrl.isNotEmpty) {
-                                      return Image.network(
-                                        activeUrl,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) => Center(
-                                          child: Text(
-                                            initialLetter,
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 24,
-                                              fontWeight: FontWeight.bold,
-                                              color: orangePrimary,
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                    return Center(
-                                      child: Text(
-                                        initialLetter,
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.bold,
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    // Avatar Squircle with Orange Accent Ring
+                                    Container(
+                                      width: 54,
+                                      height: 54,
+                                      decoration: BoxDecoration(
+                                        color: orangeLightBg,
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
                                           color: orangePrimary,
+                                          width: 1.8,
                                         ),
                                       ),
-                                    );
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 14),
-                              // Name & Phone
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Flexible(
-                                          child: Text(
-                                            driver.fullName,
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w700,
-                                              color: navyIcon,
+                                      clipBehavior: Clip.antiAlias,
+                                      child: ValueListenableBuilder<String>(
+                                        valueListenable:
+                                            ProfileState.profilePhotoUrlNotifier,
+                                        builder: (context, photoUrl, _) {
+                                          final activeUrl = photoUrl.isNotEmpty
+                                              ? photoUrl
+                                              : driver.profileImage;
+                                          if (activeUrl.isNotEmpty) {
+                                            return Image.network(
+                                              activeUrl,
+                                              fit: BoxFit.cover,
+                                              errorBuilder:
+                                                  (
+                                                    context,
+                                                    error,
+                                                    stackTrace,
+                                                  ) => Center(
+                                                    child: Text(
+                                                      initialLetter,
+                                                      style:
+                                                          GoogleFonts.poppins(
+                                                            fontSize: 23,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            color:
+                                                                orangePrimary,
+                                                          ),
+                                                    ),
+                                                  ),
+                                            );
+                                          }
+                                          return Center(
+                                            child: Text(
+                                              initialLetter,
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 23,
+                                                fontWeight: FontWeight.bold,
+                                                color: orangePrimary,
+                                              ),
                                             ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        // Green Online / Active Status Dot
-                                        Container(
-                                          width: 8,
-                                          height: 8,
-                                          decoration: const BoxDecoration(
-                                            color: Color(0xFF10B981),
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                      ],
+                                          );
+                                        },
+                                      ),
                                     ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      driver.phoneNumber,
-                                      style: GoogleFonts.nunito(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF64748B),
+                                    const SizedBox(width: 12),
+                                    // Name & Phone
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Flexible(
+                                                child: Text(
+                                                  driver.fullName,
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 17.5,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Colors.white,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Container(
+                                                width: 8,
+                                                height: 8,
+                                                decoration: const BoxDecoration(
+                                                  color: Color(0xFF4ADE80),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            driver.phoneNumber,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: GoogleFonts.nunito(
+                                              fontSize: 13.5,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white70,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    // Edit Profile Pill Button
+                                    OutlinedButton.icon(
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                const EditProfileScreen(),
+                                          ),
+                                        );
+                                      },
+                                      icon: const Icon(
+                                        Icons.edit_outlined,
+                                        size: 13,
+                                        color: Colors.white,
+                                      ),
+                                      label: Text(
+                                        'Edit Profile'.tr,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        side: BorderSide(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.35,
+                                          ),
+                                          width: 1.1,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 11,
+                                          vertical: 6,
+                                        ),
+                                        backgroundColor: Colors.white
+                                            .withValues(alpha: 0.1),
+                                        elevation: 0,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              // Edit Profile Pill Button
-                              OutlinedButton.icon(
-                                onPressed: () {
+
+                              // Lower Body: Color-Coded Personal Info Tiles
+                              Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          'Personal Information'.tr,
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: const Color(0xFF475569),
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF1F5F9),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            '${'Member since'.tr} $joiningYear',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.w600,
+                                              color: const Color(0xFF64748B),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    // 2x2 Color-Coded Mini Info Cards
+                                    IntrinsicHeight(
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          Expanded(
+                                            child: _buildInfoCell(
+                                              icon: Icons.mail_outline_rounded,
+                                              label: 'EMAIL'.tr,
+                                              value: driver.email,
+                                              accentColor: const Color(
+                                                0xFF2563EB,
+                                              ),
+                                              gradientEnd: const Color(
+                                                0xFFEFF6FF,
+                                              ),
+                                              borderColor: const Color(
+                                                0xFFBFDBFE,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: _buildInfoCell(
+                                              icon: Icons.phone_outlined,
+                                              label: 'PHONE'.tr,
+                                              value: driver.phoneNumber,
+                                              accentColor: const Color(
+                                                0xFF059669,
+                                              ),
+                                              gradientEnd: const Color(
+                                                0xFFECFDF5,
+                                              ),
+                                              borderColor: const Color(
+                                                0xFFA7F3D0,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    IntrinsicHeight(
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          Expanded(
+                                            child: _buildInfoCell(
+                                              icon: Icons.location_on_outlined,
+                                              label: 'CITY'.tr,
+                                              value: cityDisplay,
+                                              accentColor: const Color(
+                                                0xFFEA580C,
+                                              ),
+                                              gradientEnd: const Color(
+                                                0xFFFFF7ED,
+                                              ),
+                                              borderColor: const Color(
+                                                0xFFFED7AA,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: _buildInfoCell(
+                                              icon:
+                                                  Icons.person_outline_rounded,
+                                              label: 'STATUS'.tr,
+                                              value: statusDisplay,
+                                              accentColor: const Color(
+                                                0xFF7C3AED,
+                                              ),
+                                              gradientEnd: const Color(
+                                                0xFFF5F3FF,
+                                              ),
+                                              borderColor: const Color(
+                                                0xFFDDD6FE,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+
+                                    // Emergency Contact Full-Width Amber Tile
+                                    _buildInfoCell(
+                                      icon: Icons.shield_outlined,
+                                      label: 'EMERGENCY CONTACT'.tr,
+                                      value: emergencyContact,
+                                      accentColor: const Color(0xFFD97706),
+                                      gradientEnd: const Color(0xFFFFFBEB),
+                                      borderColor: const Color(0xFFFDE68A),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // 2. DRIVER CREDENTIALS CARD
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16.0),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20.0),
+                            border: Border.all(
+                              color: const Color(0xFFE6ECF4),
+                              width: 1.0,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF0F172A)
+                                    .withValues(alpha: 0.045),
+                                blurRadius: 16,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'DRIVER CREDENTIALS'.tr,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF475569),
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              _buildActionTile(
+                                icon: Icons.badge_outlined,
+                                title: "Driver's License Details".tr,
+                                badge: driver.licenseType.isNotEmpty
+                                    ? driver.licenseType
+                                    : 'HMV',
+                                accentColor: const Color(0xFF2563EB),
+                                onTap: () {
+                                  _showLicenseDetailsModal(context, driver);
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // 3. APP SETTINGS & SECURITY CARD
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16.0),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20.0),
+                            border: Border.all(
+                              color: const Color(0xFFE6ECF4),
+                              width: 1.0,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF0F172A)
+                                    .withValues(alpha: 0.045),
+                                blurRadius: 16,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'APP SETTINGS & SECURITY'.tr,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF475569),
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              _buildActionTile(
+                                icon: Icons.lock_outline_rounded,
+                                title: 'Account Security'.tr,
+                                badge: 'Protected'.tr,
+                                accentColor: const Color(0xFFEA580C),
+                                onTap: () {
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const ChangePasswordScreen(),
+                                    ),
                                   );
                                 },
-                                icon: const Icon(Icons.edit_outlined, size: 14, color: navyIcon),
-                                label: Text(
-                                  'Edit Profile'.tr,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: navyIcon,
-                                  ),
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                  backgroundColor: Colors.white,
-                                  elevation: 0,
-                                ),
                               ),
-                            ],
-                          ),
-
-                          // Personal Information & Member since Row
-                          Padding(
-                            padding: const EdgeInsets.only(top: 14.0, bottom: 8.0),
-                            child: Row(
-                              children: [
-                                Text(
-                                  'Personal Information'.tr,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF94A3B8),
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                const Spacer(),
-                                Text(
-                                  '${'Member since'.tr} $joiningYear',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF94A3B8),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const Divider(color: Color(0xFFF1F5F9), height: 16),
-
-                          // 2x2 Grid with Navy Blue Icons & Warm Orange Tint Containers
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildInfoCell(
-                                  icon: Icons.mail_outline_rounded,
-                                  label: 'EMAIL'.tr,
-                                  value: driver.email,
-                                ),
+                              const Divider(
+                                color: Color(0xFFF1F5F9),
+                                height: 1,
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildInfoCell(
-                                  icon: Icons.phone_outlined,
-                                  label: 'PHONE'.tr,
-                                  value: driver.phoneNumber,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildInfoCell(
-                                  icon: Icons.location_on_outlined,
-                                  label: 'CITY'.tr,
-                                  value: cityDisplay,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildInfoCell(
-                                  icon: Icons.person_outline_rounded,
-                                  label: 'STATUS'.tr,
-                                  value: statusDisplay,
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const Divider(color: Color(0xFFF1F5F9), height: 24),
-
-                          // Emergency Contact Row
-                          _buildInfoCell(
-                            icon: Icons.shield_outlined,
-                            label: 'EMERGENCY CONTACT'.tr,
-                            value: emergencyContact,
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // 2. DRIVER CREDENTIALS CARD (Retains Driver's License Details, hides my assigned trips & assigned vehicle)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(18.0),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24.0),
-                        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 14,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'DRIVER CREDENTIALS'.tr,
-                            style: GoogleFonts.poppins(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF94A3B8),
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          _buildActionTile(
-                            icon: Icons.badge_outlined,
-                            title: "Driver's License Details".tr,
-                            badge: driver.licenseType.isNotEmpty ? driver.licenseType : 'HMV',
-                            onTap: () {
-                              _showLicenseDetailsModal(context, driver);
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // 3. APP SETTINGS & SECURITY CARD (Hides Dark Mode switch)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(18.0),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24.0),
-                        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 14,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'APP SETTINGS & SECURITY'.tr,
-                            style: GoogleFonts.poppins(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF94A3B8),
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          _buildActionTile(
-                            icon: Icons.lock_outline_rounded,
-                            title: 'Account Security'.tr,
-                            badge: 'Protected'.tr,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
-                              );
-                            },
-                          ),
-                          const Divider(color: Color(0xFFF1F5F9), height: 1),
-                          _buildActionTile(
-                            icon: Icons.security_rounded,
-                            title: 'Two-Factor Authentication'.tr,
-                            badge: 'Active'.tr,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => const TwoFactorAuthScreen()),
-                              );
-                            },
-                          ),
-                          const Divider(color: Color(0xFFF1F5F9), height: 1),
-                          _buildActionTile(
-                            icon: Icons.notifications_none_rounded,
-                            title: 'Push Notifications'.tr,
-                            badge: 'Enabled'.tr,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => const NotificationSettingsScreen()),
-                              );
-                            },
-                          ),
-                          const Divider(color: Color(0xFFF1F5F9), height: 1),
-                          Builder(
-                            builder: (context) {
-                              final activeLanguage = normalizeLanguage(
-                                driver.language.isNotEmpty ? driver.language : _selectedLanguage,
-                              );
-                              return _buildActionTile(
-                                icon: Icons.language_rounded,
-                                title: 'App Language'.tr,
-                                badge: activeLanguage,
+                              _buildActionTile(
+                                icon: Icons.security_rounded,
+                                title: 'Two-Factor Authentication'.tr,
+                                badge: 'Active'.tr,
+                                accentColor: const Color(0xFF059669),
                                 onTap: () {
-                                  _showLanguageSelector(context, activeLanguage);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const TwoFactorAuthScreen(),
+                                    ),
+                                  );
                                 },
-                              );
-                            },
+                              ),
+                              const Divider(
+                                color: Color(0xFFF1F5F9),
+                                height: 1,
+                              ),
+                              _buildActionTile(
+                                icon: Icons.notifications_none_rounded,
+                                title: 'Push Notifications'.tr,
+                                badge: 'Enabled'.tr,
+                                accentColor: const Color(0xFF7C3AED),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const NotificationSettingsScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const Divider(
+                                color: Color(0xFFF1F5F9),
+                                height: 1,
+                              ),
+                              Builder(
+                                builder: (context) {
+                                  final activeLanguage = normalizeLanguage(
+                                    driver.language.isNotEmpty
+                                        ? driver.language
+                                        : _selectedLanguage,
+                                  );
+                                  return _buildActionTile(
+                                    icon: Icons.language_rounded,
+                                    title: 'App Language'.tr,
+                                    badge: activeLanguage,
+                                    accentColor: const Color(0xFF0284C7),
+                                    onTap: () {
+                                      _showLanguageSelector(
+                                        context,
+                                        activeLanguage,
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
+                        ),
 
-                    const SizedBox(height: 16),
+                        const SizedBox(height: 16),
 
-                    // 4. HELP & ACCOUNT ACTIONS CARD
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(18.0),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24.0),
-                        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 14,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'HELP & ACCOUNT'.tr,
-                            style: GoogleFonts.poppins(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF94A3B8),
-                              letterSpacing: 0.8,
+                        // 4. HELP & ACCOUNT ACTIONS CARD
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16.0),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20.0),
+                            border: Border.all(
+                              color: const Color(0xFFE6ECF4),
+                              width: 1.0,
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF0F172A)
+                                    .withValues(alpha: 0.045),
+                                blurRadius: 16,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 14),
-                          _buildActionTile(
-                            icon: Icons.headset_mic_outlined,
-                            title: 'Help & Support'.tr,
-                            badge: '24/7 Live'.tr,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => const HelpSupportScreen()),
-                              );
-                            },
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'HELP & ACCOUNT'.tr,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF475569),
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              _buildActionTile(
+                                icon: Icons.headset_mic_outlined,
+                                title: 'Help & Support'.tr,
+                                badge: '24/7 Live'.tr,
+                                accentColor: const Color(0xFF059669),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const HelpSupportScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const Divider(
+                                color: Color(0xFFF1F5F9),
+                                height: 1,
+                              ),
+                              _buildActionTile(
+                                icon: Icons.policy_outlined,
+                                title: 'Privacy Policy & Terms'.tr,
+                                accentColor: const Color(0xFF4F46E5),
+                                onTap: () {
+                                  LegalModal.showPrivacy(context);
+                                },
+                              ),
+                              const Divider(
+                                color: Color(0xFFF1F5F9),
+                                height: 1,
+                              ),
+                              _buildActionTile(
+                                icon: Icons.delete_outline_rounded,
+                                title: 'Delete Account'.tr,
+                                iconColor: const Color(0xFFDC2626),
+                                iconBgColor: const Color(0xFFFEE2E2),
+                                titleColor: const Color(0xFFDC2626),
+                                accentColor: const Color(0xFFDC2626),
+                                onTap: () {
+                                  _showDeleteAccountDialog(context);
+                                },
+                              ),
+                              const Divider(
+                                color: Color(0xFFF1F5F9),
+                                height: 1,
+                              ),
+                              _buildActionTile(
+                                icon: Icons.logout_rounded,
+                                title: 'Logout'.tr,
+                                iconColor: const Color(0xFFDC2626),
+                                iconBgColor: const Color(0xFFFEE2E2),
+                                titleColor: const Color(0xFFDC2626),
+                                accentColor: const Color(0xFFDC2626),
+                                onTap: () {
+                                  _showLogoutDialog(context);
+                                },
+                              ),
+                            ],
                           ),
-                          const Divider(color: Color(0xFFF1F5F9), height: 1),
-                          _buildActionTile(
-                            icon: Icons.policy_outlined,
-                            title: 'Privacy Policy & Terms'.tr,
-                            onTap: () {
-                              LegalModal.showPrivacy(context);
-                            },
-                          ),
-                          const Divider(color: Color(0xFFF1F5F9), height: 1),
-                          _buildActionTile(
-                            icon: Icons.delete_outline_rounded,
-                            title: 'Delete Account'.tr,
-                            iconColor: const Color(0xFFEF4444),
-                            iconBgColor: const Color(0xFFFEE2E2),
-                            titleColor: const Color(0xFFEF4444),
-                            onTap: () {
-                              _showDeleteAccountDialog(context);
-                            },
-                          ),
-                          const Divider(color: Color(0xFFF1F5F9), height: 1),
-                          _buildActionTile(
-                            icon: Icons.logout_rounded,
-                            title: 'Logout'.tr,
-                            iconColor: const Color(0xFFEF4444),
-                            iconBgColor: const Color(0xFFFEE2E2),
-                            titleColor: const Color(0xFFEF4444),
-                            onTap: () {
-                              _showLogoutDialog(context);
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
+                        ),
 
-                    const SizedBox(height: 24),
-                  ],
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
-      },
-    );
       },
     );
   }
@@ -1150,47 +1333,69 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required IconData icon,
     required String label,
     required String value,
+    required Color accentColor,
+    required Color gradientEnd,
+    required Color borderColor,
   }) {
-    return Row(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: orangeLightBg,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: orangeBorder, width: 1.0),
-          ),
-          child: Icon(icon, color: navyIcon, size: 19),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 9.0),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.white, gradientEnd],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: GoogleFonts.poppins(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF94A3B8),
-                  letterSpacing: 0.5,
-                ),
+        borderRadius: BorderRadius.circular(13.0),
+        border: Border.all(color: borderColor, width: 1.0),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [accentColor, accentColor.withValues(alpha: 0.82)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: navyIcon,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(icon, color: Colors.white, size: 16),
           ),
-        ),
-      ],
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF64748B),
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  value,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: navyIcon,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1201,38 +1406,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Color? iconColor,
     Color? iconBgColor,
     Color? titleColor,
+    Color accentColor = orangePrimary,
     required VoidCallback onTap,
   }) {
+    final isDestructive = iconBgColor != null;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12.0),
+        padding: const EdgeInsets.symmetric(vertical: 11.0),
         child: Row(
           children: [
             Container(
-              width: 42,
-              height: 42,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: iconBgColor ?? orangeLightBg,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: iconBgColor != null ? Colors.transparent : orangeBorder,
-                  width: 1.0,
-                ),
+                color: isDestructive ? iconBgColor : null,
+                gradient: isDestructive
+                    ? null
+                    : LinearGradient(
+                        colors: [
+                          accentColor,
+                          accentColor.withValues(alpha: 0.82),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                borderRadius: BorderRadius.circular(11),
+                boxShadow: isDestructive
+                    ? null
+                    : [
+                        BoxShadow(
+                          color: accentColor.withValues(alpha: 0.22),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
               ),
               child: Icon(
                 icon,
-                color: iconColor ?? navyIcon,
-                size: 20,
+                color: isDestructive ? (iconColor ?? navyIcon) : Colors.white,
+                size: 19,
               ),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 13),
             Expanded(
               child: Text(
                 title,
                 style: GoogleFonts.poppins(
-                  fontSize: 14.5,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: titleColor ?? navyIcon,
                 ),
@@ -1240,27 +1462,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             if (badge != null) ...[
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
-                  color: orangeLightBg,
+                  color: accentColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: orangeBorder, width: 1.0),
+                  border: Border.all(
+                    color: accentColor.withValues(alpha: 0.3),
+                    width: 1.0,
+                  ),
                 ),
                 child: Text(
                   badge,
                   style: GoogleFonts.poppins(
-                    fontSize: 12,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w700,
-                    color: orangePrimary,
+                    color: accentColor,
                   ),
                 ),
               ),
               const SizedBox(width: 8),
             ],
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: Color(0xFF94A3B8),
-              size: 20,
+            Container(
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.chevron_right_rounded,
+                color: accentColor,
+                size: 18,
+              ),
             ),
           ],
         ),

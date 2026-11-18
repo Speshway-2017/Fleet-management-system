@@ -1,18 +1,16 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:convert';
-import '../constants/app_colors.dart';
-import '../constants/app_radius.dart';
-import '../constants/app_spacing.dart';
-import '../widgets/custom_app_bar.dart';
-import '../widgets/custom_card.dart';
-import '../services/api_service.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../widgets/document_preview_dialog.dart';
+import '../constants/app_colors.dart';
+import '../services/api_service.dart';
 import '../services/localization_service.dart';
+import '../utils/navigation_helper.dart';
+import '../widgets/custom_app_bar.dart';
+import '../widgets/document_preview_dialog.dart';
 import 'invoice_screen.dart';
 import 'toll_fee_receipt_screen.dart';
-import '../utils/navigation_helper.dart';
 
 class CompletedTripDetailsScreen extends StatefulWidget {
   final String tripId;
@@ -363,79 +361,124 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
     final timelineEvents = _buildTimelineEvents(trip);
 
       page = Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: const Color(0xFFF4F6FA),
         appBar: CustomAppBar(
           centerTitle: false,
           fallbackTab: 3,
           title: Text(
             'Completed Trip Details'.tr,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppColors.background,
-              fontWeight: FontWeight.bold,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            _cachedCompletedDetails.remove(widget.tripId.replaceAll('#', '').trim());
-            ApiService.clearApiCache('/driver/trips/${widget.tripId.replaceAll('#', '').trim()}');
-            await Future.any([
-              _fetchTripDetails(),
-              Future.delayed(const Duration(milliseconds: 500)),
-            ]);
-          },
-          color: AppColors.primary,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // 1. Summary Header Card
-                _buildSummaryHeaderCard(context, displayId, dateStr, timeStr),
-                AppSpacing.verticalSm,
+        body: SafeArea(
+          child: RefreshIndicator(
+            onRefresh: () async {
+              _cachedCompletedDetails.remove(
+                widget.tripId.replaceAll('#', '').trim(),
+              );
+              ApiService.clearApiCache(
+                '/driver/trips/${widget.tripId.replaceAll('#', '').trim()}',
+              );
+              await Future.any([
+                _fetchTripDetails(),
+                Future.delayed(const Duration(milliseconds: 500)),
+              ]);
+            },
+            color: AppColors.secondary,
+            backgroundColor: Colors.white,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 28.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 1. Summary Header Card (Executive Navy Hero)
+                  _buildSummaryHeaderCard(context, displayId, dateStr, timeStr),
+                  const SizedBox(height: 14),
 
-                // 2. Route Details Card
-                _buildRouteDetailsCard(context, pickupLoc, destLoc, distanceStr, durationStr),
-                AppSpacing.verticalSm,
+                  // 2. Route Details Card
+                  _buildRouteDetailsCard(
+                    context,
+                    pickupLoc,
+                    destLoc,
+                    distanceStr,
+                    durationStr,
+                  ),
+                  const SizedBox(height: 14),
 
-                // 3. Vehicle & Crew Card
-                _buildVehicleCrewCard(context, vehicleDisplay, driverName, managerName),
-                AppSpacing.verticalSm,
+                  // 3. Vehicle & Crew Card
+                  _buildVehicleCrewCard(
+                    context,
+                    vehicleDisplay,
+                    driverName,
+                    managerName,
+                  ),
+                  const SizedBox(height: 16),
 
-                // 4. Performance Grid
-                _buildSectionTitle(context, 'Performance'.tr),
-                _buildPerformanceGrid(context, distanceStr, fuelTotal, avgSpeed, stopsCount),
-                AppSpacing.verticalSm,
+                  // 4. Performance KPI Grid (Distinct Color-Coded Premium Cards)
+                  _buildSectionTitle(
+                    context,
+                    'Performance'.tr,
+                    icon: Icons.insights_rounded,
+                    accentColor: AppColors.secondary,
+                  ),
+                  _buildPerformanceGrid(
+                    context,
+                    distanceStr,
+                    fuelTotal,
+                    avgSpeed,
+                    stopsCount,
+                  ),
+                  const SizedBox(height: 16),
 
-                // 5. Trip Timeline Card
-                _buildSectionTitle(context, 'Trip Timeline'.tr),
-                _buildTimelineCard(context, timelineEvents),
-                AppSpacing.verticalSm,
+                  // 5. Trip Timeline Card
+                  _buildSectionTitle(
+                    context,
+                    'Trip Timeline'.tr,
+                    icon: Icons.timeline_rounded,
+                    accentColor: AppColors.success,
+                  ),
+                  _buildTimelineCard(context, timelineEvents),
+                  const SizedBox(height: 16),
 
-                // 6. Documents Section
-                _buildSectionTitle(context, 'Documents'.tr),
-                _buildDocumentsCard(context, trip, displayId),
-                AppSpacing.verticalSm,
+                  // 6. Documents Section
+                  _buildSectionTitle(
+                    context,
+                    'Documents'.tr,
+                    icon: Icons.folder_copy_outlined,
+                    accentColor: const Color(0xFF2563EB),
+                  ),
+                  _buildDocumentsCard(context, trip, displayId),
+                  const SizedBox(height: 14),
 
-                // 7. Trip Notes Card
-                _buildTripNotesCard(context, notes),
-                AppSpacing.verticalSm,
+                  // 7. Trip Notes Card
+                  _buildTripNotesCard(context, notes),
+                  const SizedBox(height: 14),
 
-                // 8. Delivery Confirmation Card
-                _buildDeliveryConfirmationCard(context, receiver, 'Signed & Verified'),
-                AppSpacing.verticalLg,
+                  // 8. Delivery Confirmation Card
+                  _buildDeliveryConfirmationCard(
+                    context,
+                    receiver,
+                    'Signed & Verified',
+                  ),
+                  const SizedBox(height: 22),
 
-                // 9. Bottom Buttons
-                _buildFooterActions(context),
-                const SizedBox(height: 24),
-              ],
+                  // 9. Bottom Buttons
+                  _buildFooterActions(context),
+                  const SizedBox(height: 12),
+                ],
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
     }
 
     return PopScope(
@@ -449,77 +492,278 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
     );
   }
 
-  Widget _buildSectionTitle(BuildContext context, String title) {
+  Widget _buildPremiumCard({
+    required Widget child,
+    EdgeInsetsGeometry padding = const EdgeInsets.all(18.0),
+    Color backgroundColor = Colors.white,
+    Color borderColor = const Color(0xFFE6ECF4),
+    Gradient? gradient,
+    Color? shadowColor,
+  }) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: gradient == null ? backgroundColor : null,
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(20.0),
+        border: Border.all(color: borderColor, width: 1.0),
+        boxShadow: [
+          BoxShadow(
+            color: (shadowColor ?? const Color(0xFF0F172A)).withValues(
+              alpha: 0.05,
+            ),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildSectionTitle(
+    BuildContext context,
+    String title, {
+    IconData icon = Icons.widgets_rounded,
+    Color accentColor = AppColors.primary,
+  }) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4.0, top: 12.0, bottom: 8.0),
-      child: Text(
-        title,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.bold,
-          color: AppColors.primaryText,
-        ),
+      padding: const EdgeInsets.only(left: 2.0, bottom: 10.0),
+      child: Row(
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(9.0),
+            ),
+            child: Icon(icon, color: accentColor, size: 16),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              title,
+              style: GoogleFonts.poppins(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF0F172A),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  // 1. Summary Header Card
-  Widget _buildSummaryHeaderCard(BuildContext context, String displayId, String date, String time) {
-    return CustomCard(
-      padding: const EdgeInsets.all(16.0),
+  // 1. Summary Header Card (Executive Deep Navy Hero)
+  Widget _buildSummaryHeaderCard(
+    BuildContext context,
+    String displayId,
+    String date,
+    String time,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(20.0),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0B1626), Color(0xFF13263E), Color(0xFF1B3452)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22.0),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0B1626).withValues(alpha: 0.25),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'TRIP ID'.tr,
-                    style: const TextStyle(
-                      color: AppColors.secondaryText,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'TRIP ID'.tr,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white60,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.9,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    displayId,
-                    style: const TextStyle(
-                      color: AppColors.primaryText,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+                    const SizedBox(height: 3),
+                    Text(
+                      displayId,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 22,
+                        letterSpacing: -0.3,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E9),
-                  borderRadius: BorderRadius.circular(AppRadius.round),
+                  ],
                 ),
-                child: Text(
-                  'Completed'.tr,
-                  style: const TextStyle(
-                    color: Color(0xFF2E7D32),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 11,
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF22C55E).withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: const Color(0xFF4ADE80).withValues(alpha: 0.45),
                   ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      color: Color(0xFF4ADE80),
+                      size: 14,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Completed'.tr,
+                      style: GoogleFonts.poppins(
+                        color: const Color(0xFF86EFAC),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12.0),
-            child: Divider(color: AppColors.divider),
+          const SizedBox(height: 16),
+          Container(
+            height: 1,
+            color: Colors.white.withValues(alpha: 0.1),
           ),
+          const SizedBox(height: 14),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoItem('Date'.tr, date),
-              _buildInfoItem('Time'.tr, time, alignRight: true),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.07),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.calendar_today_rounded,
+                        color: AppColors.accent,
+                        size: 15,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Date'.tr,
+                              style: GoogleFonts.nunito(
+                                color: Colors.white60,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              date,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.07),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.schedule_rounded,
+                        color: Color(0xFF60A5FA),
+                        size: 15,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Time'.tr,
+                              style: GoogleFonts.nunito(
+                                color: Colors.white60,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              time,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ],
@@ -535,117 +779,223 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
     String distance,
     String duration,
   ) {
-    return CustomCard(
-      padding: const EdgeInsets.all(16.0),
+    return _buildPremiumCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Column(
-                children: [
-                  const SizedBox(height: 2),
-                  Container(
-                    width: 14,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.primary, width: 2),
-                      color: Colors.transparent,
-                    ),
-                    child: Center(
-                      child: Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.primary,
+          Container(
+            padding: const EdgeInsets.all(14.0),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(16.0),
+              border: Border.all(color: const Color(0xFFE8EDF5)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Column(
+                  children: [
+                    Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF2563EB).withValues(alpha: 0.14),
+                        border: Border.all(
+                          color: const Color(0xFF2563EB).withValues(alpha: 0.4),
                         ),
                       ),
-                    ),
-                  ),
-                  Container(
-                    width: 1.5,
-                    height: 32,
-                    color: AppColors.divider,
-                  ),
-                  const Icon(
-                    Icons.location_on,
-                    color: AppColors.secondary,
-                    size: 16,
-                  ),
-                ],
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'PICKUP'.tr,
-                      style: const TextStyle(
-                        color: AppColors.secondaryText,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                      child: const Icon(
+                        Icons.trip_origin_rounded,
+                        color: Color(0xFF2563EB),
+                        size: 14,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      pickup,
-                      style: const TextStyle(
-                        color: AppColors.primaryText,
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
+                    Container(
+                      width: 2,
+                      height: 36,
+                      margin: const EdgeInsets.symmetric(vertical: 3),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF2563EB), AppColors.secondary],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    const SizedBox(height: 18),
-                    Text(
-                      'DESTINATION'.tr,
-                      style: const TextStyle(
-                        color: AppColors.secondaryText,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                    Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.secondary.withValues(alpha: 0.14),
+                        border: Border.all(
+                          color: AppColors.secondary.withValues(alpha: 0.4),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      destination,
-                      style: const TextStyle(
-                        color: AppColors.primaryText,
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
+                      child: const Icon(
+                        Icons.location_on_rounded,
+                        color: AppColors.secondary,
+                        size: 15,
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'PICKUP'.tr,
+                        style: GoogleFonts.poppins(
+                          color: const Color(0xFF2563EB),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        pickup,
+                        style: GoogleFonts.poppins(
+                          color: const Color(0xFF0F172A),
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        'DESTINATION'.tr,
+                        style: GoogleFonts.poppins(
+                          color: AppColors.secondary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        destination,
+                        style: GoogleFonts.poppins(
+                          color: const Color(0xFF0F172A),
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE8EDF5)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Distance'.tr,
+                        style: GoogleFonts.nunito(
+                          color: const Color(0xFF64748B),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        distance,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          color: const Color(0xFF0F172A),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildInfoItem('Distance'.tr, distance),
-              _buildInfoItem('Duration'.tr, duration, alignRight: true),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Divider(color: AppColors.divider),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(Icons.check_circle_outline, color: AppColors.success, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                'Route Completed Successfully'.tr,
-                style: const TextStyle(
-                  color: AppColors.success,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE8EDF5)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Duration'.tr,
+                        style: GoogleFonts.nunito(
+                          color: const Color(0xFF64748B),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        duration,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          color: const Color(0xFF0F172A),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13.5,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: const Color(0xFFECFDF5),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFA7F3D0)),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: Color(0xFF16A34A),
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Route Completed Successfully'.tr,
+                    style: GoogleFonts.poppins(
+                      color: const Color(0xFF15803D),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -659,20 +1009,34 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
     String driver,
     String manager,
   ) {
-    return CustomCard(
-      padding: const EdgeInsets.all(16.0),
+    return _buildPremiumCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.divider.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.secondary.withValues(alpha: 0.16),
+                      AppColors.secondary.withValues(alpha: 0.08),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(13),
+                  border: Border.all(
+                    color: AppColors.secondary.withValues(alpha: 0.25),
+                  ),
                 ),
-                child: const Icon(Icons.local_shipping_outlined, color: AppColors.primaryText, size: 18),
+                child: const Icon(
+                  Icons.local_shipping_rounded,
+                  color: AppColors.secondary,
+                  size: 22,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -681,19 +1045,19 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
                   children: [
                     Text(
                       'Vehicle'.tr,
-                      style: const TextStyle(
-                        color: AppColors.secondaryText,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
+                      style: GoogleFonts.nunito(
+                        color: const Color(0xFF64748B),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       vehicleDisplay,
-                      style: const TextStyle(
-                        color: AppColors.primaryText,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                      style: GoogleFonts.poppins(
+                        color: const Color(0xFF0F172A),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.5,
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
@@ -703,13 +1067,108 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
+          const Divider(height: 1, color: Color(0xFFE8EDF5)),
+          const SizedBox(height: 14),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoItem('Driver'.tr, driver),
-              const SizedBox(width: 12),
-              _buildInfoItem('Manager'.tr, manager, alignRight: true),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE8EDF5)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.person_rounded,
+                        size: 16,
+                        color: Color(0xFF2563EB),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Driver'.tr,
+                              style: GoogleFonts.nunito(
+                                color: const Color(0xFF64748B),
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              driver,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              style: GoogleFonts.poppins(
+                                color: const Color(0xFF0F172A),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE8EDF5)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.support_agent_rounded,
+                        size: 16,
+                        color: Color(0xFF7C3AED),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Manager'.tr,
+                              style: GoogleFonts.nunito(
+                                color: const Color(0xFF64748B),
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              manager,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              style: GoogleFonts.poppins(
+                                color: const Color(0xFF0F172A),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ],
@@ -717,7 +1176,7 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
     );
   }
 
-  // 4. Performance Grid
+  // 4. Performance KPI Grid (Compact Color-Coded Premium Cards)
   Widget _buildPerformanceGrid(
     BuildContext context,
     String distance,
@@ -725,55 +1184,147 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
     String avgSpeed,
     String stops,
   ) {
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      childAspectRatio: 2.1,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
+    return Column(
       children: [
-        _buildPerformanceCard(Icons.map_outlined, 'Distance'.tr, distance),
-        _buildPerformanceCard(Icons.local_gas_station_outlined, 'Fuel Consumed'.tr, fuel),
-        _buildPerformanceCard(Icons.speed, 'Avg Speed'.tr, avgSpeed),
-        _buildPerformanceCard(Icons.gps_fixed, 'Total Stops'.tr, stops),
-      ],
-    );
-  }
-
-  Widget _buildPerformanceCard(IconData icon, String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Icon(icon, color: AppColors.secondaryText, size: 14),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: AppColors.secondaryText,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: _buildPerformanceCard(
+                  icon: Icons.map_rounded,
+                  label: 'Distance'.tr,
+                  value: distance,
+                  accentColor: const Color(0xFF2563EB),
+                  gradientEnd: const Color(0xFFEFF6FF),
+                  borderColor: const Color(0xFFBFDBFE),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildPerformanceCard(
+                  icon: Icons.local_gas_station_rounded,
+                  label: 'Fuel Consumed'.tr,
+                  value: fuel,
+                  accentColor: const Color(0xFFEA580C),
+                  gradientEnd: const Color(0xFFFFF7ED),
+                  borderColor: const Color(0xFFFED7AA),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              color: AppColors.primaryText,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
+        ),
+        const SizedBox(height: 10),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _buildPerformanceCard(
+                  icon: Icons.speed_rounded,
+                  label: 'Avg Speed'.tr,
+                  value: avgSpeed,
+                  accentColor: const Color(0xFF059669),
+                  gradientEnd: const Color(0xFFECFDF5),
+                  borderColor: const Color(0xFFA7F3D0),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildPerformanceCard(
+                  icon: Icons.pin_drop_rounded,
+                  label: 'Total Stops'.tr,
+                  value: stops,
+                  accentColor: const Color(0xFF7C3AED),
+                  gradientEnd: const Color(0xFFF5F3FF),
+                  borderColor: const Color(0xFFDDD6FE),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPerformanceCard({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color accentColor,
+    required Color gradientEnd,
+    required Color borderColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11.0, vertical: 10.0),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.white, gradientEnd],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(color: borderColor, width: 1.0),
+        boxShadow: [
+          BoxShadow(
+            color: accentColor.withValues(alpha: 0.09),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [accentColor, accentColor.withValues(alpha: 0.82)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(9.0),
+              boxShadow: [
+                BoxShadow(
+                  color: accentColor.withValues(alpha: 0.25),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Icon(icon, color: Colors.white, size: 16),
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.nunito(
+                    color: const Color(0xFF475569),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    color: const Color(0xFF0F172A),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14.5,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -782,9 +1333,11 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
   }
 
   // 5. Trip Timeline
-  Widget _buildTimelineCard(BuildContext context, List<Map<String, dynamic>> timelineEvents) {
-    return CustomCard(
-      padding: const EdgeInsets.all(16.0),
+  Widget _buildTimelineCard(
+    BuildContext context,
+    List<Map<String, dynamic>> timelineEvents,
+  ) {
+    return _buildPremiumCard(
       child: Column(
         children: timelineEvents.map((event) {
           final isLast = event['isLast'] == true;
@@ -795,18 +1348,26 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
                 Column(
                   children: [
                     Container(
-                      width: 12,
-                      height: 12,
-                      decoration: const BoxDecoration(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: AppColors.success,
+                        border: Border.all(
+                          color: const Color(0xFFBBF7D0),
+                          width: 3,
+                        ),
                       ),
                     ),
                     if (!isLast)
                       Expanded(
                         child: Container(
                           width: 2,
-                          color: AppColors.success.withValues(alpha: 0.3),
+                          margin: const EdgeInsets.symmetric(vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withValues(alpha: 0.35),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
                         ),
                       ),
                   ],
@@ -814,23 +1375,37 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
                 const SizedBox(width: 12),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.only(bottom: 14.0),
+                    padding: EdgeInsets.only(bottom: isLast ? 2.0 : 16.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          (event['title'] as String).tr,
-                          style: const TextStyle(
-                            color: AppColors.primaryText,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
+                        Expanded(
+                          child: Text(
+                            (event['title'] as String).tr,
+                            style: GoogleFonts.poppins(
+                              color: const Color(0xFF0F172A),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
-                        Text(
-                          event['time'] as String,
-                          style: const TextStyle(
-                            color: AppColors.secondaryText,
-                            fontSize: 11,
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            event['time'] as String,
+                            style: GoogleFonts.nunito(
+                              color: const Color(0xFF475569),
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ],
@@ -846,184 +1421,361 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
   }
 
   // 6. Documents List
-  Widget _buildDocumentsCard(BuildContext context, Map<String, dynamic> trip, String displayId) {
+  Widget _buildDocumentsCard(
+    BuildContext context,
+    Map<String, dynamic> trip,
+    String displayId,
+  ) {
     final docs = [
-      {'name': 'Invoice', 'action': 'VIEW', 'isView': true},
-      {'name': 'Toll Fee Receipt', 'action': 'VIEW', 'isView': true},
-      {'name': 'Proof of Delivery (POD)', 'action': 'VIEW', 'isView': true},
-      {'name': 'Weighbridge Slip', 'action': 'VIEW', 'isView': true},
-      {'name': 'Fuel Entry', 'action': 'VIEW', 'isView': true},
+      {
+        'name': 'Invoice',
+        'action': 'VIEW',
+        'isView': true,
+        'icon': Icons.receipt_long_rounded,
+        'color': const Color(0xFF2563EB),
+      },
+      {
+        'name': 'Toll Fee Receipt',
+        'action': 'VIEW',
+        'isView': true,
+        'icon': Icons.toll_rounded,
+        'color': const Color(0xFFD97706),
+      },
+      {
+        'name': 'Proof of Delivery (POD)',
+        'action': 'VIEW',
+        'isView': true,
+        'icon': Icons.verified_outlined,
+        'color': const Color(0xFF059669),
+      },
+      {
+        'name': 'Weighbridge Slip',
+        'action': 'VIEW',
+        'isView': true,
+        'icon': Icons.scale_rounded,
+        'color': const Color(0xFF7C3AED),
+      },
+      {
+        'name': 'Fuel Entry',
+        'action': 'VIEW',
+        'isView': true,
+        'icon': Icons.local_gas_station_rounded,
+        'color': const Color(0xFFEA580C),
+      },
     ];
 
-    return CustomCard(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+    return _buildPremiumCard(
+      padding: const EdgeInsets.all(14.0),
       child: Column(
         children: docs.map((doc) {
           final isView = doc['isView'] as bool;
+          final icon = doc['icon'] as IconData;
+          final color = doc['color'] as Color;
           return Container(
-            margin: const EdgeInsets.symmetric(vertical: 6.0),
-            padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 12.0),
+            margin: const EdgeInsets.symmetric(vertical: 5.0),
+            padding: const EdgeInsets.symmetric(
+              vertical: 11.0,
+              horizontal: 12.0,
+            ),
             decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: AppColors.divider),
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(14.0),
+              border: Border.all(color: const Color(0xFFE8EDF5)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      isView ? Icons.description_outlined : Icons.receipt_long_outlined,
-                      color: AppColors.secondaryText,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      (doc['name'] as String).tr,
-                      style: const TextStyle(
-                        color: AppColors.primaryText,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-                InkWell(
-                  onTap: () async {
-                    Widget? targetScreen;
-                    switch (doc['name']) {
-                      case 'Invoice':
-                        String? invId;
-                        if (trip['tripInvoice'] is Map) {
-                          invId = (trip['tripInvoice'] as Map)['invoiceId']?.toString();
-                        }
-                        invId ??= trip['invoiceId']?.toString();
-
-                        String? invNum = trip['invoiceNumber']?.toString();
-                        if ((invNum == null || invNum.isEmpty) && trip['tripInvoice'] is Map) {
-                          invNum = (trip['tripInvoice'] as Map)['invoiceNumber']?.toString();
-                        }
-
-                        targetScreen = InvoiceScreen(
-                          invoiceId: invId,
-                          invoiceNumber: invNum,
-                          tripId: displayId,
-                          tripData: trip,
-                        );
-                        break;
-                      case 'Toll Fee Receipt':
-                        targetScreen = TollFeeReceiptScreen(
-                          tripId: displayId,
-                          tripData: trip,
-                        );
-                        break;
-                      case 'Proof of Delivery (POD)':
-                        final pod = (trip['podDetails'] is Map ? trip['podDetails'] as Map<String, dynamic> : null) ??
-                                    (trip['proofOfDelivery'] is Map ? trip['proofOfDelivery'] as Map<String, dynamic> : null);
-                        final podRawUrl = trip['podUrl']?.toString() ??
-                            pod?['podDocumentUrl']?.toString() ??
-                            pod?['deliveryPhotoUrl']?.toString() ??
-                            pod?['url']?.toString() ??
-                            (trip['proofOfDelivery'] is Map ? (trip['proofOfDelivery']['url']?.toString() ?? trip['proofOfDelivery']['podDocumentUrl']?.toString()) : null);
-                        final cleanPodUrl = (podRawUrl != null && podRawUrl.trim().isNotEmpty && podRawUrl.trim() != 'null') ? podRawUrl.trim() : null;
-
-                        _showDocumentDetailsDialog(
-                          context: context,
-                          title: 'Proof of Delivery (POD)',
-                          details: pod != null ? {
-                            'POD Number': pod['podNumber'] ?? 'POD-${trip['tripNumber'] ?? displayId}',
-                            'Customer': pod['customerName'] ?? 'Customer Receiver',
-                            'Receiver': pod['receiverName'] ?? 'Verified Receiver',
-                            'Delivery Date': _formatDate(pod['deliveryDate']?.toString() ?? pod['uploadedAt']?.toString()),
-                            'Status': pod['status'] ?? trip['podStatus'] ?? (cleanPodUrl != null ? 'Uploaded' : 'Pending'),
-                            if (pod['rejectionReason'] != null && pod['rejectionReason'].toString().isNotEmpty)
-                              'Rejection Reason': pod['rejectionReason'],
-                          } : null,
-                          documentUrl: cleanPodUrl,
-                          documentName: 'POD',
-                        );
-                        break;
-                      case 'Weighbridge Slip':
-                        final wb = (trip['weighbridgeDetails'] is Map ? trip['weighbridgeDetails'] as Map<String, dynamic> : null) ??
-                                   (trip['weighbridgeSlip'] is Map ? trip['weighbridgeSlip'] as Map<String, dynamic> : null);
-                        final wbRawUrl = trip['weighbridgeUrl']?.toString() ??
-                            wb?['documentUrl']?.toString() ??
-                            wb?['url']?.toString() ??
-                            (trip['weighbridgeSlip'] is Map ? (trip['weighbridgeSlip']['documentUrl']?.toString() ?? trip['weighbridgeSlip']['url']?.toString()) : null);
-                        final cleanWbUrl = (wbRawUrl != null && wbRawUrl.trim().isNotEmpty && wbRawUrl.trim() != 'null') ? wbRawUrl.trim() : null;
-
-                        _showDocumentDetailsDialog(
-                          context: context,
-                          title: 'Weighbridge Slip',
-                          details: wb != null ? {
-                            'Slip Number': wb['slipNumber'] ?? 'WB-${trip['tripNumber'] ?? displayId}',
-                            'Gross Weight': '${wb['grossWeight'] ?? 25000} kg',
-                            'Tare Weight': '${wb['tareWeight'] ?? 10000} kg',
-                            'Net Weight': '${wb['netWeight'] ?? 15000} kg',
-                            'Location': wb['location'] ?? 'Highway Weighbridge Station',
-                            'Status': wb['status'] ?? trip['weighbridgeStatus'] ?? (cleanWbUrl != null ? 'Uploaded' : 'Pending'),
-                            if (wb['rejectionReason'] != null && wb['rejectionReason'].toString().isNotEmpty)
-                              'Rejection Reason': wb['rejectionReason'],
-                          } : (trip['weighbridgeRequired'] == false ? {
-                            'Status': 'Not required for this trip',
-                          } : null),
-                          documentUrl: cleanWbUrl,
-                          documentName: 'Weighbridge',
-                        );
-                        break;
-                      case 'Fuel Entry':
-                        final fuel = (trip['fuelDetails'] is Map ? trip['fuelDetails'] as Map<String, dynamic> : null) ??
-                                     ((trip['fuelEntries'] is List && (trip['fuelEntries'] as List).isNotEmpty) ? (trip['fuelEntries'] as List).first as Map<String, dynamic> : null);
-                        final fuelRawUrl = trip['fuelUrl']?.toString() ??
-                            fuel?['billUrl']?.toString() ??
-                            fuel?['receiptImage']?.toString();
-                        final cleanFuelUrl = (fuelRawUrl != null && fuelRawUrl.trim().isNotEmpty && fuelRawUrl.trim() != 'null') ? fuelRawUrl.trim() : null;
-
-                        _showDocumentDetailsDialog(
-                          context: context,
-                          title: 'Fuel Entry Details',
-                          details: fuel != null ? {
-                            'Station': fuel['fuelStation'] ?? 'Fuel Station',
-                            'Liters': '${fuel['liters'] ?? 0} L',
-                            'Amount': '₹${fuel['amount'] ?? 0}',
-                            'Odometer': '${fuel['odometer'] ?? '--'} km',
-                            'Status': fuel['approvalStatus'] ?? fuel['billStatus'] ?? trip['fuelStatus'] ?? (cleanFuelUrl != null ? 'Uploaded' : 'Pending'),
-                            if (fuel['rejectionReason'] != null && fuel['rejectionReason'].toString().isNotEmpty)
-                              'Rejection Reason': fuel['rejectionReason'],
-                          } : null,
-                          documentUrl: cleanFuelUrl,
-                          documentName: 'Fuel',
-                        );
-                        break;
-                      default:
-                        return;
-                    }
-                    if (targetScreen != null) {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => targetScreen!),
-                      );
-                      _fetchTripDetails();
-                    }
-                  },
+                Expanded(
                   child: Row(
                     children: [
-                      Text(
-                        (doc['action'] as String).tr,
-                        style: const TextStyle(
-                          color: AppColors.secondary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(icon, color: color, size: 17),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          (doc['name'] as String).tr,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(
+                            color: const Color(0xFF0F172A),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        isView ? Icons.visibility_outlined : Icons.download_outlined,
-                        color: AppColors.secondary,
-                        size: 14,
-                      ),
                     ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Material(
+                  color: AppColors.secondary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () async {
+                      Widget? targetScreen;
+                      switch (doc['name']) {
+                        case 'Invoice':
+                          String? invId;
+                          if (trip['tripInvoice'] is Map) {
+                            invId = (trip['tripInvoice'] as Map)['invoiceId']
+                                ?.toString();
+                          }
+                          invId ??= trip['invoiceId']?.toString();
+
+                          String? invNum = trip['invoiceNumber']?.toString();
+                          if ((invNum == null || invNum.isEmpty) &&
+                              trip['tripInvoice'] is Map) {
+                            invNum =
+                                (trip['tripInvoice'] as Map)['invoiceNumber']
+                                    ?.toString();
+                          }
+
+                          targetScreen = InvoiceScreen(
+                            invoiceId: invId,
+                            invoiceNumber: invNum,
+                            tripId: displayId,
+                            tripData: trip,
+                          );
+                          break;
+                        case 'Toll Fee Receipt':
+                          targetScreen = TollFeeReceiptScreen(
+                            tripId: displayId,
+                            tripData: trip,
+                          );
+                          break;
+                        case 'Proof of Delivery (POD)':
+                          final pod =
+                              (trip['podDetails'] is Map
+                                  ? trip['podDetails'] as Map<String, dynamic>
+                                  : null) ??
+                              (trip['proofOfDelivery'] is Map
+                                  ? trip['proofOfDelivery']
+                                        as Map<String, dynamic>
+                                  : null);
+                          final podRawUrl =
+                              trip['podUrl']?.toString() ??
+                              pod?['podDocumentUrl']?.toString() ??
+                              pod?['deliveryPhotoUrl']?.toString() ??
+                              pod?['url']?.toString() ??
+                              (trip['proofOfDelivery'] is Map
+                                  ? (trip['proofOfDelivery']['url']
+                                            ?.toString() ??
+                                        trip['proofOfDelivery']['podDocumentUrl']
+                                            ?.toString())
+                                  : null);
+                          final cleanPodUrl =
+                              (podRawUrl != null &&
+                                  podRawUrl.trim().isNotEmpty &&
+                                  podRawUrl.trim() != 'null')
+                              ? podRawUrl.trim()
+                              : null;
+
+                          _showDocumentDetailsDialog(
+                            context: context,
+                            title: 'Proof of Delivery (POD)',
+                            details: pod != null
+                                ? {
+                                    'POD Number':
+                                        pod['podNumber'] ??
+                                        'POD-${trip['tripNumber'] ?? displayId}',
+                                    'Customer':
+                                        pod['customerName'] ??
+                                        'Customer Receiver',
+                                    'Receiver':
+                                        pod['receiverName'] ??
+                                        'Verified Receiver',
+                                    'Delivery Date': _formatDate(
+                                      pod['deliveryDate']?.toString() ??
+                                          pod['uploadedAt']?.toString(),
+                                    ),
+                                    'Status':
+                                        pod['status'] ??
+                                        trip['podStatus'] ??
+                                        (cleanPodUrl != null
+                                            ? 'Uploaded'
+                                            : 'Pending'),
+                                    if (pod['rejectionReason'] != null &&
+                                        pod['rejectionReason']
+                                            .toString()
+                                            .isNotEmpty)
+                                      'Rejection Reason':
+                                          pod['rejectionReason'],
+                                  }
+                                : null,
+                            documentUrl: cleanPodUrl,
+                            documentName: 'POD',
+                          );
+                          break;
+                        case 'Weighbridge Slip':
+                          final wb =
+                              (trip['weighbridgeDetails'] is Map
+                                  ? trip['weighbridgeDetails']
+                                        as Map<String, dynamic>
+                                  : null) ??
+                              (trip['weighbridgeSlip'] is Map
+                                  ? trip['weighbridgeSlip']
+                                        as Map<String, dynamic>
+                                  : null);
+                          final wbRawUrl =
+                              trip['weighbridgeUrl']?.toString() ??
+                              wb?['documentUrl']?.toString() ??
+                              wb?['url']?.toString() ??
+                              (trip['weighbridgeSlip'] is Map
+                                  ? (trip['weighbridgeSlip']['documentUrl']
+                                            ?.toString() ??
+                                        trip['weighbridgeSlip']['url']
+                                            ?.toString())
+                                  : null);
+                          final cleanWbUrl =
+                              (wbRawUrl != null &&
+                                  wbRawUrl.trim().isNotEmpty &&
+                                  wbRawUrl.trim() != 'null')
+                              ? wbRawUrl.trim()
+                              : null;
+
+                          _showDocumentDetailsDialog(
+                            context: context,
+                            title: 'Weighbridge Slip',
+                            details: wb != null
+                                ? {
+                                    'Slip Number':
+                                        wb['slipNumber'] ??
+                                        'WB-${trip['tripNumber'] ?? displayId}',
+                                    'Gross Weight':
+                                        '${wb['grossWeight'] ?? 25000} kg',
+                                    'Tare Weight':
+                                        '${wb['tareWeight'] ?? 10000} kg',
+                                    'Net Weight':
+                                        '${wb['netWeight'] ?? 15000} kg',
+                                    'Location':
+                                        wb['location'] ??
+                                        'Highway Weighbridge Station',
+                                    'Status':
+                                        wb['status'] ??
+                                        trip['weighbridgeStatus'] ??
+                                        (cleanWbUrl != null
+                                            ? 'Uploaded'
+                                            : 'Pending'),
+                                    if (wb['rejectionReason'] != null &&
+                                        wb['rejectionReason']
+                                            .toString()
+                                            .isNotEmpty)
+                                      'Rejection Reason': wb['rejectionReason'],
+                                  }
+                                : (trip['weighbridgeRequired'] == false
+                                      ? {
+                                          'Status':
+                                              'Not required for this trip',
+                                        }
+                                      : null),
+                            documentUrl: cleanWbUrl,
+                            documentName: 'Weighbridge',
+                          );
+                          break;
+                        case 'Fuel Entry':
+                          final fuel =
+                              (trip['fuelDetails'] is Map
+                                  ? trip['fuelDetails'] as Map<String, dynamic>
+                                  : null) ??
+                              ((trip['fuelEntries'] is List &&
+                                      (trip['fuelEntries'] as List).isNotEmpty)
+                                  ? (trip['fuelEntries'] as List).first
+                                        as Map<String, dynamic>
+                                  : null);
+                          final fuelRawUrl =
+                              trip['fuelUrl']?.toString() ??
+                              fuel?['billUrl']?.toString() ??
+                              fuel?['receiptImage']?.toString();
+                          final cleanFuelUrl =
+                              (fuelRawUrl != null &&
+                                  fuelRawUrl.trim().isNotEmpty &&
+                                  fuelRawUrl.trim() != 'null')
+                              ? fuelRawUrl.trim()
+                              : null;
+
+                          _showDocumentDetailsDialog(
+                            context: context,
+                            title: 'Fuel Entry Details',
+                            details: fuel != null
+                                ? {
+                                    'Station':
+                                        fuel['fuelStation'] ?? 'Fuel Station',
+                                    'Liters': '${fuel['liters'] ?? 0} L',
+                                    'Amount': '₹${fuel['amount'] ?? 0}',
+                                    'Odometer': '${fuel['odometer'] ?? '--'} km',
+                                    'Status':
+                                        fuel['approvalStatus'] ??
+                                        fuel['billStatus'] ??
+                                        trip['fuelStatus'] ??
+                                        (cleanFuelUrl != null
+                                            ? 'Uploaded'
+                                            : 'Pending'),
+                                    if (fuel['rejectionReason'] != null &&
+                                        fuel['rejectionReason']
+                                            .toString()
+                                            .isNotEmpty)
+                                      'Rejection Reason':
+                                          fuel['rejectionReason'],
+                                  }
+                                : null,
+                            documentUrl: cleanFuelUrl,
+                            documentName: 'Fuel',
+                          );
+                          break;
+                        default:
+                          return;
+                      }
+                      if (targetScreen != null) {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => targetScreen!,
+                          ),
+                        );
+                        _fetchTripDetails();
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: AppColors.secondary.withValues(alpha: 0.28),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            (doc['action'] as String).tr,
+                            style: GoogleFonts.poppins(
+                              color: AppColors.secondary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            isView
+                                ? Icons.visibility_outlined
+                                : Icons.download_outlined,
+                            color: AppColors.secondary,
+                            size: 14,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -1036,33 +1788,60 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
 
   // 7. Trip Notes
   Widget _buildTripNotesCard(BuildContext context, String notes) {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0F4FA),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.divider),
-      ),
+    return _buildPremiumCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'TRIP NOTES'.tr,
-            style: const TextStyle(
-              color: AppColors.secondaryText,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Icon(
+                  Icons.note_alt_outlined,
+                  color: AppColors.secondary,
+                  size: 16,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'TRIP NOTES'.tr,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    color: const Color(0xFF334155),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.7,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            notes.startsWith('"') ? notes : '"$notes"',
-            style: const TextStyle(
-              color: AppColors.primaryText,
-              fontStyle: FontStyle.italic,
-              fontSize: 13,
-              height: 1.3,
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14.0),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(14.0),
+              border: const Border(
+                left: BorderSide(color: AppColors.secondary, width: 3.5),
+              ),
+            ),
+            child: Text(
+              notes.startsWith('"') ? notes : '"$notes"',
+              style: GoogleFonts.nunito(
+                color: const Color(0xFF1E293B),
+                fontStyle: FontStyle.italic,
+                fontWeight: FontWeight.w600,
+                fontSize: 13.5,
+                height: 1.45,
+              ),
             ),
           ),
         ],
@@ -1076,31 +1855,138 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
     String receiver,
     String status,
   ) {
-    return CustomCard(
-      padding: const EdgeInsets.all(16.0),
+    return _buildPremiumCard(
+      gradient: const LinearGradient(
+        colors: [Colors.white, Color(0xFFF0FDF4)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderColor: const Color(0xFFBBF7D0),
+      shadowColor: const Color(0xFF16A34A),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Delivery Confirmation'.tr,
-                style: const TextStyle(
-                  color: AppColors.primaryText,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF16A34A).withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.verified_rounded,
+                        color: Color(0xFF16A34A),
+                        size: 19,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Delivery Confirmation'.tr,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          color: const Color(0xFF0F172A),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const Icon(Icons.check_circle, color: AppColors.success, size: 18),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.check_circle_rounded,
+                color: Color(0xFF16A34A),
+                size: 20,
+              ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoItem('Receiver'.tr, receiver),
-              _buildInfoItem('Status'.tr, status.tr, alignRight: true),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFDCFCE7)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Receiver'.tr,
+                        style: GoogleFonts.nunito(
+                          color: const Color(0xFF64748B),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        receiver,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: GoogleFonts.poppins(
+                          color: const Color(0xFF0F172A),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFECFDF5),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFA7F3D0)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Status'.tr,
+                        style: GoogleFonts.nunito(
+                          color: const Color(0xFF166534),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        status.tr,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: GoogleFonts.poppins(
+                          color: const Color(0xFF15803D),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ],
@@ -1203,77 +2089,58 @@ class _CompletedTripDetailsScreenState extends State<CompletedTripDetailsScreen>
       children: [
         ElevatedButton.icon(
           onPressed: _downloadTripReport,
-          icon: const Icon(Icons.download_outlined, color: Colors.white, size: 20),
+          icon: const Icon(
+            Icons.download_rounded,
+            color: Colors.white,
+            size: 20,
+          ),
           label: Text(
             'Download Trip Report'.tr,
-            style: const TextStyle(
+            style: GoogleFonts.poppins(
               fontSize: 15,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w700,
               color: Colors.white,
             ),
           ),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
-            elevation: 0,
-            minimumSize: const Size(double.infinity, 48),
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            elevation: 3,
+            shadowColor: AppColors.primary.withValues(alpha: 0.3),
+            minimumSize: const Size(double.infinity, 52),
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.sm),
+              borderRadius: BorderRadius.circular(14.0),
             ),
           ),
         ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
           onPressed: _shareTripReport,
-          icon: const Icon(Icons.share_outlined, color: AppColors.secondary, size: 20),
+          icon: const Icon(
+            Icons.share_rounded,
+            color: AppColors.secondary,
+            size: 20,
+          ),
           label: Text(
             'Share Report'.tr,
-            style: const TextStyle(
+            style: GoogleFonts.poppins(
               fontSize: 15,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w700,
               color: AppColors.secondary,
             ),
           ),
           style: OutlinedButton.styleFrom(
+            backgroundColor: Colors.white,
             side: const BorderSide(color: AppColors.secondary, width: 1.5),
-            minimumSize: const Size(double.infinity, 48),
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            minimumSize: const Size(double.infinity, 52),
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.sm),
+              borderRadius: BorderRadius.circular(14.0),
             ),
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildInfoItem(String label, String value, {bool alignRight = false}) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: alignRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: AppColors.secondaryText,
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              color: AppColors.primaryText,
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-            ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-        ],
-      ),
     );
   }
 
