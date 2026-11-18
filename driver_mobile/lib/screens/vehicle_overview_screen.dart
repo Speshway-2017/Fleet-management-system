@@ -1,11 +1,11 @@
-import 'main_navigation_screen.dart';
-import '../services/localization_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
+import '../services/localization_service.dart';
 import '../widgets/vehicle_overview/quick_info_card.dart';
 import '../widgets/vehicle_overview/vehicle_action_tile.dart';
 import '../widgets/vehicle_overview/vehicle_info_card.dart';
+import 'main_navigation_screen.dart';
 import 'vehicle_details_screen.dart';
 import 'vehicle_documents_screen.dart';
 import 'vehicle_maintenance_screen.dart';
@@ -30,7 +30,6 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
   static bool? _cachedIsAssigned;
 
   bool _isLoading = false;
-  bool _isChecking = false;
   bool _isAssigned = false;
   Map<String, dynamic>? _vehicle;
 
@@ -49,12 +48,11 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
 
   Future<void> _fetchVehicleData({bool forceRefresh = false, bool showFeedback = false}) async {
     if (!mounted) return;
-    setState(() {
-      _isChecking = true;
-      if (_vehicle == null && _cachedVehicle == null) {
+    if (_vehicle == null && _cachedVehicle == null) {
+      setState(() {
         _isLoading = true;
-      }
-    });
+      });
+    }
 
     if (forceRefresh) {
       _cachedVehicle = null;
@@ -75,7 +73,6 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
               _isAssigned = true;
               _vehicle = vehMap;
               _isLoading = false;
-              _isChecking = false;
             });
             if (showFeedback && mounted) {
               ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -95,7 +92,6 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
               _isAssigned = false;
               _vehicle = null;
               _isLoading = false;
-              _isChecking = false;
             });
             if (showFeedback && mounted) {
               ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -116,7 +112,6 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
             _isAssigned = false;
             _vehicle = null;
             _isLoading = false;
-            _isChecking = false;
           });
           if (showFeedback && mounted) {
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -137,7 +132,6 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
           _isAssigned = _cachedIsAssigned ?? false;
           _vehicle = _cachedVehicle;
           _isLoading = false;
-          _isChecking = false;
         });
         if (showFeedback && mounted) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -168,7 +162,7 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
   @override
   Widget build(BuildContext context) {
     const primaryDark = Color(0xFF101C2C);
-    const bgLight = Color(0xFFF7F8FA);
+    const bgLight = Color(0xFFF4F6FA);
     const primaryOrange = Color(0xFFF97316);
 
     return ValueListenableBuilder<String>(
@@ -221,7 +215,6 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
   }
 
   Widget _buildNoVehicleAssignedState(BuildContext context) {
-    const primaryDark = Color(0xFF101C2C);
     const textPrimary = Color(0xFF1F2937);
     const textSecondary = Color(0xFF6B7280);
     const primaryOrange = Color(0xFFF97316);
@@ -279,36 +272,6 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
                   height: 1.5,
                 ),
               ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: _isChecking
-                    ? null
-                    : () => _fetchVehicleData(forceRefresh: true, showFeedback: true),
-                icon: _isChecking
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Icon(Icons.refresh_rounded, color: Colors.white, size: 18),
-                label: Text(
-                  _isChecking ? 'Checking...'.tr : 'Check Again'.tr,
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: Colors.white,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryDark,
-                  disabledBackgroundColor: primaryDark.withValues(alpha: 0.7),
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
             ],
           ),
         ),
@@ -359,10 +322,13 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
         ),
         const SizedBox(height: 14.0),
 
-        // 3. Operational Action Cards List
+        // 3. Operational Action Cards List (Color-Coded Premium Cards)
         VehicleActionTile(
           icon: Icons.info_outline_rounded,
           title: 'Vehicle Details'.tr,
+          accentColor: const Color(0xFF2563EB),
+          gradientEnd: const Color(0xFFEFF6FF),
+          borderColor: const Color(0xFFBFDBFE),
           onTap: () async {
             await Navigator.push(
               context,
@@ -376,6 +342,9 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
         VehicleActionTile(
           icon: Icons.bar_chart_rounded,
           title: 'Vehicle Status'.tr,
+          accentColor: const Color(0xFF059669),
+          gradientEnd: const Color(0xFFECFDF5),
+          borderColor: const Color(0xFFA7F3D0),
           onTap: () async {
             await Navigator.push(
               context,
@@ -390,7 +359,10 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
           icon: Icons.notifications_active_outlined,
           title: 'Maintenance Alerts'.tr,
           subtitle: '1 CRITICAL',
-          subtitleColor: const Color(0xFFEF4444),
+          subtitleColor: const Color(0xFFDC2626),
+          accentColor: const Color(0xFFDC2626),
+          gradientEnd: const Color(0xFFFEF2F2),
+          borderColor: const Color(0xFFFECACA),
           onTap: () async {
             await Navigator.push(
               context,
@@ -404,6 +376,9 @@ class _VehicleOverviewScreenState extends State<VehicleOverviewScreen> {
         VehicleActionTile(
           icon: Icons.folder_open_outlined,
           title: 'Vehicle Documents'.tr,
+          accentColor: const Color(0xFF7C3AED),
+          gradientEnd: const Color(0xFFF5F3FF),
+          borderColor: const Color(0xFFDDD6FE),
           onTap: () async {
             await Navigator.push(
               context,
