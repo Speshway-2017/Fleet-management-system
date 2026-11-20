@@ -22,6 +22,9 @@ import 'package:driver_mobile/screens/fuel_overview_screen.dart';
 import 'package:driver_mobile/screens/trips_screen.dart';
 import 'package:driver_mobile/screens/trip_details_screen.dart';
 import 'package:driver_mobile/screens/completed_trip_details_screen.dart';
+import 'package:driver_mobile/screens/completed_trips_screen.dart';
+import 'package:driver_mobile/screens/upcoming_trips_screen.dart';
+import 'package:driver_mobile/screens/active_trips_screen.dart';
 import 'package:driver_mobile/screens/contact_fleet_manager_screen.dart';
 import 'package:driver_mobile/screens/fuel_history_screen.dart';
 import 'package:driver_mobile/screens/support_history_screen.dart';
@@ -1621,6 +1624,166 @@ void main() {
         expect(find.text('Documents'), findsOneWidget);
         expect(find.text('Delivery Confirmation'), findsOneWidget);
         expect(find.text('Download Trip Report'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'CompletedTripsScreen renders executive hero card, color-coded trip cards, and search without overflow',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 1000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final sampleCompletedTrips = <Map<String, dynamic>>[
+          {
+            '_id': 'trip_c1',
+            'tripNumber': 'TRP-9045',
+            'status': 'Completed',
+            'startLocation': 'Hyderabad',
+            'endLocation': 'Chennai',
+            'actualDistance': 625,
+            'duration': '10h 15m',
+            'fuelConsumed': 82,
+            'vehicleName': 'Ashok Leyland',
+            'vehiclePlate': 'AP39XY7890',
+            'driverName': 'Meghana',
+            'createdAt': '2026-11-18T08:00:00.000Z',
+          },
+          {
+            '_id': 'trip_c2',
+            'tripNumber': 'TRP-8812',
+            'status': 'Completed',
+            'startLocation': 'Bangalore',
+            'endLocation': 'Hyderabad',
+            'actualDistance': 570,
+            'duration': '8h 40m',
+            'fuelConsumed': 74,
+            'vehicleName': 'Tata Prima',
+            'vehiclePlate': 'KA01AB1234',
+            'driverName': 'Meghana',
+            'createdAt': '2026-11-15T09:30:00.000Z',
+          },
+        ];
+
+        CompletedTripsScreen.clearCache();
+        ApiService.isTest = true;
+        ApiService.mockResponses['/driver/trips?status=Completed'] = {
+          'success': true,
+          'data': sampleCompletedTrips,
+        };
+        LocalizationService.setLanguage('English (US)');
+
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: CompletedTripsScreen(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Completed Trips'), findsWidgets);
+        expect(find.text('VERIFIED ARCHIVE'), findsOneWidget);
+        expect(find.text('Trip History'), findsOneWidget);
+        expect(find.text('#TRP-9045'), findsOneWidget);
+        expect(find.text('#TRP-8812'), findsOneWidget);
+        expect(find.text('Hyderabad'), findsWidgets);
+        expect(find.text('Chennai'), findsOneWidget);
+        expect(find.text('Bangalore'), findsOneWidget);
+        expect(find.text('View Trip Summary'), findsNWidgets(2));
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'UpcomingTripsScreen renders executive hero card, color-coded trip card, and actions without overflow',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 1000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final sampleUpcomingTrip = <String, dynamic>{
+          '_id': 'trip_up_1',
+          'tripNumber': 'TRP-7744',
+          'status': 'Accepted',
+          'startLocation': 'Mumbai Central Hub',
+          'endLocation': 'Pune Logistics Center',
+          'departureTime': '2026-11-22T06:00:00.000Z',
+          'estimatedDistance': 155,
+          'vehicleName': 'BharatBenz 2823',
+          'vehiclePlate': 'MH12AB9012',
+          'managerName': 'Rajesh Kumar',
+        };
+
+        UpcomingTripsScreen.clearCache();
+        ApiService.isTest = true;
+        ApiService.mockResponses['/driver/trips/current'] = {
+          'success': true,
+          'data': sampleUpcomingTrip,
+        };
+        LocalizationService.setLanguage('English (US)');
+
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: UpcomingTripsScreen(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Upcoming Trips'), findsWidgets);
+        expect(find.text('SCHEDULED TRIP'), findsOneWidget);
+        expect(find.text('Upcoming Trip'), findsOneWidget);
+        expect(find.text('#TRP-7744'), findsOneWidget);
+        expect(find.text('Mumbai Central Hub'), findsOneWidget);
+        expect(find.text('Pune Logistics Center'), findsOneWidget);
+        expect(find.text('View Details'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'ActiveTripsScreen renders executive hero card, live map card, and customer location controls without overflow',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 1100);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final sampleActiveTrip = <String, dynamic>{
+          '_id': 'trip_act_1',
+          'tripNumber': 'TRP-5521',
+          'status': 'In Progress',
+          'startLocation': 'Hyderabad Depot',
+          'endLocation': 'Vijayawada Hub',
+          'eta': '2h 15m',
+          'vehicle': 'Volvo FH16 (TS09EA1234)',
+          'customerLocationReached': false,
+        };
+
+        ActiveTripsScreen.clearCache();
+        ApiService.isTest = true;
+        ApiService.mockResponses['/driver/trips/current'] = {
+          'success': true,
+          'data': sampleActiveTrip,
+        };
+        LocalizationService.setLanguage('English (US)');
+
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: ActiveTripsScreen(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Active Trips'), findsWidgets);
+        expect(find.text('LIVE TRACKING'), findsOneWidget);
+        expect(find.text('Active Trip'), findsOneWidget);
+        expect(find.text('#TRP-5521'), findsOneWidget);
+        expect(find.text('Hyderabad Depot'), findsOneWidget);
+        expect(find.text('Vijayawada Hub'), findsOneWidget);
+        expect(find.text('Customer Location Reached'), findsOneWidget);
+        expect(find.text('View Full Trip Details'), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );
