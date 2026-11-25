@@ -610,6 +610,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> with SingleTi
   }) {
     return TextFormField(
       controller: controller,
+      cursorColor: Colors.white,
       obscureText: obscureText,
       keyboardType: keyboardType,
       style: GoogleFonts.plusJakartaSans(

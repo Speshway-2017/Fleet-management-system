@@ -1,6 +1,8 @@
 import express from 'express';
 import {
   loginDriver,
+  sendDriverOtp,
+  verifyDriverOtp,
   logoutDriver,
   getDriverProfile,
   updateDriverProfile,
@@ -45,6 +47,8 @@ const router = express.Router();
 
 // Public routes
 router.post('/login', loginDriver);
+router.post('/send-otp', sendDriverOtp);
+router.post('/verify-otp', verifyDriverOtp);
 router.post('/logout', logoutDriver);
 
 // Protected routes (require Driver token)

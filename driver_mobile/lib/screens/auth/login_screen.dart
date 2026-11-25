@@ -561,7 +561,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => const ForgotPasswordScreen(),
+                                        builder: (context) => ForgotPasswordScreen(
+                                          initialIdentifier:
+                                              _emailController.text.trim(),
+                                        ),
                                       ),
                                     );
                                   },
@@ -773,6 +776,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }) {
     return TextFormField(
       controller: controller,
+      cursorColor: Colors.white,
       obscureText: obscureText,
       keyboardType: keyboardType,
       style: GoogleFonts.plusJakartaSans(
