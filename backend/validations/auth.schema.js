@@ -43,8 +43,9 @@ export const forgotPasswordSchema = z.object({
   email: z.string().trim().optional(),
   contact: z.string().trim().optional(),
   identifier: z.string().trim().optional(),
-  phone: z.string().trim().optional()
-}).refine(data => data.email || data.contact || data.identifier || data.phone, {
+  phone: z.string().trim().optional(),
+  mobile: z.string().trim().optional()
+}).refine(data => data.email || data.contact || data.identifier || data.phone || data.mobile, {
   message: 'Registered email address or phone number is required'
 });
 
@@ -53,8 +54,9 @@ export const verifyOtpSchema = z.object({
   contact: z.string().trim().optional(),
   identifier: z.string().trim().optional(),
   phone: z.string().trim().optional(),
+  mobile: z.string().trim().optional(),
   otp: z.string({ required_error: 'OTP is required' }).trim().min(1, 'OTP is required')
-}).refine(data => data.email || data.contact || data.identifier || data.phone, {
+}).refine(data => data.email || data.contact || data.identifier || data.phone || data.mobile, {
   message: 'Registered email address or phone number is required'
 });
 
@@ -63,10 +65,11 @@ export const resetPasswordSchema = z.object({
   contact: z.string().trim().optional(),
   identifier: z.string().trim().optional(),
   phone: z.string().trim().optional(),
+  mobile: z.string().trim().optional(),
   otp: z.string({ required_error: 'OTP is required' }).trim().min(1, 'OTP is required'),
   newPassword: z.string().optional(),
   password: z.string().optional()
-}).refine(data => (data.email || data.contact || data.identifier || data.phone) && (data.newPassword || data.password), {
+}).refine(data => (data.email || data.contact || data.identifier || data.phone || data.mobile) && (data.newPassword || data.password), {
   message: 'Registered email/phone, OTP, and new password are required'
 });
 

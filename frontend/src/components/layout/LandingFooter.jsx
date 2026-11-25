@@ -1,12 +1,9 @@
-import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import toast from "react-hot-toast";
-import TermsModal from "@/components/common/TermsModal";
 import { useSettings } from "@/context/SettingsContext";
 import { AnimeScrollReveal, AnimeStaggerGroup } from "@/components/common/AnimeScrollReveal";
 
 export default function LandingFooter() {
-  const [isTermsOpen, setIsTermsOpen] = useState(false);
   const { platformSettings } = useSettings();
 
   const handleAction = (label) => {
@@ -85,8 +82,8 @@ export default function LandingFooter() {
             <li><NavLink to="/about" className="hover:text-white transition-colors">About Us</NavLink></li>
             <li><a href="#" onClick={(e) => { e.preventDefault(); handleAction("Careers"); }} className="hover:text-white transition-colors">Careers</a></li>
             <li><NavLink to="/blogs" className="hover:text-white transition-colors">Blogs</NavLink></li>
-            <li><a href="#" onClick={(e) => { e.preventDefault(); setIsTermsOpen(true); }} className="hover:text-white transition-colors">Privacy Policy</a></li>
-            <li><a href="#" onClick={(e) => { e.preventDefault(); setIsTermsOpen(true); }} className="hover:text-white transition-colors">Terms of Service</a></li>
+            <li><NavLink to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</NavLink></li>
+            <li><NavLink to="/terms-and-conditions" className="hover:text-white transition-colors">Terms &amp; Conditions</NavLink></li>
           </ul>
         </div>
 
@@ -154,11 +151,10 @@ export default function LandingFooter() {
         </div>
         <div className="flex items-center gap-6">
           <NavLink to="/account-deletion" className="hover:text-white transition-colors">Account Deletion</NavLink>
-          <a href="#" onClick={(e) => { e.preventDefault(); setIsTermsOpen(true); }} className="hover:text-white transition-colors">Privacy Policy</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); setIsTermsOpen(true); }} className="hover:text-white transition-colors">Terms of Service</a>
+          <NavLink to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</NavLink>
+          <NavLink to="/terms-and-conditions" className="hover:text-white transition-colors">Terms &amp; Conditions</NavLink>
         </div>
       </AnimeScrollReveal>
-      <TermsModal isOpen={isTermsOpen} onClose={() => setIsTermsOpen(false)} />
     </footer>
   );
 }

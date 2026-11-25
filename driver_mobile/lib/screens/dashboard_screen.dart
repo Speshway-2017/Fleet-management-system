@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -53,6 +52,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<dynamic> _recentTrips = [];
   String? _vehicleNumber;
   bool _isFetching = false;
+  bool _isStartingTrip = false;
 
   @override
   void initState() {
@@ -1005,13 +1005,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (!mounted) return;
 
       if (res != null && res['success'] == true) {
+        if (action == 'accept' && _currentTrip != null) {
+          setState(() {
+            _currentTrip = Map<String, dynamic>.from(_currentTrip!)
+              ..['status'] = 'Scheduled';
+            _cachedCurrentTrip = _currentTrip;
+          });
+        } else if (action == 'reject') {
+          setState(() {
+            _currentTrip = null;
+            _cachedCurrentTrip = null;
+          });
+        }
+        ApiService.clearApiCache('/driver/trips/current');
+        ApiService.clearApiCache('/driver/dashboard');
+        ApiService.clearApiCache('/driver/trips');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(action == 'accept' ? 'Trip Accepted! Status updated to Scheduled.' : 'Trip Rejected.'),
             backgroundColor: action == 'accept' ? Colors.green : Colors.orange,
           ),
         );
-        _loadDashboardData();
+        await _loadDashboardData();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1089,34 +1104,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF7ED),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.access_time_filled_rounded, color: Color(0xFFEA580C), size: 14),
-                        const SizedBox(width: 5),
-                        Text(
-                          'Pending Acceptance',
-                          style: GoogleFonts.poppins(
-                            color: const Color(0xFFEA580C),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11,
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF7ED),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.access_time_filled_rounded, color: Color(0xFFEA580C), size: 14),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              'Pending Acceptance',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.poppins(
+                                color: const Color(0xFFEA580C),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 11,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                  Text(
-                    '#$tripNumber',
-                    style: GoogleFonts.poppins(
-                      color: const Color(0xFF0F1E38),
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      '#$tripNumber',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                        color: const Color(0xFF0F1E38),
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                 ],
@@ -1250,6 +1276,108 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return true;
   }
 
+  bool _isPreStartStatus(String statusLower) {
+    return statusLower == 'scheduled' ||
+        statusLower == 'assigned' ||
+        statusLower == 'accepted' ||
+        statusLower == 'ready to dispatch' ||
+        statusLower == 'start trip';
+  }
+
+  bool _isStartTripEnabled(String? departureTimeStr) {
+    if (departureTimeStr == null ||
+        departureTimeStr.trim().isEmpty ||
+        departureTimeStr == 'N/A') {
+      return true;
+    }
+    try {
+      final dep = DateTime.parse(departureTimeStr.trim()).toLocal();
+      final now = DateTime.now();
+      final windowStart = dep.subtract(const Duration(minutes: 15));
+      return now.isAfter(windowStart) || now.isAtSameMomentAs(windowStart);
+    } catch (_) {
+      return true;
+    }
+  }
+
+  Future<void> _handleStartTrip(String tripId, String? departureTimeStr) async {
+    if (!_isStartTripEnabled(departureTimeStr)) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Start button is locked. You can start the trip 15 minutes before scheduled departure.',
+          ),
+          backgroundColor: Color(0xFF2563EB),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (_isStartingTrip || tripId.isEmpty) return;
+
+    setState(() {
+      _isStartingTrip = true;
+    });
+
+    try {
+      final cleanId = tripId.replaceAll('#', '').trim();
+      final res = await ApiService.updateTripStatus(cleanId, 'In Progress');
+      if (!mounted) return;
+
+      if (res != null && res['success'] == true) {
+        if (_currentTrip != null) {
+          setState(() {
+            _currentTrip = Map<String, dynamic>.from(_currentTrip!)
+              ..['status'] = 'In Progress';
+            _cachedCurrentTrip = _currentTrip;
+          });
+        }
+        ApiService.clearApiCache('/driver/trips/current');
+        ApiService.clearApiCache('/driver/dashboard');
+        ApiService.clearApiCache('/driver/trips');
+        LocationTrackingService.startTracking(tripId: cleanId);
+
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🚀 Trip started! Live GPS tracking activated.'),
+            backgroundColor: Color(0xFF059669),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        await _loadDashboardData();
+      } else {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(res?['message']?.toString() ?? 'Failed to start trip'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isStartingTrip = false;
+        });
+      }
+    }
+  }
+
   // Active Trip Card Builder (Matches reference image white card layout with route stepper & orange CTA)
   Widget _buildActiveTripCard(BuildContext context) {
     if (!_hasActiveTrip || _currentTrip == null || _currentTrip!.isEmpty) {
@@ -1356,28 +1484,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFF97316),
-                          shape: BoxShape.circle,
+                  Expanded(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF97316),
+                            shape: BoxShape.circle,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Active Trip',
-                        style: GoogleFonts.poppins(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF0F172A),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Active Trip',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   InkWell(
                     onTap: openTripDetails,
                     borderRadius: BorderRadius.circular(20),
@@ -1493,144 +1628,90 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Row 3: Route Stepper (Left) & Orange CTA Button (Right)
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+              // Row 3: Route Stepper (Pickup & Destination Address)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Route Stepper
-                  Expanded(
-                    flex: 11,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Pickup
-                        Row(
+                  // Pickup
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.radio_button_checked,
+                        color: Color(0xFF2563EB),
+                        size: 15,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(
-                              Icons.radio_button_checked,
-                              color: Color(0xFF2563EB),
-                              size: 15,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'PICKUP',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 9.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: const Color(0xFF3B82F6),
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                  Text(
-                                    pickup,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: const Color(0xFF0F1E38),
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
+                            Text(
+                              'PICKUP',
+                              style: GoogleFonts.poppins(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF3B82F6),
+                                letterSpacing: 0.5,
                               ),
+                            ),
+                            Text(
+                              pickup,
+                              style: GoogleFonts.poppins(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF0F1E38),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
-                        // Stepper Connector Line
-                        Container(
-                          margin: const EdgeInsets.only(left: 6.5, top: 2, bottom: 2),
-                          width: 2,
-                          height: 16,
-                          color: const Color(0xFFCBD5E1),
-                        ),
-                        // Destination
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.location_on,
-                              color: Color(0xFFEF4444),
-                              size: 16,
-                            ),
-                            const SizedBox(width: 7),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'DESTINATION',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 9.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: const Color(0xFF64748B),
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                  Text(
-                                    destination,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: const Color(0xFF0F1E38),
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-
-                  // Orange CTA Action Button
-                  InkWell(
-                    onTap: openTripDetails,
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFFF7A1A), Color(0xFFEA580C)],
+                  // Stepper Connector Line
+                  Container(
+                    margin: const EdgeInsets.only(left: 6.5, top: 2, bottom: 2),
+                    width: 2,
+                    height: 16,
+                    color: const Color(0xFFCBD5E1),
+                  ),
+                  // Destination
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.location_on,
+                        color: Color(0xFFEF4444),
+                        size: 16,
+                      ),
+                      const SizedBox(width: 7),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'DESTINATION',
+                              style: GoogleFonts.poppins(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF64748B),
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            Text(
+                              destination,
+                              style: GoogleFonts.poppins(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF0F1E38),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFEA580C).withValues(alpha: 0.35),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Transform.rotate(
-                            angle: math.pi / 4,
-                            child: const Icon(
-                              Icons.navigation_rounded,
-                              color: Colors.white,
-                              size: 15,
-                            ),
-                          ),
-                          const SizedBox(width: 7),
-                          Text(
-                            'View Details',
-                            style: GoogleFonts.poppins(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    ],
                   ),
                 ],
               ),
@@ -1667,6 +1748,108 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 ),
               ),
+
+              if (_isPreStartStatus(tripStatusLower)) ...[
+                const SizedBox(height: 16),
+                Builder(
+                  builder: (context) {
+                    final tripIdForStart = (trip['tripId'] ??
+                            trip['_id'] ??
+                            tripNumberStr)
+                        .toString();
+                    final depTimeStr = trip['departureTime']?.toString();
+                    final startEnabled = _isStartTripEnabled(depTimeStr);
+
+                    return Container(
+                      width: double.infinity,
+                      constraints: const BoxConstraints(minHeight: 48),
+                      decoration: BoxDecoration(
+                        gradient: startEnabled
+                            ? const LinearGradient(
+                                colors: [Color(0xFFEA580C), Color(0xFFF97316)],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              )
+                            : null,
+                        color: startEnabled ? null : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(14),
+                        border: startEnabled
+                            ? null
+                            : Border.all(color: const Color(0xFFCBD5E1)),
+                        boxShadow: startEnabled
+                            ? [
+                                BoxShadow(
+                                  color: const Color(0xFFEA580C)
+                                      .withValues(alpha: 0.25),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(14),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: _isStartingTrip
+                              ? null
+                              : () => _handleStartTrip(tripIdForStart, depTimeStr),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                if (_isStartingTrip)
+                                  const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                else
+                                  Icon(
+                                    startEnabled
+                                        ? Icons.play_arrow_rounded
+                                        : Icons.lock_clock_rounded,
+                                    size: 20,
+                                    color: startEnabled
+                                        ? Colors.white
+                                        : const Color(0xFF64748B),
+                                  ),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    startEnabled
+                                        ? 'Start Trip'.tr
+                                        : 'Starts 15m Before',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w700,
+                                      height: 1.2,
+                                      color: startEnabled
+                                          ? Colors.white
+                                          : const Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ],
           ),
         ),

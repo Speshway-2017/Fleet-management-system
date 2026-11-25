@@ -33,6 +33,8 @@ const Features = lazy(() => import("@/roles/admin/pages/Features"));
 const Blogs = lazy(() => import("@/roles/admin/pages/Blogs"));
 const Pricing = lazy(() => import("@/roles/admin/pages/Pricing"));
 const AccountDeletion = lazy(() => import("@/roles/admin/pages/AccountDeletion"));
+const PrivacyPolicy = lazy(() => import("@/roles/admin/pages/PrivacyPolicy"));
+const TermsAndConditions = lazy(() => import("@/roles/admin/pages/TermsAndConditions"));
 
 const ForgotPasswordPage = lazy(() => import("@/roles/admin/pages/ForgotPasswordPage"));
 const OtpVerificationPage = lazy(() => import("@/roles/admin/pages/OtpVerificationPage"));
@@ -169,6 +171,10 @@ export default function App() {
                     <Route path="/pricing" element={<PublicRoute><Pricing /></PublicRoute>} />
                     <Route path="/blogs" element={<PublicRoute><Blogs /></PublicRoute>} />
                     <Route path="/account-deletion" element={<AccountDeletion />} />
+                    <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                    <Route path="/privacy" element={<Navigate to="/privacy-policy" replace />} />
+                    <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+                    <Route path="/terms-of-service" element={<Navigate to="/terms-and-conditions" replace />} />
                   </Route>
 
                   {/* Auth Routes */}

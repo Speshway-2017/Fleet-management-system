@@ -80,6 +80,8 @@ export const preloadPublicRoutes = () => {
     [() => import("@/roles/admin/pages/Pricing"), "pub_pricing"],
     [() => import("@/roles/admin/pages/Blogs"), "pub_blogs"],
     [() => import("@/roles/admin/pages/Security"), "pub_security"],
+    [() => import("@/roles/admin/pages/PrivacyPolicy"), "pub_privacy"],
+    [() => import("@/roles/admin/pages/TermsAndConditions"), "pub_terms"],
     [() => import("@/roles/admin/pages/LoginPage"), "pub_login"]
   ];
 

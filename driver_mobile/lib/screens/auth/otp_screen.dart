@@ -110,7 +110,10 @@ class _OTPScreenState extends State<OTPScreen> with SingleTickerProviderStateMix
     } else {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
+        MaterialPageRoute(
+          builder: (context) =>
+              ForgotPasswordScreen(initialIdentifier: widget.contactInfo),
+        ),
       );
     }
   }
@@ -384,6 +387,7 @@ class _OTPScreenState extends State<OTPScreen> with SingleTickerProviderStateMix
                                           child: TextFormField(
                                             controller: _controllers[index],
                                             focusNode: _focusNodes[index],
+                                            cursorColor: Colors.white,
                                             keyboardType: TextInputType.number,
                                             textAlign: TextAlign.center,
                                             textInputAction: index < 5 ? TextInputAction.next : TextInputAction.done,
