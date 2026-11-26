@@ -42,13 +42,14 @@ import {
 } from '../controllers/driverApi.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import memoryUpload from '../middleware/memoryUpload.middleware.js';
+import { loginRateLimiter, forgotPasswordRateLimiter } from '../middleware/rateLimit.middleware.js';
 
 const router = express.Router();
 
-// Public routes
-router.post('/login', loginDriver);
-router.post('/send-otp', sendDriverOtp);
-router.post('/verify-otp', verifyDriverOtp);
+// Public routes (rate-limited for brute-force protection)
+router.post('/login', loginRateLimiter, loginDriver);
+router.post('/send-otp', forgotPasswordRateLimiter, sendDriverOtp);
+router.post('/verify-otp', loginRateLimiter, verifyDriverOtp);
 router.post('/logout', logoutDriver);
 
 // Protected routes (require Driver token)

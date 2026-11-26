@@ -1685,73 +1685,16 @@ export const updateAboutAdmin = async (req, res, next) => {
 
 export const getAuditLogsAdmin = async (req, res, next) => {
   try {
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.max(1, parseInt(req.query.limit) || 15);
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 15));
     const search = (req.query.search || '').trim();
+    const statusFilter = (req.query.status || '').trim();
     const skip = (page - 1) * limit;
 
-    // Check if initial audit logs should be seeded
-    const countTotal = await AuditLog.countDocuments();
-    if (countTotal === 0) {
-      await AuditLog.insertMany([
-        {
-          user: "Super Admin",
-          action: "Updated Platform Settings",
-          organization: "Fleet Management",
-          ipAddress: "192.168.1.1",
-          status: "Success",
-          details: { category: "Settings" },
-          createdAt: new Date()
-        },
-        {
-          user: "System",
-          action: "Daily Database Backup Completed",
-          organization: "System",
-          ipAddress: "127.0.0.1",
-          status: "Success",
-          details: { automated: true },
-          createdAt: new Date(Date.now() - 3600000)
-        },
-        {
-          user: "Super Admin",
-          action: "Created Fleet Manager Account",
-          organization: "ARC Logistics",
-          ipAddress: "192.168.1.1",
-          status: "Success",
-          details: { role: "FLEET_MANAGER" },
-          createdAt: new Date(Date.now() - 7200000)
-        },
-        {
-          user: "System",
-          action: "Automated Maintenance Service Health Check",
-          organization: "System",
-          ipAddress: "127.0.0.1",
-          status: "Success",
-          details: { target: "Telemetry Sync" },
-          createdAt: new Date(Date.now() - 14400000)
-        },
-        {
-          user: "admin@fleetcommand.io",
-          action: "Admin Portal Security Login",
-          organization: "Fleet Management",
-          ipAddress: "192.168.1.1",
-          status: "Success",
-          details: { method: "Password" },
-          createdAt: new Date(Date.now() - 28800000)
-        },
-        {
-          user: "System",
-          action: "FASTag Toll Balance Synchronization",
-          organization: "System",
-          ipAddress: "127.0.0.1",
-          status: "Success",
-          details: { syncedCount: 14 },
-          createdAt: new Date(Date.now() - 43200000)
-        }
-      ]);
+    const filter = {};
+    if (statusFilter && ['Success', 'Warning', 'Failed'].includes(statusFilter)) {
+      filter.status = statusFilter;
     }
-
-    let filter = {};
     if (search && search.length >= 2) {
       const searchRegex = new RegExp(search.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&'), 'i');
       filter.$or = [

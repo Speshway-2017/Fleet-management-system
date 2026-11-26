@@ -35,6 +35,10 @@ import {
   getNotificationSettingsAdmin,
   updateNotificationSettingsAdmin
 } from '../controllers/admin.controller.js';
+import {
+  getSecurityEventsAdmin,
+  unlockAccountAdmin
+} from '../controllers/security.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import { authorizeRoles } from '../middleware/role.middleware.js';
 import memoryUpload from '../middleware/memoryUpload.middleware.js';
@@ -102,9 +106,11 @@ router.get('/about',     ...adminAuth, getAboutAdmin);
 router.put('/about',     ...adminAuth, aboutValidator, updateAboutAdmin);
 
 
-// ── Analytics ──────────────────────────────────────────────────────────────
+// ── Analytics & Security Monitoring ────────────────────────────────────────
 router.get('/analytics', ...adminAuth, getAnalytics);
 router.get('/audit-logs', ...adminAuth, getAuditLogsAdmin);
+router.get('/security/events', ...adminAuth, getSecurityEventsAdmin);
+router.delete('/security/lockouts/:id', ...adminAuth, unlockAccountAdmin);
 
 // ── Platform Issues ────────────────────────────────────────────────────────
 router.post('/issues',        ...adminAuth, createIssue);

@@ -12,7 +12,8 @@ import {
   MoreHorizontal,
   MessageSquare,
   CreditCard,
-  ClipboardList
+  ClipboardList,
+  ShieldAlert
 } from "lucide-react";
 
 export default function NewAdminSidebar({ activeItem = "dashboard" }) {
@@ -26,6 +27,7 @@ export default function NewAdminSidebar({ activeItem = "dashboard" }) {
     { id: "subscription-requests", label: "Subscriptions", to: "/admin/subscription-requests", icon: CreditCard },
     { id: "contact-requests", label: "Contact Requests", to: "/admin/contact-requests", icon: MessageSquare },
     { id: "analytics", label: "Analytics", to: "/admin/analytics", icon: BarChart3 },
+    { id: "security", label: "Security", to: "/admin/security", icon: ShieldAlert },
     { id: "settings", label: "Settings", to: "/admin/settings", icon: Settings },
   ];
 

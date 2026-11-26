@@ -1627,28 +1627,6 @@ export default function ReportsPage() {
           </div>
         </div>
       )}
-
-      {/* Global CSS style block for clean print styling */}
-      <style>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          #print-area, #print-area * {
-            visibility: visible;
-          }
-          #print-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-          /* Hide scrollbars during print */
-          .no-scrollbar {
-            overflow: visible !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }

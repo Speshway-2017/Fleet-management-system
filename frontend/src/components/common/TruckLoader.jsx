@@ -90,13 +90,6 @@ export default function TruckLoader({ text = "Loading Fleet Data...", fullScreen
           </p>
         )}
       </div>
-
-      <style>{`
-        @keyframes slideRoad {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-24px); }
-        }
-      `}</style>
     </div>
   );
 }

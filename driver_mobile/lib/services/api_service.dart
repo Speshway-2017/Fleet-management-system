@@ -154,7 +154,10 @@ class ApiService {
     }
 
     // Debug / Development Mode handling:
-    if (savedUrl != null && savedUrl.isNotEmpty) {
+    final isManualUrl = prefs.getBool('server_url_manual') ?? false;
+    if (savedUrl != null &&
+        savedUrl.isNotEmpty &&
+        (isManualUrl || isLocalAddress(savedUrl))) {
       _cachedBaseUrl = formatServerUrl(savedUrl);
       return _cachedBaseUrl!;
     }
@@ -171,11 +174,12 @@ class ApiService {
     return _cachedBaseUrl!;
   }
 
-  static Future<void> setBaseUrl(String url) async {
+  static Future<void> setBaseUrl(String url, {bool isManual = true}) async {
     var formattedUrl = formatServerUrl(url);
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('server_url', formattedUrl);
+    await prefs.setBool('server_url_manual', isManual);
     _cachedBaseUrl = formattedUrl;
   }
 
@@ -214,8 +218,8 @@ class ApiService {
     }
   }
 
-  /// Probes candidate URLs and returns the first reachable URL while persisting it in SharedPreferences.
-  /// Prioritizes production URL in release mode, and local URLs in debug mode.
+  /// Probes candidate URLs and returns the first reachable URL.
+  /// Prioritizes production URL in release mode, and local URLs before production fallback in debug mode.
   static Future<String?> autoDiscoverWorkingBaseUrl() async {
     if (_isTest) {
       return defaultUrl;
@@ -223,31 +227,53 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     final savedUrl = prefs.getString('server_url')?.trim();
 
-    final List<String> candidates;
     if (kReleaseMode) {
-      candidates = [
+      final candidates = <String>{
         productionApiUrl,
         if (savedUrl != null && savedUrl.isNotEmpty && !isLocalAddress(savedUrl)) savedUrl,
-      ];
-    } else {
-      candidates = [
-        if (savedUrl != null && savedUrl.isNotEmpty) savedUrl,
-        if (!kIsWeb) 'http://10.0.2.2:5000/api',         // Android Emulator
-        if (!kIsWeb) 'http://127.0.0.1:5000/api',        // ADB reverse
-        'http://localhost:5000/api',                    // Web / Desktop
-        productionApiUrl,                                // Production fallback
-      ];
+      }.toList();
+
+      return _probeFirstReachable(candidates, persistLocalOnly: false);
     }
 
-    final uniqueCandidates = candidates.toSet().toList();
+    final localCandidates = <String>{
+      if (savedUrl != null && savedUrl.isNotEmpty && isLocalAddress(savedUrl)) savedUrl,
+      if (!kIsWeb) 'http://10.0.2.2:5000/api',         // Android Emulator
+      if (!kIsWeb) 'http://127.0.0.1:5000/api',        // ADB reverse
+      'http://localhost:5000/api',                    // Web / Desktop
+      if (!kIsWeb) 'http://192.168.88.17:5000/api',    // Physical device LAN fallback
+    }.toList();
+
+    final localMatch = await _probeFirstReachable(localCandidates, persistLocalOnly: true);
+    if (localMatch != null) {
+      return localMatch;
+    }
+
+    final remoteCandidates = <String>{
+      if (savedUrl != null && savedUrl.isNotEmpty && !isLocalAddress(savedUrl)) savedUrl,
+      productionApiUrl,
+    }.toList();
+
+    return _probeFirstReachable(remoteCandidates, persistLocalOnly: false);
+  }
+
+  static Future<String?> _probeFirstReachable(
+    List<String> candidates, {
+    required bool persistLocalOnly,
+  }) async {
+    if (candidates.isEmpty) return null;
 
     final completer = Completer<String?>();
-    int pending = uniqueCandidates.length;
+    int pending = candidates.length;
 
-    for (final url in uniqueCandidates) {
+    for (final url in candidates) {
       testConnection(url, timeout: const Duration(milliseconds: 1500)).then((isOk) async {
         if (isOk && !completer.isCompleted) {
-          await setBaseUrl(url);
+          if (persistLocalOnly) {
+            await setBaseUrl(url, isManual: false);
+          } else {
+            _cachedBaseUrl = formatServerUrl(url);
+          }
           debugPrint('[ApiService] Fast auto-discovered working server URL: $url');
           completer.complete(url);
         } else {

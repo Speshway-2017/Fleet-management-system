@@ -29,35 +29,21 @@ export default function AuditLogs() {
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   const handleSearchKeyDown = (e) => {
-    // Ignore control, navigation, function, and modifier keys (Shift, CapsLock, Enter, Escape, Arrow keys, Backspace, etc.)
     if (e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey) {
       return;
     }
-    // Only allow single character letters, spaces, and hyphens
-    if (!/^[a-zA-Z\s\-]$/.test(e.key)) {
+    if (!/^[a-zA-Z0-9._@:/\-\s]$/.test(e.key)) {
       e.preventDefault();
-      setSearchError("Numbers and symbols are not allowed in search (letters only)");
-    } else {
-      if (searchError === "Numbers and symbols are not allowed in search (letters only)") {
-        setSearchError("");
-      }
+      setSearchError("Special control symbols are not allowed in search");
+    } else if (searchError) {
+      setSearchError("");
     }
   };
 
   const handleSearchChange = (e) => {
     const raw = e.target.value;
-    let val = raw;
-    let hasInvalid = false;
-    if (/[^a-zA-Z\s\-]/.test(raw)) {
-      hasInvalid = true;
-      val = raw.replace(/[^a-zA-Z\s\-]/g, '');
-    }
-
-    if (hasInvalid) {
-      setSearchError("Numbers and symbols are not allowed in search (letters only)");
-    } else if (val.length > 20) {
-      setSearchError("Search must not exceed 20 characters");
-    } else if (val.length === 1) {
+    const val = raw.replace(/[^a-zA-Z0-9._@:/\-\s]/g, "").slice(0, 40);
+    if (val.length === 1) {
       setSearchError("Search must be at least 2 characters");
     } else {
       setSearchError("");
@@ -154,6 +140,10 @@ export default function AuditLogs() {
               <span className="sm:hidden">Logs</span>
               <span className="hidden sm:inline">Audit Logs</span>
             </button>
+            <Link to="/admin/security" className="flex-1 sm:flex-none text-center px-1 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-sm font-bold text-slate-600 hover:text-slate-900 rounded-full transition-colors whitespace-nowrap">
+              <span className="sm:hidden">Security</span>
+              <span className="hidden sm:inline">Security Monitor</span>
+            </Link>
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[500px]">
@@ -164,8 +154,8 @@ export default function AuditLogs() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                   <input
                     type="text"
-                    maxLength={20}
-                    placeholder="Search logs by user, action..."
+                    maxLength={40}
+                    placeholder="Search user, action, or IP..."
                     value={searchTerm}
                     onKeyDown={handleSearchKeyDown}
                     onChange={handleSearchChange}

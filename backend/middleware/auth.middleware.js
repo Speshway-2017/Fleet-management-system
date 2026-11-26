@@ -39,7 +39,7 @@ export const protect = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    console.error('JWT Verification Error:', error.message, error.stack);
+    console.error('JWT Verification Error:', error.message);
     return res.status(401).json({ success: false, message: 'Invalid or expired token' });
   }
 };

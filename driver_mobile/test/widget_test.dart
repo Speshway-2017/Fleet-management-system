@@ -37,8 +37,6 @@ import 'package:driver_mobile/screens/auth/otp_screen.dart';
 import 'package:driver_mobile/screens/auth/reset_password_screen.dart';
 import 'package:driver_mobile/theme/app_input_theme.dart';
 import 'package:driver_mobile/screens/dashboard_screen.dart';
-import 'package:driver_mobile/screens/auth/login_screen.dart';
-import 'package:driver_mobile/screens/auth/forgot_password_screen.dart';
 import 'package:driver_mobile/services/localization_service.dart';
 import 'package:driver_mobile/utils/navigation_helper.dart';
 
@@ -2109,7 +2107,6 @@ void main() {
     );
 
     testWidgets(
-      'LoginScreen pre-fills email into ForgotPasswordScreen and hides Already have OTP Reset Now link',
       'DashboardScreen displays Start Trip button on Active Trip card after accepting trip request',
       (tester) async {
         tester.view.physicalSize = const Size(412, 915);
@@ -2175,26 +2172,11 @@ void main() {
               ChangeNotifierProvider(create: (_) => AuthProvider()),
               ChangeNotifierProvider(create: (_) => NotificationProvider()),
             ],
-            child: const MaterialApp(home: LoginScreen()),
             child: const MaterialApp(home: DashboardScreen()),
           ),
         );
         await tester.pumpAndSettle();
 
-        await tester.enterText(
-          find.byType(TextFormField).first,
-          'verification@gmail.com',
-        );
-        await tester.pumpAndSettle();
-
-        await tester.ensureVisible(find.text('Forgot Password?'));
-        await tester.tap(find.text('Forgot Password?'));
-        await tester.pumpAndSettle();
-
-        expect(tester.takeException(), isNull);
-        expect(find.byType(ForgotPasswordScreen), findsOneWidget);
-        expect(find.text('verification@gmail.com'), findsOneWidget);
-        expect(find.text('Already have OTP? Reset Now'), findsNothing);
         expect(tester.takeException(), isNull);
         expect(find.text('Pending Acceptance'), findsOneWidget);
         expect(find.text('Accept'), findsOneWidget);
@@ -2249,8 +2231,45 @@ void main() {
     );
 
     testWidgets(
-      'OTPScreen renders transparent digit inputs without white boxes and verifies 123456 for demo driver',
       'LoginScreen pre-fills email into ForgotPasswordScreen and hides Already have OTP Reset Now link',
+      (tester) async {
+        tester.view.physicalSize = const Size(412, 915);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider(create: (_) => AuthProvider()),
+              ChangeNotifierProvider(create: (_) => NotificationProvider()),
+            ],
+            child: const MaterialApp(home: LoginScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.enterText(
+          find.byType(TextFormField).first,
+          'verification@gmail.com',
+        );
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(find.text('Forgot Password?'));
+        await tester.tap(find.text('Forgot Password?'));
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(find.byType(ForgotPasswordScreen), findsOneWidget);
+        expect(find.text('verification@gmail.com'), findsOneWidget);
+        expect(find.text('Already have OTP? Reset Now'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'OTPScreen renders transparent digit inputs without white boxes and verifies 123456 for demo driver',
       (tester) async {
         tester.view.physicalSize = const Size(412, 915);
         tester.view.devicePixelRatio = 1.0;
@@ -2281,7 +2300,6 @@ void main() {
               ),
               home: const OTPScreen(contactInfo: 'verification@gmail.com'),
             ),
-            child: const MaterialApp(home: LoginScreen()),
           ),
         );
         await tester.pumpAndSettle();
@@ -2302,20 +2320,6 @@ void main() {
 
         expect(tester.takeException(), isNull);
         expect(find.byType(ResetPasswordScreen), findsOneWidget);
-        await tester.enterText(
-          find.byType(TextFormField).first,
-          'verification@gmail.com',
-        );
-        await tester.pumpAndSettle();
-
-        await tester.ensureVisible(find.text('Forgot Password?'));
-        await tester.tap(find.text('Forgot Password?'));
-        await tester.pumpAndSettle();
-
-        expect(tester.takeException(), isNull);
-        expect(find.byType(ForgotPasswordScreen), findsOneWidget);
-        expect(find.text('verification@gmail.com'), findsOneWidget);
-        expect(find.text('Already have OTP? Reset Now'), findsNothing);
       },
     );
   });

@@ -11,26 +11,49 @@ import {
 import { sendSuccess, sendError } from '../utils/response.js';
 import { logAction } from '../services/audit.service.js';
 import User from '../models/User.js';
+import {
+  checkLoginLockout,
+  recordLoginFailure,
+  clearLoginFailures,
+  getClientIp,
+} from '../services/securityMonitor.service.js';
 
 export const login = async (req, res, next) => {
+  const identifier = req.body?.email || 'Unknown';
   try {
+    const lockout = await checkLoginLockout(req, identifier);
+    if (lockout.locked) {
+      res.setHeader('Retry-After', String(lockout.retryAfterSeconds));
+      return sendError(
+        res,
+        429,
+        `Too many failed login attempts. Try again in ${Math.ceil(lockout.retryAfterSeconds / 60)} minute(s).`
+      );
+    }
+
     const data = await loginUser(req.body);
+    await clearLoginFailures(req, identifier);
     await logAction({
       user: data.user.email,
       action: 'Login Successful',
-      ipAddress: req.ip || req.headers['x-forwarded-for'],
+      ipAddress: getClientIp(req),
       status: 'Success'
     });
     return sendSuccess(res, 200, data, 'Login successful');
   } catch (error) {
     if (error.message === 'No account found with this email' || error.message === 'Incorrect password' || error.message === 'Role mismatch') {
+      const failState = await recordLoginFailure(req, identifier, error.message);
       await logAction({
         user: req.body.email || 'Unknown',
         action: 'Failed Login Attempt',
-        ipAddress: req.ip || req.headers['x-forwarded-for'],
+        ipAddress: getClientIp(req),
         status: 'Failed',
         details: { reason: error.message }
       });
+      if (failState.locked) {
+        res.setHeader('Retry-After', String(failState.retryAfterSeconds));
+        return sendError(res, 429, 'Too many failed login attempts. Account temporarily locked.');
+      }
       return sendError(res, 401, error.message);
     }
     next(error);
@@ -107,8 +130,8 @@ export const changePassword = async (req, res, next) => {
 
       const { comparePassword, hashPassword } = await import('../utils/hashPassword.js');
       let isMatch = await comparePassword(oldPassword, driver.password);
-      if (!isMatch) {
-        // Dev/Testing fallback: Allow oldPassword matching fallbacks
+      if (!isMatch && process.env.NODE_ENV !== 'production') {
+        // Non-production dev convenience fallback only
         const firstName = driver.fullName ? driver.fullName.split(' ')[0] : '';
         if (
           oldPassword === 'driver123' ||
@@ -211,23 +234,35 @@ export const verifyOtp = async (req, res, next) => {
 };
 
 export const loginWithOtp = async (req, res, next) => {
+  const identifier = req.body.email || req.body.contact || req.body.identifier || req.body.phone || req.body.mobile;
   try {
-    const identifier = req.body.email || req.body.contact || req.body.identifier || req.body.phone || req.body.mobile;
     const { otp } = req.body;
 
     if (!identifier || !otp) {
       return sendError(res, 400, 'Mobile/email and OTP are required');
     }
 
+    const lockout = await checkLoginLockout(req, identifier);
+    if (lockout.locked) {
+      res.setHeader('Retry-After', String(lockout.retryAfterSeconds));
+      return sendError(res, 429, 'Too many failed OTP attempts. Account temporarily locked.');
+    }
+
     const result = await loginUserWithOtp(identifier, otp);
+    await clearLoginFailures(req, identifier);
     await logAction({
       user: result.email || identifier,
       action: 'OTP Login Successful',
-      ipAddress: req.ip || req.headers['x-forwarded-for'],
+      ipAddress: getClientIp(req),
       status: 'Success'
     });
     return sendSuccess(res, 200, result, 'OTP login successful');
   } catch (error) {
+    const failState = await recordLoginFailure(req, identifier, error.message || 'Invalid OTP');
+    if (failState.locked) {
+      res.setHeader('Retry-After', String(failState.retryAfterSeconds));
+      return sendError(res, 429, 'Too many failed OTP attempts. Account temporarily locked.');
+    }
     return sendError(res, 401, error.message || 'Invalid or expired OTP');
   }
 };
