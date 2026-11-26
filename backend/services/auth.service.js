@@ -6,6 +6,13 @@ import { comparePassword, hashPassword } from '../utils/hashPassword.js';
 import { generateToken } from '../utils/jwt.js';
 import { sendPasswordResetOtpEmail, sendPasswordResetSuccessEmail, maskIdentifier } from '../utils/email.js';
 import { sendSms } from '../utils/sms.js';
+import {
+  DEMO_DRIVER_CREDENTIALS,
+  isDemoDriverAccount,
+  isDemoDriverIdentifier,
+  isDemoOtpAllowed,
+  isValidDemoOtp,
+} from '../utils/demoAuth.js';
 
 /**
  * Finds user or driver account across both collections by email or phone
@@ -16,6 +23,32 @@ export const findAccountByIdentifier = async (identifier) => {
   const lowerId = cleanId.toLowerCase();
   const digitsOnly = cleanId.replace(/\D/g, '');
   const emailRegex = new RegExp(`^${cleanId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+
+  // Prefer the dedicated demo driver record when querying with the demo email or mobile
+  if (isDemoDriverIdentifier(cleanId)) {
+    const demoUser = await User.findOne({ email: DEMO_DRIVER_CREDENTIALS.email }).select('+password +resetPasswordOtp');
+    if (demoUser) {
+      return {
+        account: demoUser,
+        modelType: 'User',
+        name: demoUser.name,
+        email: demoUser.email,
+        phone: demoUser.phone,
+        role: demoUser.role
+      };
+    }
+    const demoDriver = await Driver.findOne({ email: DEMO_DRIVER_CREDENTIALS.email }).select('+password +resetPasswordOtp');
+    if (demoDriver) {
+      return {
+        account: demoDriver,
+        modelType: 'Driver',
+        name: demoDriver.fullName,
+        email: demoDriver.email,
+        phone: demoDriver.phoneNumber || demoDriver.mobile,
+        role: 'DRIVER'
+      };
+    }
+  }
 
   // 1. Check User model (Super Admin / Fleet Manager)
   const userConditions = [
@@ -152,7 +185,33 @@ export const processForgotPassword = async (identifier) => {
 
   const { account, name, email, phone } = found;
 
-  // Enforce 30-second resend cooldown
+  // Demo user fixed OTP ONLY in development/demo mode (never in production)
+  const isDemoFlow =
+    isDemoOtpAllowed() &&
+    isDemoDriverIdentifier(identifier) &&
+    isDemoDriverAccount(account);
+
+  if (isDemoFlow) {
+    // Never persist fixed demo OTP into DB so it cannot carry over into production
+    account.resetPasswordOtp = undefined;
+    account.resetPasswordExpires = undefined;
+    account.resetPasswordAttempts = 0;
+    account.resetPasswordLastSent = new Date();
+    await account.save({ validateModifiedOnly: true });
+
+    console.log(`[AUTH] Demo verification OTP ready for ${maskIdentifier(email || phone)}`);
+
+    return {
+      email,
+      phone: phone || DEMO_DRIVER_CREDENTIALS.mobile,
+      emailSent: true,
+      smsSent: true,
+      demoMode: true,
+      message: 'Verification code has been sent successfully (demo mode).'
+    };
+  }
+
+  // Enforce 30-second resend cooldown for standard users
   if (account.resetPasswordLastSent) {
     const elapsedMs = Date.now() - new Date(account.resetPasswordLastSent).getTime();
     if (elapsedMs < 30 * 1000) {
@@ -172,7 +231,7 @@ export const processForgotPassword = async (identifier) => {
   account.resetPasswordExpires = expiry;
   account.resetPasswordAttempts = 0;
   account.resetPasswordLastSent = new Date();
-  await account.save();
+  await account.save({ validateModifiedOnly: true });
 
   console.log(`[AUTH] Password reset OTP generated and dispatched for ${maskIdentifier(email || phone)}`);
 
@@ -241,9 +300,10 @@ export const processForgotPassword = async (identifier) => {
 };
 
 /**
- * Validates the 6-digit OTP against the stored hash with attempt limits and expiry
+ * Validates the 6-digit OTP against the stored hash with attempt limits and expiry.
+ * Supports demo OTP (123456) exclusively for the demo driver in non-production mode.
  */
-export const verifyUserOtp = async (identifier, otp) => {
+export const verifyUserOtp = async (identifier, otp, { issueToken = false } = {}) => {
   if (!identifier || !otp) {
     throw new Error('Email/phone and OTP are required');
   }
@@ -260,6 +320,29 @@ export const verifyUserOtp = async (identifier, otp) => {
 
   const { account } = found;
 
+  // Fixed demo OTP strictly scoped to demo driver & non-production environment
+  if (isValidDemoOtp(identifier, account, cleanOtp)) {
+    if (account.resetPasswordAttempts) {
+      account.resetPasswordAttempts = 0;
+      await account.save({ validateModifiedOnly: true });
+    }
+
+    const token = generateToken({ id: account._id, role: found.role || 'DRIVER' });
+    return {
+      success: true,
+      email: found.email,
+      phone: found.phone,
+      token,
+      user: {
+        id: account._id,
+        name: found.name,
+        email: found.email,
+        phone: found.phone,
+        role: found.role || 'DRIVER',
+      },
+    };
+  }
+
   if (!account.resetPasswordOtp || !account.resetPasswordExpires) {
     throw new Error('No active OTP request found. Please request a new OTP.');
   }
@@ -269,7 +352,7 @@ export const verifyUserOtp = async (identifier, otp) => {
     account.resetPasswordOtp = undefined;
     account.resetPasswordExpires = undefined;
     account.resetPasswordAttempts = 0;
-    await account.save();
+    await account.save({ validateModifiedOnly: true });
     throw new Error('OTP has expired. Please request a new OTP.');
   }
 
@@ -278,7 +361,7 @@ export const verifyUserOtp = async (identifier, otp) => {
     account.resetPasswordOtp = undefined;
     account.resetPasswordExpires = undefined;
     account.resetPasswordAttempts = 0;
-    await account.save();
+    await account.save({ validateModifiedOnly: true });
     throw new Error('Maximum verification attempts exceeded. Please request a new OTP.');
   }
 
@@ -286,23 +369,43 @@ export const verifyUserOtp = async (identifier, otp) => {
   const isOtpValid = await comparePassword(cleanOtp, account.resetPasswordOtp);
   if (!isOtpValid) {
     account.resetPasswordAttempts = (account.resetPasswordAttempts || 0) + 1;
-    await account.save();
+    await account.save({ validateModifiedOnly: true });
     const remaining = 5 - account.resetPasswordAttempts;
     if (remaining <= 0) {
       account.resetPasswordOtp = undefined;
       account.resetPasswordExpires = undefined;
       account.resetPasswordAttempts = 0;
-      await account.save();
+      await account.save({ validateModifiedOnly: true });
       throw new Error('Maximum verification attempts exceeded. Please request a new OTP.');
     }
     throw new Error(`Invalid OTP code. You have ${remaining} attempt(s) remaining.`);
   }
 
-  return {
+  const response = {
     success: true,
     email: found.email,
     phone: found.phone
   };
+
+  if (issueToken) {
+    response.token = generateToken({ id: account._id, role: found.role || 'DRIVER' });
+    response.user = {
+      id: account._id,
+      name: found.name,
+      email: found.email,
+      phone: found.phone,
+      role: found.role || 'DRIVER',
+    };
+  }
+
+  return response;
+};
+
+/**
+ * Authenticates a user or driver using identifier (email or mobile) and OTP.
+ */
+export const loginUserWithOtp = async (identifier, otp) => {
+  return verifyUserOtp(identifier, otp, { issueToken: true });
 };
 
 /**
@@ -319,22 +422,25 @@ export const resetUserPassword = async (identifier, otp, newPassword) => {
   }
 
   const { account, name, email, modelType } = found;
+  const demoOtpMatch = isValidDemoOtp(identifier, account, otp);
 
-  if (!account.resetPasswordOtp || !account.resetPasswordExpires) {
-    throw new Error('Invalid or expired OTP. Please request a new OTP.');
-  }
+  if (!demoOtpMatch) {
+    if (!account.resetPasswordOtp || !account.resetPasswordExpires) {
+      throw new Error('Invalid or expired OTP. Please request a new OTP.');
+    }
 
-  if (new Date(account.resetPasswordExpires).getTime() < Date.now()) {
-    account.resetPasswordOtp = undefined;
-    account.resetPasswordExpires = undefined;
-    account.resetPasswordAttempts = 0;
-    await account.save();
-    throw new Error('OTP has expired. Please request a new OTP.');
-  }
+    if (new Date(account.resetPasswordExpires).getTime() < Date.now()) {
+      account.resetPasswordOtp = undefined;
+      account.resetPasswordExpires = undefined;
+      account.resetPasswordAttempts = 0;
+      await account.save({ validateModifiedOnly: true });
+      throw new Error('OTP has expired. Please request a new OTP.');
+    }
 
-  const isOtpValid = await comparePassword(String(otp).trim(), account.resetPasswordOtp);
-  if (!isOtpValid) {
-    throw new Error('Invalid or expired OTP');
+    const isOtpValid = await comparePassword(String(otp).trim(), account.resetPasswordOtp);
+    if (!isOtpValid) {
+      throw new Error('Invalid or expired OTP');
+    }
   }
 
   const hashedPassword = await hashPassword(newPassword);
@@ -348,7 +454,21 @@ export const resetUserPassword = async (identifier, otp, newPassword) => {
     account.mustChangePassword = false;
   }
 
-  await account.save();
+  await account.save({ validateModifiedOnly: true });
+
+  if (email) {
+    if (modelType === 'User' && String(account.role || '').toUpperCase() === 'DRIVER') {
+      await Driver.updateOne(
+        { email: email.toLowerCase().trim() },
+        { $set: { password: hashedPassword, mustChangePassword: false } }
+      ).catch(() => {});
+    } else if (modelType === 'Driver') {
+      await User.updateOne(
+        { email: email.toLowerCase().trim(), role: 'DRIVER' },
+        { $set: { password: hashedPassword } }
+      ).catch(() => {});
+    }
+  }
 
   // Send confirmation email
   if (email) {

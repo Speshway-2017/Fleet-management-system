@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "seed:demo-driver": "node scripts/seedDemoDriver.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

@@ -8,6 +8,7 @@ import {
   registerAdmin,
   forgotPassword,
   verifyOtp,
+  loginWithOtp,
   resetPassword,
 } from '../controllers/auth.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
@@ -32,6 +33,7 @@ router.post('/register-admin', registerAdminValidator, registerAdmin);
 
 router.post('/forgot-password', forgotPasswordRateLimiter, forgotPasswordValidator, forgotPassword);
 router.post('/verify-otp', verifyOtpValidator, verifyOtp);
+router.post('/login-otp', loginRateLimiter, verifyOtpValidator, loginWithOtp);
 router.post('/reset-password', resetPasswordValidator, resetPassword);
 
 export default router;

@@ -15,6 +15,13 @@ import TollTransaction from '../models/TollTransaction.js';
 import TripLocationHistory from '../models/TripLocationHistory.js';
 import { comparePassword } from '../utils/hashPassword.js';
 import { generateToken } from '../utils/jwt.js';
+import {
+  DEMO_DRIVER_CREDENTIALS,
+  isDemoDriverIdentifier,
+  isValidDemoOtp,
+  normalizeTenDigitMobile
+} from '../utils/demoAuth.js';
+import { processForgotPassword } from '../services/auth.service.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import cloudinary from '../utils/cloudinary.js';
 import { createAndEmitNotification } from '../utils/notification.js';
@@ -89,41 +96,110 @@ export function buildStrictDriverFilter(driverDoc, driverId) {
 }
 
 /**
- * Driver Login
+ * Driver Login (Email/Phone/Employee ID + Password OR Mobile + OTP)
  * POST /api/driver/login
  */
 export const loginDriver = async (req, res, next) => {
   try {
-    const { email, phoneNumber, employeeId, password, identifier } = req.body;
-    const loginId = identifier || email || phoneNumber || employeeId;
+    const { email, phoneNumber, mobile, phone, employeeId, password, otp, identifier } = req.body;
+    const loginId = identifier || email || phoneNumber || mobile || phone || employeeId;
 
-    if (!loginId || !password) {
-      return sendError(res, 400, 'Email/Phone/Employee ID and password are required');
+    if (!loginId || (!password && !otp)) {
+      return sendError(res, 400, 'Email/Phone/Employee ID and password or OTP are required');
     }
 
-    let driver = await Driver.findOne({
-      $or: [
-        { email: loginId.toLowerCase().trim() },
-        { phoneNumber: loginId.trim() },
-        { employeeId: loginId.trim() }
-      ]
-    }).select('+password').populate('assignedManager');
-
-    if (!driver) {
-      return sendError(res, 404, 'No account found with this email');
+    const cleanLoginId = String(loginId).trim();
+    const tenDigits = normalizeTenDigitMobile(cleanLoginId);
+    const lookupConditions = [
+      { email: cleanLoginId.toLowerCase() },
+      { phoneNumber: cleanLoginId },
+      { mobile: cleanLoginId },
+      { employeeId: cleanLoginId }
+    ];
+    if (tenDigits) {
+      lookupConditions.push({ phoneNumber: tenDigits });
+      lookupConditions.push({ mobile: tenDigits });
     }
 
-    let isMatch = false;
-    if (driver.password) {
-      if (password === driver.password) {
-        isMatch = true;
-      } else {
-        isMatch = await comparePassword(password, driver.password);
+    let driver = null;
+    if (isDemoDriverIdentifier(cleanLoginId)) {
+      const demoCandidate = await Driver.findOne({
+        email: DEMO_DRIVER_CREDENTIALS.email
+      }).select('+password +resetPasswordOtp').populate('assignedManager');
+      if (demoCandidate) {
+        if (otp) {
+          driver = demoCandidate;
+        } else if (password && demoCandidate.password) {
+          const demoPassOk = password === demoCandidate.password || await comparePassword(password, demoCandidate.password);
+          if (demoPassOk) {
+            driver = demoCandidate;
+          }
+        }
       }
     }
 
-    if (!isMatch) {
-      return sendError(res, 401, 'Incorrect password');
+    if (!driver) {
+      driver = await Driver.findOne({
+        $or: lookupConditions
+      }).select('+password +resetPasswordOtp').populate('assignedManager');
+    }
+
+    if (!driver) {
+      return sendError(res, 404, 'No account found with this email or mobile number');
+    }
+
+    let isMatch = false;
+    if (password) {
+      if (driver.password) {
+        if (password === driver.password) {
+          isMatch = true;
+        } else {
+          isMatch = await comparePassword(password, driver.password);
+        }
+      }
+      if (!isMatch) {
+        return sendError(res, 401, 'Incorrect password');
+      }
+    } else if (otp) {
+      const cleanOtp = String(otp).trim();
+      if (cleanOtp.length !== 6) {
+        return sendError(res, 400, 'Please enter the complete 6-digit OTP');
+      }
+
+      if (isValidDemoOtp(cleanLoginId, driver, cleanOtp)) {
+        isMatch = true;
+      } else {
+        if (!driver.resetPasswordOtp || !driver.resetPasswordExpires) {
+          return sendError(res, 401, 'No active OTP request found. Please request an OTP first.');
+        }
+        if (new Date(driver.resetPasswordExpires).getTime() < Date.now()) {
+          driver.resetPasswordOtp = undefined;
+          driver.resetPasswordExpires = undefined;
+          driver.resetPasswordAttempts = 0;
+          await driver.save();
+          return sendError(res, 401, 'OTP has expired. Please request a new OTP.');
+        }
+        if ((driver.resetPasswordAttempts || 0) >= 5) {
+          driver.resetPasswordOtp = undefined;
+          driver.resetPasswordExpires = undefined;
+          driver.resetPasswordAttempts = 0;
+          await driver.save();
+          return sendError(res, 401, 'Maximum verification attempts exceeded. Please request a new OTP.');
+        }
+
+        const otpValid = await comparePassword(cleanOtp, driver.resetPasswordOtp);
+        if (!otpValid) {
+          driver.resetPasswordAttempts = (driver.resetPasswordAttempts || 0) + 1;
+          await driver.save();
+          return sendError(res, 401, 'Invalid OTP');
+        }
+
+        driver.resetPasswordOtp = undefined;
+        driver.resetPasswordExpires = undefined;
+        driver.resetPasswordAttempts = 0;
+        await driver.save();
+        isMatch = true;
+      }
     }
 
     if (
@@ -149,6 +225,7 @@ export const loginDriver = async (req, res, next) => {
 
     const driverObj = driver.toObject();
     delete driverObj.password;
+    delete driverObj.resetPasswordOtp;
 
     return sendSuccess(res, 200, {
       token,
@@ -160,6 +237,37 @@ export const loginDriver = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+/**
+ * Send OTP for Driver Mobile/Email Login
+ * POST /api/driver/send-otp
+ */
+export const sendDriverOtp = async (req, res, next) => {
+  try {
+    const identifier = req.body.identifier || req.body.mobile || req.body.phoneNumber || req.body.phone || req.body.email;
+    if (!identifier) {
+      return sendError(res, 400, 'Mobile number or email is required');
+    }
+    const result = await processForgotPassword(identifier);
+    return sendSuccess(res, 200, result, result.message || 'OTP sent successfully');
+  } catch (error) {
+    if (error.message.includes('No account found')) {
+      return sendError(res, 404, error.message);
+    }
+    if (error.message.includes('Please wait')) {
+      return sendError(res, 429, error.message);
+    }
+    return sendError(res, 400, error.message || 'Failed to send OTP');
+  }
+};
+
+/**
+ * Verify OTP and Login Driver
+ * POST /api/driver/verify-otp
+ */
+export const verifyDriverOtp = async (req, res, next) => {
+  return loginDriver(req, res, next);
 };
 
 

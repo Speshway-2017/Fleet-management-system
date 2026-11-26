@@ -7,9 +7,10 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true },
     role: {
       type: String,
-      enum: ['SUPER_ADMIN', 'FLEET_MANAGER'],
+      enum: ['SUPER_ADMIN', 'FLEET_MANAGER', 'DRIVER'],
       required: true,
     },
+    driverProfile: { type: mongoose.Schema.Types.ObjectId, ref: 'Driver', default: null },
     phone: { type: String, default: '' },
     profileImage: { type: String, default: '' },
     jobTitle: { type: String, default: 'Fleet Manager' },
@@ -34,6 +35,16 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+userSchema.pre('validate', function (next) {
+  if (typeof this.role === 'string') {
+    const normalized = this.role.trim().toUpperCase();
+    if (normalized === 'DRIVER' || normalized === 'SUPER_ADMIN' || normalized === 'FLEET_MANAGER') {
+      this.role = normalized;
+    }
+  }
+  next();
+});
 
 userSchema.index({ organization: 1, role: 1 });
 userSchema.index({ role: 1, status: 1 });

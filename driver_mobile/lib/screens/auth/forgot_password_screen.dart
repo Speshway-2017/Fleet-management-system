@@ -4,11 +4,12 @@ import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import 'otp_screen.dart';
-import 'reset_password_screen.dart';
 import 'login_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
-  const ForgotPasswordScreen({super.key});
+  final String? initialIdentifier;
+
+  const ForgotPasswordScreen({super.key, this.initialIdentifier});
 
   @override
   State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
@@ -26,6 +27,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
   @override
   void initState() {
     super.initState();
+    if (widget.initialIdentifier != null &&
+        widget.initialIdentifier!.trim().isNotEmpty) {
+      _inputController.text = widget.initialIdentifier!.trim();
+    }
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 700),
@@ -297,30 +302,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                                       },
                                     ),
 
-                                    const SizedBox(height: 12),
-
-                                    // Direct Link to Reset Password
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: InkWell(
-                                        onTap: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(builder: (context) => const ResetPasswordScreen()),
-                                          );
-                                        },
-                                        child: Text(
-                                          'Already have OTP? Reset Now',
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 12.5,
-                                            fontWeight: FontWeight.w700,
-                                            color: const Color(0xFFF97316),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-
-                                    const SizedBox(height: 20),
+                                    const SizedBox(height: 22),
 
                                     // Send Verification OTP Button (Vibrant Orange Pill matching Login Page)
                                     InkWell(
@@ -501,6 +483,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
   }) {
     return TextFormField(
       controller: controller,
+      cursorColor: Colors.white,
       obscureText: obscureText,
       keyboardType: keyboardType,
       style: GoogleFonts.plusJakartaSans(

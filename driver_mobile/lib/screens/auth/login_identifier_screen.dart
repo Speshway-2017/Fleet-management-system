@@ -386,6 +386,7 @@ class _LoginIdentifierScreenState extends State<LoginIdentifierScreen>
                                 children: [
                                   TextFormField(
                                     controller: _identifierController,
+                                    cursorColor: Colors.white,
                                     keyboardType: TextInputType.emailAddress,
                                     textInputAction: TextInputAction.done,
                                     onFieldSubmitted: (_) => _handleNext(),
