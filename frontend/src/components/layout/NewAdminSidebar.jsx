@@ -5,14 +5,12 @@ import toast from "react-hot-toast";
 import {
   LayoutDashboard,
   Building2,
-  Users,
   BarChart3,
   Settings,
   LogOut,
   MoreHorizontal,
   MessageSquare,
   CreditCard,
-  ClipboardList,
   ShieldAlert
 } from "lucide-react";
 

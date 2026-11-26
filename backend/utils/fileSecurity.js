@@ -20,7 +20,10 @@ export const ALLOWED_FILE_MIME_MAP = Object.freeze({
 const DANGEROUS_DOUBLE_EXT_RE = /\.(php\d*|phtml|exe|dll|bat|cmd|sh|ps1|js|mjs|cjs|vbs|html?|svg|jsp|asp|aspx)(\.|$)/i;
 
 export const sanitizeFilename = (originalname = 'file') => {
-  const base = path.basename(String(originalname || 'file')).replace(/[\x00-\x1f<>:"/\\|?*]/g, '_');
+  const withoutControls = Array.from(path.basename(String(originalname || 'file')))
+    .map((ch) => (ch.charCodeAt(0) < 32 ? '_' : ch))
+    .join('');
+  const base = withoutControls.replace(/[<>:"/\\|?*]/g, '_');
   return base.slice(0, 140) || 'file';
 };
 
