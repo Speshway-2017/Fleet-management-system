@@ -1,12 +1,20 @@
 {
   "css.lint.unknownAtRules": "ignore",
-  "java.configuration.updateBuildConfiguration": "interactive",
+  "java.configuration.updateBuildConfiguration": "disabled",
+  "java.import.gradle.enabled": false,
+  "java.import.maven.enabled": false,
   "dart.projectSearchPaths": [
     "driver_mobile"
   ],
   "java.import.exclusions": [
     "**/driver_mobile/android/**",
-    "**/build/**"
+    "**/driver_mobile/linux/**",
+    "**/driver_mobile/windows/**",
+    "**/ephemeral/**",
+    "**/.plugin_symlinks/**",
+    "**/build/**",
+    "**/.dart_tool/**",
+    "**/node_modules/**"
   ],
   "files.exclude": {
     "driver_mobile/build": true

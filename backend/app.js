@@ -73,9 +73,7 @@ app.use(
         reason: `Blocked unauthorized CORS origin: ${origin}`,
         details: { origin },
       });
-      const err = new Error('Not allowed by CORS');
-      err.statusCode = 403;
-      return callback(err);
+      return callback(Object.assign(new Error('Not allowed by CORS'), { statusCode: 403 }));
     },
     credentials: true,
   })
