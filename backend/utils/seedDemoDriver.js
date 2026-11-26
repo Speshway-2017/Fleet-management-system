@@ -95,6 +95,7 @@ export const seedDemoDriver = async ({ force = false } = {}) => {
       const twoYearsLater = new Date();
       twoYearsLater.setFullYear(twoYearsLater.getFullYear() + 2);
 
+      // Guard against unique index collisions on employeeId / licenseNumber
       let empId = DEMO_DRIVER_CREDENTIALS.employeeId;
       if (await Driver.exists({ employeeId: empId })) {
         empId = `EMP-VER-${Date.now().toString().slice(-6)}`;
