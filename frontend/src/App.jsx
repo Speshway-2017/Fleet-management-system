@@ -175,6 +175,7 @@ export default function App() {
                     <Route path="/privacy" element={<Navigate to="/privacy-policy" replace />} />
                     <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
                     <Route path="/terms-of-service" element={<Navigate to="/terms-and-conditions" replace />} />
+                    <Route path="/terms" element={<Navigate to="/terms-and-conditions" replace />} />
                   </Route>
 
                   {/* Auth Routes */}

@@ -141,6 +141,13 @@ class _OTPScreenState extends State<OTPScreen> with SingleTickerProviderStateMix
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
+    final fallbackContact = widget.contactInfo?.trim();
+    if ((auth.forgotPasswordEmail == null || auth.forgotPasswordEmail!.trim().isEmpty) &&
+        fallbackContact != null &&
+        fallbackContact.isNotEmpty) {
+      auth.setForgotPasswordEmail(fallbackContact);
+    }
+
     try {
       final ok = await auth.verifyOtp(enteredOtp);
       if (!mounted) return;
@@ -426,6 +433,9 @@ class _OTPScreenState extends State<OTPScreen> with SingleTickerProviderStateMix
                                               setState(() {});
                                             },
                                             decoration: const InputDecoration(
+                                              filled: false,
+                                              fillColor: Colors.transparent,
+                                              isDense: true,
                                               border: InputBorder.none,
                                               enabledBorder: InputBorder.none,
                                               focusedBorder: InputBorder.none,
@@ -461,15 +471,33 @@ class _OTPScreenState extends State<OTPScreen> with SingleTickerProviderStateMix
                                         ],
                                       ),
                                       InkWell(
-                                        onTap: _canResend ? () {
-                                          _startTimer();
-                                          _generateAndPrintOtp();
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(
-                                              content: Text('New verification code sent!'),
-                                              backgroundColor: AppColors.success,
-                                            ),
-                                          );
+                                        onTap: _canResend ? () async {
+                                          final auth = Provider.of<AuthProvider>(context, listen: false);
+                                          final messenger = ScaffoldMessenger.of(context);
+                                          final target = (widget.contactInfo ?? auth.forgotPasswordEmail ?? '').trim();
+                                          bool ok = true;
+                                          if (target.isNotEmpty) {
+                                            ok = await auth.forgotPassword(target);
+                                          } else {
+                                            _generateAndPrintOtp();
+                                          }
+                                          if (!mounted) return;
+                                          if (ok) {
+                                            _startTimer();
+                                            messenger.showSnackBar(
+                                              const SnackBar(
+                                                content: Text('New verification code sent!'),
+                                                backgroundColor: AppColors.success,
+                                              ),
+                                            );
+                                          } else {
+                                            messenger.showSnackBar(
+                                              SnackBar(
+                                                content: Text(auth.errorMessage ?? 'Failed to resend verification code.'),
+                                                backgroundColor: AppColors.error,
+                                              ),
+                                            );
+                                          }
                                         } : null,
                                         child: Text(
                                           'Resend Code',
