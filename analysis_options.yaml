@@ -1,0 +1,12 @@
+analyzer:
+  exclude:
+    - "frontend/**"
+    - "backend/**"
+    - "driver_mobile/build/**"
+    - "driver_mobile/.dart_tool/**"
+    - "driver_mobile/android/**"
+    - "driver_mobile/ios/**"
+    - "driver_mobile/windows/**"
+    - "driver_mobile/linux/**"
+    - "driver_mobile/macos/**"
+

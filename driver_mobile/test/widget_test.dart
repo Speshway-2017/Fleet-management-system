@@ -1,0 +1,2268 @@
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:driver_mobile/main.dart';
+import 'package:driver_mobile/screens/vehicle_overview_screen.dart';
+import 'package:driver_mobile/screens/vehicle_documents_screen.dart';
+import 'package:driver_mobile/services/api_service.dart';
+
+import 'package:driver_mobile/screens/splash/splash_screen.dart';
+import 'package:driver_mobile/screens/onboarding/onboarding_screen.dart';
+import 'package:driver_mobile/screens/auth/login_identifier_screen.dart';
+import 'package:driver_mobile/providers/auth_provider.dart';
+import 'package:driver_mobile/providers/notification_provider.dart';
+import 'package:provider/provider.dart';
+
+import 'package:driver_mobile/services/location_service.dart';
+import 'package:driver_mobile/services/socket_service.dart';
+import 'package:driver_mobile/services/fcm_service.dart';
+import 'package:driver_mobile/screens/profile/profile_screen.dart';
+import 'package:driver_mobile/screens/main_navigation_screen.dart';
+import 'package:driver_mobile/screens/fuel_overview_screen.dart';
+import 'package:driver_mobile/screens/trips_screen.dart';
+import 'package:driver_mobile/screens/trip_details_screen.dart';
+import 'package:driver_mobile/screens/completed_trip_details_screen.dart';
+import 'package:driver_mobile/screens/completed_trips_screen.dart';
+import 'package:driver_mobile/screens/upcoming_trips_screen.dart';
+import 'package:driver_mobile/screens/active_trips_screen.dart';
+import 'package:driver_mobile/screens/contact_fleet_manager_screen.dart';
+import 'package:driver_mobile/screens/fuel_history_screen.dart';
+import 'package:driver_mobile/screens/support_history_screen.dart';
+import 'package:driver_mobile/screens/settings/settings_screen.dart';
+import 'package:driver_mobile/screens/notifications/notifications_screen.dart';
+import 'package:driver_mobile/screens/notifications/notification_details_screen.dart';
+import 'package:driver_mobile/screens/dashboard_screen.dart';
+import 'package:driver_mobile/screens/auth/login_screen.dart';
+import 'package:driver_mobile/screens/auth/forgot_password_screen.dart';
+import 'package:driver_mobile/services/localization_service.dart';
+import 'package:driver_mobile/utils/navigation_helper.dart';
+
+void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({'has_seen_onboarding': true});
+
+    ProfileState.profilePhotoUrlNotifier.value = '';
+    LocalizationService.setLanguage('English (US)');
+    LocationTrackingService.isTest = true;
+    SocketService.isTest = true;
+    FcmService.isTest = true;
+
+    // Set standard mobile screen size for testing
+    final binding = TestWidgetsFlutterBinding.ensureInitialized();
+    binding.platformDispatcher.views.first.physicalSize = const Size(
+      1080,
+      1920,
+    );
+    binding.platformDispatcher.views.first.devicePixelRatio = 1.0;
+
+    ApiService.mockResponses = {
+      '/driver/vehicle': {
+        'success': true,
+        'data': {
+          'assigned': true,
+          'vehicle': {
+            'vehicleNumber': 'BT-990',
+            'registrationNumber': 'ABC-1234',
+            'vehicleModel': 'Medium Van',
+            'vehicleType': 'Medium Van',
+            'fuelType': 'Diesel',
+            'odometer': 142000.0,
+            'status': 'Active',
+            'lastServiceDate': '2023-10-12T00:00:00.000Z',
+            'nextServiceDueKm': 5000.0,
+            'nextServiceDue': '5,000 km',
+            'insuranceExpiry': '2023-12-20T00:00:00.000Z',
+            'permitExpiry': '2024-01-15T00:00:00.000Z',
+          },
+        },
+      },
+      '/auth/forgot-password': {
+        'success': true,
+        'message': 'OTP sent successfully',
+      },
+      '/auth/verify-otp': {
+        'success': true,
+        'message': 'OTP verified successfully',
+      },
+      '/auth/reset-password': {
+        'success': true,
+        'message': 'Password reset successfully',
+      },
+      '/driver/login': {
+        'success': true,
+        'data': {
+          'token': 'mock-jwt-token',
+          'driverId': 'FF-9821',
+          'managerId': 'MGR-1002',
+          'organizationId': 'ORG-500',
+          'driver': {
+            'id': 'driver_123',
+            'employeeId': 'FF-9821',
+            'fullName': 'Meghana Soo',
+            'email': 'meghana.soo@speshway.com',
+            'phoneNumber': '9876543210',
+            'licenseNumber': 'KF-402-DELTA',
+            'licenseType': 'HMV',
+            'licenseExpiry': '2026-12-31T00:00:00.000Z',
+            'assignedVehicle': 'BT-990',
+            'driverStatus': 'SENIOR_DRIVER',
+            'profileImage': '',
+            'branch': 'KF-402-DELTA',
+            'experience': '8',
+            'organization': 'org_123',
+            'address': 'Pune, Maharashtra',
+            'joiningDate': '2020-01-01T00:00:00.000Z',
+            'dob': '1990-01-01T00:00:00.000Z',
+            'performanceScore': 90,
+            'tripsCompleted': 88,
+            'manager': {
+              'id': 'manager_123',
+              'name': 'Jane Smith',
+              'email': 'jane@fleetflow.com',
+            },
+          },
+        },
+      },
+      '/driver/profile': {
+        'success': true,
+        'data': {
+          'id': 'driver_123',
+          'employeeId': 'FF-9821',
+          'driverId': 'FF-9821',
+          'fullName': 'Meghana Soo',
+          'name': 'Meghana Soo',
+          'email': 'meghana.soo@speshway.com',
+          'phone': '9876543210',
+          'status': 'Active',
+          'licenseNumber': 'KF-402-DELTA',
+          'licenseExpiry': '2026-12-31',
+          'experienceYears': 8,
+          'nextServiceDue': '5,000 km',
+          'assignedVehicle': 'BT-990',
+          'profilePicture': '',
+          'manager': {
+            'id': 'manager_123',
+            'name': 'Jane Smith',
+            'email': 'jane@fleetflow.com',
+          },
+          'organization': 'org_123',
+          'address': 'Pune, Maharashtra',
+          'driverStatus': 'SENIOR_DRIVER',
+        },
+      },
+      '/driver/trips/current': {'success': true, 'data': null},
+      '/driver/trips': {'success': true, 'data': []},
+      '/driver/dashboard': {
+        'success': true,
+        'data': {
+          'stats': {'tripsCount': 0, 'totalDistance': 0, 'activeAlerts': 0},
+        },
+      },
+      '/driver/notifications': {'success': true, 'data': []},
+      '/driver/tickets': {'success': true, 'data': []},
+      '/driver/logout': {'success': true, 'message': 'Logged out successfully'},
+    };
+  });
+
+  testWidgets('Complete Authentication Navigation Flow Smoke Test', (
+    WidgetTester tester,
+  ) async {
+    // Build our app and trigger a frame.
+    await tester.pumpWidget(const MyApp());
+    await tester.idle();
+    await tester.pumpAndSettle();
+
+    // Skip onboarding to reach Login Screen via Login Identifier Screen
+    if (find.text('Skip').evaluate().isNotEmpty) {
+      await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+    }
+
+    if (find.text('Next').evaluate().isNotEmpty) {
+      expect(find.text('Login'), findsOneWidget);
+      if (find.byType(Checkbox).evaluate().isNotEmpty) {
+        await tester.tap(find.byType(Checkbox));
+        await tester.pumpAndSettle();
+      }
+      await tester.enterText(find.byType(TextFormField), 'test@fleetpro.com');
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+    }
+
+    // 1. Verify Login Screen
+    expect(find.text('Enter email or mobile number'), findsOneWidget);
+    expect(find.text('Login'), findsOneWidget);
+
+    // 2. Navigate to Forgot Password Screen
+    await tester.tap(find.text('Forgot Password?'));
+    await tester.pumpAndSettle();
+
+    // 3. Verify Forgot Password Screen
+    expect(find.text('Enter registered email or mobile'), findsOneWidget);
+
+    // 4. Fill in the email textfield and press Send Verification OTP
+    await tester.enterText(find.byType(TextFormField), 'test@fleetpro.com');
+    await tester.pump();
+    await tester.tap(find.text('Send Verification OTP'));
+    await tester.pumpAndSettle();
+
+    // 5. Verify OTP Verification Screen is loaded
+    // Verify OTP screen
+    expect(find.text('Verify OTP'), findsOneWidget);
+    expect(find.text('Verify OTP'), findsOneWidget);
+
+    // 6. Fill in the 6 digit OTP fields
+    for (int i = 0; i < 6; i++) {
+      await tester.enterText(find.byType(TextFormField).at(i), '1');
+    }
+    await tester.pumpAndSettle();
+
+    // 7. Tap Verify OTP to navigate to Reset Password Screen
+    await tester.tap(find.text('Verify OTP'));
+    await tester.pumpAndSettle();
+
+    // 8. Verify Reset Password Screen is loaded
+    expect(find.text('Enter new password'), findsOneWidget);
+    expect(find.text('Confirm new password'), findsOneWidget);
+    expect(find.text('PASSWORD REQUIREMENTS'), findsOneWidget);
+
+    // 9. Tap Sign In to return to main login screen
+    await tester.ensureVisible(find.text('Sign In'));
+    await tester.tap(find.text('Sign In'));
+    await tester.pumpAndSettle();
+
+    // 10. Verify we are back on the Login Screen
+    expect(find.text('Login'), findsOneWidget);
+  });
+
+  testWidgets('Reset Password Screen submission and validation', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const MyApp());
+    await tester.idle();
+    await tester.pumpAndSettle();
+
+    // Skip onboarding to reach Login Screen via Login Identifier Screen
+    if (find.text('Skip').evaluate().isNotEmpty) {
+      await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+    }
+
+    if (find.text('Next').evaluate().isNotEmpty) {
+      if (find.byType(Checkbox).evaluate().isNotEmpty) {
+        await tester.tap(find.byType(Checkbox));
+        await tester.pumpAndSettle();
+      }
+      await tester.enterText(find.byType(TextFormField), 'test@fleetpro.com');
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+    }
+
+    // Navigate to Forgot Password
+    await tester.tap(find.text('Forgot Password?'));
+    await tester.pumpAndSettle();
+
+    // Fill email and submit
+    await tester.enterText(find.byType(TextFormField), 'test@fleetpro.com');
+    await tester.pump();
+    await tester.tap(find.text('Send Verification OTP'));
+    await tester.pumpAndSettle();
+
+    // Fill OTP
+    for (int i = 0; i < 6; i++) {
+      await tester.enterText(find.byType(TextFormField).at(i), '1');
+    }
+    await tester.pumpAndSettle();
+
+    // Tap Verify OTP
+    await tester.tap(find.text('Verify OTP'));
+    await tester.pumpAndSettle();
+
+    // Verify Reset Password Screen is loaded
+    expect(find.text('Reset Password'), findsWidgets);
+
+    // Get TextFormFields for passwords
+    final passwordFields = find.byType(TextFormField);
+    expect(passwordFields, findsNWidgets(2));
+
+    // Fill in a valid password meeting all requirements: "Pass123!"
+    await tester.enterText(passwordFields.at(0), 'Pass123!');
+    await tester.enterText(passwordFields.at(1), 'Pass123!');
+    await tester.pump(); // trigger listeners
+    await tester.pumpAndSettle();
+
+    // Tap Reset Password
+    await tester.ensureVisible(find.text('Reset Password'));
+    await tester.tap(find.text('Reset Password'));
+    await tester.pumpAndSettle();
+
+    // Verify we are back on the Login Screen
+    expect(find.text('Login'), findsOneWidget);
+  });
+
+  testWidgets('Vehicle Overview Screen rendering and action tiles test', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: VehicleOverviewScreen()));
+    await tester.idle();
+    await tester.pump();
+
+    // 1. Verify App Bar Title
+    expect(find.text('Vehicle Overview'), findsOneWidget);
+
+    // 2. Verify Vehicle Info
+    expect(find.text('BT-990'), findsOneWidget);
+    expect(find.text('Medium Van • ABC-1234'), findsOneWidget);
+    expect(find.text('Diesel'), findsOneWidget);
+
+    // 3. Verify Section Header & Action Items
+    expect(find.text('Actions & Details'), findsOneWidget);
+    expect(find.text('Vehicle Details'), findsOneWidget);
+    expect(find.text('Vehicle Status'), findsOneWidget);
+    expect(find.text('Maintenance Alerts'), findsOneWidget);
+    expect(find.text('1 CRITICAL'), findsOneWidget);
+
+    // 4. Verify Quick Info Section & Card
+    expect(find.text('Quick Info'), findsOneWidget);
+    expect(find.text('Last Service'), findsOneWidget);
+    expect(find.text('Oct 12, 2023'), findsOneWidget);
+    expect(find.text('Next Service'), findsOneWidget);
+    expect(find.text('5,000 km'), findsOneWidget);
+    expect(find.text('Insurance Expiry'), findsOneWidget);
+    expect(find.text('Dec 20, 2023'), findsOneWidget);
+    expect(find.text('Permit Expiry'), findsOneWidget);
+    expect(find.text('Jan 15, 2024'), findsOneWidget);
+  });
+
+  testWidgets('Vehicle Documents Screen rendering and document list test', (
+    WidgetTester tester,
+  ) async {
+    final vehicleData = {
+      'vehicleNumber': 'BT-990',
+      'registrationNumber': 'ABC-1234',
+      'vehicleModel': 'Medium Van',
+      'vehicleType': 'Medium Van',
+      'fuelType': 'Diesel',
+      'odometer': 142000.0,
+      'status': 'Active',
+      'lastServiceDate': '2023-10-12T00:00:00.000Z',
+      'nextServiceDueKm': 5000.0,
+      'nextServiceDue': '5,000 km',
+      'rcExpiry': '2028-12-31T00:00:00.000Z',
+      'insuranceExpiry': '2028-12-20T00:00:00.000Z',
+      'pollutionExpiry': '2028-12-31T00:00:00.000Z',
+      'fitnessExpiry': '2028-12-31T00:00:00.000Z',
+      'permitExpiry': '2026-08-15T00:00:00.000Z',
+      'documents': {
+        'roadTax': {'uploadDate': '2028-12-31T00:00:00.000Z'},
+      },
+    };
+    await tester.pumpWidget(
+      MaterialApp(home: VehicleDocumentsScreen(vehicle: vehicleData)),
+    );
+    await tester.idle();
+    await tester.pumpAndSettle();
+
+    // 1. Verify App Bar & Header
+    expect(find.text('Vehicle Documents'), findsOneWidget);
+    expect(find.text('All Vehicle Documents'), findsOneWidget);
+
+    // 2. Verify Document Items
+    expect(find.text('Registration Certificate (RC)'), findsOneWidget);
+    expect(find.text('Insurance Certificate'), findsOneWidget);
+    expect(find.text('Pollution Under Control (PUC)'), findsOneWidget);
+    expect(find.text('Fitness Certificate'), findsOneWidget);
+    expect(find.text('Permit Document'), findsOneWidget);
+    expect(find.text('Road Tax Receipt'), findsOneWidget);
+
+    // 3. Verify Actions
+    expect(find.text('View'), findsNWidgets(6));
+    expect(find.text('Download'), findsNWidgets(6));
+  });
+
+  testWidgets('Profile Screen Navigation, Details, and Logout Confirmation', (
+    WidgetTester tester,
+  ) async {
+    // Build our app and trigger a frame.
+    await tester.pumpWidget(const MyApp());
+    await tester.idle();
+    await tester.pumpAndSettle();
+
+    // Skip onboarding to reach Login Screen via Login Identifier Screen
+    if (find.text('Skip').evaluate().isNotEmpty) {
+      await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+    }
+
+    if (find.text('Next').evaluate().isNotEmpty) {
+      if (find.byType(Checkbox).evaluate().isNotEmpty) {
+        await tester.tap(find.byType(Checkbox));
+        await tester.pumpAndSettle();
+      }
+      await tester.enterText(
+        find.byType(TextFormField),
+        'manager@fleetpro.com',
+      );
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+    }
+
+    // Enter credentials to log in
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'manager@fleetpro.com',
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), '1234456');
+    await tester.pump();
+    await tester.tap(find.text('Login'));
+    await tester.pumpAndSettle();
+
+    // Verify Dashboard is displayed
+    expect(find.text('Good Morning, Meghana 👋'), findsOneWidget);
+
+    // Tap Profile Navigation Tab
+    await tester.tap(find.byIcon(Icons.account_circle_outlined));
+    await tester.pumpAndSettle();
+
+    // Verify Profile Screen elements are loaded
+    expect(find.text('Meghana Soo'), findsOneWidget);
+    expect(find.text('SENIOR DRIVER'), findsOneWidget);
+    expect(find.text('Member since 2020'), findsOneWidget);
+    expect(find.text('Personal Information'), findsOneWidget);
+    expect(find.text("Driver's License Details"), findsOneWidget);
+
+    // Verify logout option is visible
+    expect(find.text('Logout'), findsOneWidget);
+
+    // Tap Logout to show dialog
+    await tester.ensureVisible(find.text('Logout'));
+    await tester.tap(find.text('Logout'));
+    await tester.pumpAndSettle();
+
+    // Verify Logout Dialog is displayed
+    expect(find.text('Confirm Logout'), findsOneWidget);
+    expect(find.text('Cancel'), findsOneWidget);
+
+    // Tap Cancel to dismiss dialog
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.text('Confirm Logout'), findsNothing);
+
+    // Tap Logout again
+    await tester.ensureVisible(find.text('Logout'));
+    await tester.tap(find.text('Logout'));
+    await tester.pumpAndSettle();
+
+    // Tap Logout on dialog to log out
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Logout'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify we are redirected back to Login Screen
+    expect(find.text('Login'), findsOneWidget);
+  });
+
+  testWidgets(
+    'Profile Screen App Language Selector updates language and badge correctly',
+    (WidgetTester tester) async {
+      // Build app
+      await tester.pumpWidget(const MyApp());
+      await tester.idle();
+      await tester.pumpAndSettle();
+
+      if (find.text('Skip').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Skip'));
+        await tester.pumpAndSettle();
+      }
+
+      if (find.text('Next').evaluate().isNotEmpty) {
+        if (find.byType(Checkbox).evaluate().isNotEmpty) {
+          await tester.tap(find.byType(Checkbox));
+          await tester.pumpAndSettle();
+        }
+        await tester.enterText(
+          find.byType(TextFormField),
+          'manager@fleetpro.com',
+        );
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+      }
+
+      // Enter credentials to log in
+      await tester.enterText(
+        find.byType(TextFormField).at(0),
+        'manager@fleetpro.com',
+      );
+      await tester.enterText(find.byType(TextFormField).at(1), '1234456');
+      await tester.pump();
+      await tester.tap(find.text('Login'));
+      await tester.pumpAndSettle();
+
+      // Tap Profile Navigation Tab
+      await tester.tap(find.byIcon(Icons.account_circle_outlined));
+      await tester.pumpAndSettle();
+
+      // Verify App Language tile is visible with default English (US)
+      await tester.ensureVisible(find.text('App Language'));
+      expect(find.text('App Language'), findsOneWidget);
+      expect(find.text('English (US)'), findsOneWidget);
+
+      // Tap App Language tile to open bottom sheet
+      await tester.tap(find.text('App Language'));
+      await tester.pumpAndSettle();
+
+      // Verify Language selection modal is displayed with English, Hindi, and Telugu
+      expect(find.text('Select Language'), findsOneWidget);
+      expect(find.text('English (US)'), findsWidgets);
+      expect(find.text('Hindi'), findsOneWidget);
+      expect(find.text('Telugu'), findsOneWidget);
+      expect(find.text('Spanish'), findsNothing);
+
+      // Tap Hindi
+      await tester.tap(find.text('Hindi'));
+      await tester.pumpAndSettle();
+
+      // Verify modal dismissed, snackbar displayed in selected language, and badge updated to Hindi
+      expect(find.text('Select Language'), findsNothing);
+      expect(find.text('${'Language changed to'.tr} Hindi.'), findsOneWidget);
+      expect(find.text('Hindi'), findsOneWidget);
+
+      // Reset language back to English (US) for subsequent tests
+      LocalizationService.setLanguage('English (US)');
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets('Edit Profile Screen Validation and Submission Flow', (
+    WidgetTester tester,
+  ) async {
+    // Build our app and trigger a frame.
+    await tester.pumpWidget(const MyApp());
+    await tester.idle();
+    await tester.pumpAndSettle();
+
+    // Skip onboarding to reach Login Screen via Login Identifier Screen
+    if (find.text('Skip').evaluate().isNotEmpty) {
+      await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+    }
+
+    if (find.text('Next').evaluate().isNotEmpty) {
+      if (find.byType(Checkbox).evaluate().isNotEmpty) {
+        await tester.tap(find.byType(Checkbox));
+        await tester.pumpAndSettle();
+      }
+      await tester.enterText(
+        find.byType(TextFormField),
+        'manager@fleetpro.com',
+      );
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+    }
+
+    // Enter credentials to log in
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'manager@fleetpro.com',
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), '1234456');
+    await tester.pump();
+    await tester.tap(find.text('Login'));
+    await tester.pumpAndSettle();
+
+    // Tap Profile Navigation Tab
+    await tester.tap(find.byIcon(Icons.account_circle_outlined));
+    await tester.pumpAndSettle();
+
+    // Tap Edit Profile button
+    await tester.ensureVisible(find.text('Edit Profile'));
+    await tester.tap(find.text('Edit Profile'));
+    await tester.pumpAndSettle();
+
+    // Verify Edit Profile Screen elements are loaded and pre-filled
+    expect(find.text('Driver ID: FF-9821'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'Meghana Soo'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'KF-402-DELTA'), findsOneWidget);
+    expect(
+      find.widgetWithText(TextFormField, 'meghana.soo@speshway.com'),
+      findsOneWidget,
+    );
+
+    // Test form validation: clear name field and click Save Changes
+    await tester.enterText(find.byType(TextFormField).at(0), '');
+    await tester.pump();
+    await tester.ensureVisible(find.text('Save Changes'));
+    await tester.tap(find.text('Save Changes'));
+    await tester.pumpAndSettle();
+
+    // Verify validation error
+    expect(find.text('Full Name is required'), findsOneWidget);
+
+    // Test Cancel button: click Cancel and verify we return to Profile Screen
+    await tester.ensureVisible(find.text('Cancel'));
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.text("Driver's License Details"), findsOneWidget);
+
+    // Tap Edit Profile button again
+    await tester.ensureVisible(find.text('Edit Profile'));
+    await tester.tap(find.text('Edit Profile'));
+    await tester.pumpAndSettle();
+
+    // Modify name and email, and tap Save Changes
+    await tester.enterText(find.byType(TextFormField).at(0), 'Satya Nadella');
+    await tester.enterText(
+      find.byType(TextFormField).at(3),
+      'satya@microsoft.com',
+    );
+    await tester.pump();
+    await tester.ensureVisible(find.text('Save Changes'));
+    await tester.tap(find.text('Save Changes'));
+    await tester.pumpAndSettle();
+
+    // Verify success snackbar is shown and we return to Profile Screen
+    expect(find.text('Profile updated successfully!'), findsOneWidget);
+    expect(find.text("Driver's License Details"), findsOneWidget);
+  });
+
+  testWidgets('Vehicle Overview Screen unassigned vehicle state test', (
+    WidgetTester tester,
+  ) async {
+    ApiService.mockResponses['/driver/vehicle'] = {
+      'success': true,
+      'data': {'assigned': false, 'vehicle': null},
+    };
+
+    await tester.pumpWidget(const MaterialApp(home: VehicleOverviewScreen()));
+    await tester.idle();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    // Verify App Bar Title is present
+    expect(find.text('Vehicle Overview'), findsOneWidget);
+
+    // Verify correct empty state message is shown
+    expect(
+      find.text('A Fleet Manager has not assigned a vehicle to you yet.'),
+      findsOneWidget,
+    );
+
+    // Verify vehicle action cards and headers are hidden
+    expect(find.text('Vehicle Details'), findsNothing);
+    expect(find.text('Vehicle Status'), findsNothing);
+    expect(find.text('Maintenance Alerts'), findsNothing);
+    expect(find.text('Vehicle Documents'), findsNothing);
+
+    // Verify Check Again refresh button is hidden
+    expect(find.text('Check Again'), findsNothing);
+    expect(find.byIcon(Icons.refresh_rounded), findsNothing);
+  });
+
+  testWidgets('Splash Screen displays brand elements and loading indicator', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({'has_seen_onboarding': true});
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => AuthProvider()),
+          ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ],
+        child: const MaterialApp(home: SplashScreen()),
+      ),
+    );
+
+    // Initial frame renders brand title and driver badge
+    expect(find.text('FLEET MANAGEMENT'), findsOneWidget);
+    expect(find.text('DRIVER MOBILE APP'), findsOneWidget);
+    expect(find.text('Smart Commercial Logistics & Telemetry'), findsNothing);
+
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('Splash Screen routes to OnboardingScreen on first launch', (
+    WidgetTester tester,
+  ) async {
+    // Simulate first launch without onboarding completed
+    SharedPreferences.setMockInitialValues({'has_seen_onboarding': false});
+
+    await tester.pumpWidget(const MyApp());
+    await tester.idle();
+    await tester.pumpAndSettle();
+
+    // Verify Onboarding Screen is loaded with slide 1 content and Next button
+    expect(find.text('Welcome to\nFleet Management'), findsOneWidget);
+    expect(find.text('SMART LOGISTICS'), findsOneWidget);
+    expect(find.text('Skip'), findsOneWidget);
+    expect(find.text('Next'), findsOneWidget);
+  });
+
+  testWidgets('Onboarding Screen slide progression and Get Started completion', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({'has_seen_onboarding': false});
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => AuthProvider()),
+          ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ],
+        child: const MaterialApp(home: OnboardingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Slide 1: Welcome
+    expect(find.text('Welcome to\nFleet Management'), findsOneWidget);
+    expect(find.text('Next'), findsOneWidget);
+
+    // Advance to Slide 2: Manage Trips via Next button
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    expect(find.text('Manage Your\nAssigned Trips'), findsOneWidget);
+    expect(find.text('DISPATCH SCHEDULES'), findsOneWidget);
+    expect(find.text('Next'), findsOneWidget);
+
+    // Advance to Slide 3 (Final Slide): Track Journey via Next button
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    expect(find.text('Track Your Journey\nin Real-Time'), findsOneWidget);
+    expect(find.text('LIVE GPS TELEMETRY'), findsOneWidget);
+    expect(find.text('Get Started'), findsOneWidget);
+    // Skip button should be hidden on final slide
+    expect(find.text('Skip'), findsNothing);
+
+    // Tap Get Started button
+    await tester.tap(find.text('Get Started'));
+    await tester.pumpAndSettle();
+
+    // Verify completion saved in SharedPreferences and navigated to LoginIdentifierScreen
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('has_seen_onboarding'), true);
+    expect(find.text('Login'), findsOneWidget);
+    expect(find.text('Next'), findsOneWidget);
+
+    // Enter email and tap Next to navigate to LoginScreen prefilled
+    await tester.enterText(find.byType(TextFormField), 'driver@fleetpro.com');
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Login'), findsOneWidget);
+    expect(
+      find.widgetWithText(TextFormField, 'driver@fleetpro.com'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+    'Onboarding Screen Skip button completes onboarding and navigates to LoginIdentifierScreen',
+    (WidgetTester tester) async {
+      SharedPreferences.setMockInitialValues({'has_seen_onboarding': false});
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => AuthProvider()),
+            ChangeNotifierProvider(create: (_) => NotificationProvider()),
+          ],
+          child: const MaterialApp(home: OnboardingScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify on slide 1 and tap Skip
+      expect(find.text('Skip'), findsOneWidget);
+      await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+
+      // Verify preference is saved and LoginIdentifierScreen is displayed
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('has_seen_onboarding'), true);
+      expect(find.text('Login'), findsOneWidget);
+      expect(find.text('Next'), findsOneWidget);
+
+      // Enter mobile number and tap Next to navigate to LoginScreen prefilled
+      await tester.enterText(find.byType(TextFormField), '9876543210');
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Login'), findsOneWidget);
+      expect(find.widgetWithText(TextFormField, '9876543210'), findsOneWidget);
+    },
+  );
+
+  group('ApiService Production & URL Configuration Tests', () {
+    test(
+      'Production constants and host resolution are properly configured',
+      () {
+        expect(ApiService.productionHost, 'https://fleet.speshway.site');
+        expect(ApiService.productionApiUrl, 'https://fleet.speshway.site/api');
+      },
+    );
+
+    test(
+      'isLocalAddress accurately detects local and private IP addresses',
+      () {
+        expect(ApiService.isLocalAddress('http://localhost:5000/api'), isTrue);
+        expect(ApiService.isLocalAddress('http://127.0.0.1:5000/api'), isTrue);
+        expect(ApiService.isLocalAddress('http://10.0.2.2:5000/api'), isTrue);
+        expect(
+          ApiService.isLocalAddress('http://192.168.1.17:5000/api'),
+          isTrue,
+        );
+        expect(
+          ApiService.isLocalAddress('http://10.166.118.1:5000/api'),
+          isTrue,
+        );
+        expect(ApiService.isLocalAddress('192.168.0.100'), isTrue);
+        expect(
+          ApiService.isLocalAddress('https://fleet.speshway.site/api'),
+          isFalse,
+        );
+        expect(
+          ApiService.isLocalAddress('https://fleet.speshway.site'),
+          isFalse,
+        );
+      },
+    );
+
+    test(
+      'formatServerUrl standardizes both local and production endpoints',
+      () {
+        expect(
+          ApiService.formatServerUrl('fleet.speshway.site'),
+          'https://fleet.speshway.site/api',
+        );
+        expect(
+          ApiService.formatServerUrl('https://fleet.speshway.site'),
+          'https://fleet.speshway.site/api',
+        );
+        expect(
+          ApiService.formatServerUrl('https://fleet.speshway.site/api'),
+          'https://fleet.speshway.site/api',
+        );
+        expect(
+          ApiService.formatServerUrl('10.0.2.2:5000'),
+          'http://10.0.2.2:5000/api',
+        );
+        expect(
+          ApiService.formatServerUrl('localhost:5000/api'),
+          'http://localhost:5000/api',
+        );
+      },
+    );
+
+    test('getHostFromUrl extracts valid schemes and authorities', () {
+      expect(
+        ApiService.getHostFromUrl('https://fleet.speshway.site/api'),
+        'https://fleet.speshway.site',
+      );
+      expect(
+        ApiService.getHostFromUrl('http://10.0.2.2:5000/api'),
+        'http://10.0.2.2:5000',
+      );
+      expect(
+        ApiService.getHostFromUrl('http://localhost:5000/api'),
+        'http://localhost:5000',
+      );
+    });
+  });
+
+  group('LoginIdentifierScreen UI & Navigation Tests', () {
+    testWidgets(
+      'Displays tagline, Login heading, single input and no skip or password',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: LoginIdentifierScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Verify Tagline and Login heading
+        expect(find.text('Drive Smarter, Manage Easier'), findsOneWidget);
+        expect(find.text('Login'), findsOneWidget);
+
+        // Verify Skip button is hidden
+        expect(find.text('Skip'), findsNothing);
+
+        // Verify label above field is hidden
+        expect(find.text('Email or mobile number'), findsNothing);
+
+        // Verify only ONE input field is present
+        expect(find.byType(TextFormField), findsOneWidget);
+
+        // Verify no password field or obscure text field is rendered
+        expect(find.text('Password'), findsNothing);
+        expect(find.byIcon(Icons.visibility_rounded), findsNothing);
+        expect(find.byIcon(Icons.visibility_off_rounded), findsNothing);
+
+        // Verify Next button
+        expect(find.text('Next'), findsOneWidget);
+
+        // Verify terms section and feature icons are removed
+        expect(find.text('Terms & Conditions'), findsNothing);
+        expect(find.text('Live GPS\nTracking'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Validates empty and invalid inputs with error displayed outside field',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: LoginIdentifierScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Tap Next with empty input
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+        expect(find.text('Please enter email or phone number'), findsOneWidget);
+        expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+
+        // Enter invalid email
+        await tester.enterText(find.byType(TextFormField), 'bad@domain');
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+        expect(find.text('Please enter a valid email address'), findsOneWidget);
+        expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+
+        // Enter invalid phone number (too short)
+        await tester.enterText(find.byType(TextFormField), '1234');
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+        expect(
+          find.text('Please enter a valid email or phone number'),
+          findsOneWidget,
+        );
+        expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Valid email input navigates to LoginScreen and pre-fills email field',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider(create: (_) => AuthProvider()),
+              ChangeNotifierProvider(create: (_) => NotificationProvider()),
+            ],
+            child: const MaterialApp(home: LoginIdentifierScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        if (find.byType(Checkbox).evaluate().isNotEmpty) {
+          await tester.tap(find.byType(Checkbox));
+          await tester.pumpAndSettle();
+        }
+        await tester.enterText(
+          find.byType(TextFormField),
+          'pilot@fleetflow.com',
+        );
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+
+        // Verify LoginScreen is displayed
+        expect(find.text('Login'), findsOneWidget);
+        // Verify email field is pre-filled with the identifier
+        expect(
+          find.widgetWithText(TextFormField, 'pilot@fleetflow.com'),
+          findsOneWidget,
+        );
+        // Password field should now be present on LoginScreen
+        expect(find.text('Enter your password'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Valid phone number input navigates to LoginScreen and pre-fills phone field',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider(create: (_) => AuthProvider()),
+              ChangeNotifierProvider(create: (_) => NotificationProvider()),
+            ],
+            child: const MaterialApp(home: LoginIdentifierScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        if (find.byType(Checkbox).evaluate().isNotEmpty) {
+          await tester.tap(find.byType(Checkbox));
+          await tester.pumpAndSettle();
+        }
+        await tester.enterText(find.byType(TextFormField), '+91 9876543210');
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+
+        // Verify LoginScreen is displayed
+        expect(find.text('Login'), findsOneWidget);
+        // Verify email/phone field is pre-filled
+        expect(
+          find.widgetWithText(TextFormField, '+91 9876543210'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'Error message is placed outside field and clears upon input changes',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: LoginIdentifierScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Tap Next with empty input to trigger error outside field
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Please enter email or phone number'), findsOneWidget);
+        expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+
+        // Typing a character clears the error message
+        await tester.enterText(find.byType(TextFormField), 'a');
+        await tester.pumpAndSettle();
+
+        expect(find.text('Please enter email or phone number'), findsNothing);
+        expect(find.byIcon(Icons.error_outline_rounded), findsNothing);
+      },
+    );
+  });
+
+  group('Safe Back Navigation Tests', () {
+    testWidgets(
+      'VehicleOverviewScreen back button switches to Home tab (index 2)',
+      (tester) async {
+        MainNavigationScreen.selectedTabNotifier.value = 0;
+        await tester.pumpWidget(
+          const MaterialApp(home: VehicleOverviewScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        final backButton = find.byIcon(Icons.arrow_back_rounded);
+        expect(backButton, findsOneWidget);
+        await tester.tap(backButton);
+        await tester.pumpAndSettle();
+
+        expect(MainNavigationScreen.selectedTabNotifier.value, 2);
+      },
+    );
+
+    testWidgets(
+      'FuelOverviewScreen back button switches to Home tab (index 2)',
+      (tester) async {
+        MainNavigationScreen.selectedTabNotifier.value = 1;
+        await tester.pumpWidget(const MaterialApp(home: FuelOverviewScreen()));
+        await tester.pumpAndSettle();
+
+        final backButton = find.byIcon(Icons.arrow_back_rounded);
+        expect(backButton, findsOneWidget);
+        await tester.tap(backButton);
+        await tester.pumpAndSettle();
+
+        expect(MainNavigationScreen.selectedTabNotifier.value, 2);
+      },
+    );
+
+    testWidgets('TripsScreen back button switches to Home tab (index 2)', (
+      tester,
+    ) async {
+      MainNavigationScreen.selectedTabNotifier.value = 3;
+      await tester.pumpWidget(const MaterialApp(home: TripsScreen()));
+      await tester.pumpAndSettle();
+
+      final backButton = find.byIcon(Icons.arrow_back);
+      expect(backButton, findsOneWidget);
+      await tester.tap(backButton);
+      await tester.pumpAndSettle();
+
+      expect(MainNavigationScreen.selectedTabNotifier.value, 2);
+    });
+
+    testWidgets('ProfileScreen back button switches to Home tab (index 2)', (
+      tester,
+    ) async {
+      MainNavigationScreen.selectedTabNotifier.value = 4;
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
+            ChangeNotifierProvider<NotificationProvider>(
+              create: (_) => NotificationProvider(),
+            ),
+          ],
+          child: const MaterialApp(home: ProfileScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final backButton = find.byIcon(Icons.arrow_back_rounded);
+      expect(backButton, findsOneWidget);
+      await tester.tap(backButton);
+      await tester.pumpAndSettle();
+
+      expect(MainNavigationScreen.selectedTabNotifier.value, 2);
+    });
+
+    testWidgets(
+      'SafeNavigation.pop with canPop=false safely routes to MainNavigationScreen',
+      (tester) async {
+        BuildContext? capturedContext;
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider<AuthProvider>(
+                create: (_) => AuthProvider(),
+              ),
+              ChangeNotifierProvider<NotificationProvider>(
+                create: (_) => NotificationProvider(),
+              ),
+            ],
+            child: MaterialApp(
+              home: Builder(
+                builder: (ctx) {
+                  capturedContext = ctx;
+                  return const Scaffold(body: Text('Test Root'));
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        SafeNavigation.pop(capturedContext!, fallbackTab: 2);
+        await tester.pumpAndSettle();
+
+        expect(find.byType(MainNavigationScreen), findsOneWidget);
+        expect(MainNavigationScreen.selectedTabNotifier.value, 2);
+      },
+    );
+  });
+
+  group('Contact Fleet Manager Layout & Overflow Tests', () {
+    testWidgets(
+      'Contact Fleet Manager screen renders on small viewports without overflow',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 640);
+        tester.view.devicePixelRatio = 1.0;
+
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider<AuthProvider>(
+                create: (_) => AuthProvider(),
+              ),
+              ChangeNotifierProvider<NotificationProvider>(
+                create: (_) => NotificationProvider(),
+              ),
+            ],
+            child: const MaterialApp(home: ContactFleetManagerScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Contact Fleet manager'), findsOneWidget);
+        expect(find.text('Available'), findsOneWidget);
+        expect(find.text('Active Assignment'), findsOneWidget);
+        expect(find.text('Recent Activity'), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'Contact Fleet Manager timeline and cards render across various scales and viewport dimensions without overflow',
+      (tester) async {
+        final sizes = [
+          const Size(360, 800),
+          const Size(390, 844),
+          const Size(412, 915),
+          const Size(375, 667),
+          const Size(360, 640),
+          const Size(320, 568),
+        ];
+        final scales = [1.0, 1.25, 1.5];
+
+        for (final scale in scales) {
+          for (final size in sizes) {
+            tester.view.physicalSize = size;
+            tester.view.devicePixelRatio = 1.0;
+
+            await tester.pumpWidget(
+              MultiProvider(
+                providers: [
+                  ChangeNotifierProvider<AuthProvider>(
+                    create: (_) => AuthProvider(),
+                  ),
+                  ChangeNotifierProvider<NotificationProvider>(
+                    create: (_) => NotificationProvider(),
+                  ),
+                ],
+                child: MaterialApp(
+                  builder: (context, child) => MediaQuery(
+                    data: MediaQuery.of(
+                      context,
+                    ).copyWith(textScaler: TextScaler.linear(scale)),
+                    child: child!,
+                  ),
+                  home: const ContactFleetManagerScreen(),
+                ),
+              ),
+            );
+
+            await tester.pumpAndSettle();
+            expect(
+              tester.takeException(),
+              isNull,
+              reason: 'Failed on size $size with scale $scale',
+            );
+          }
+        }
+      },
+    );
+
+    testWidgets(
+      'Contact Fleet Manager external contact modal opens without overflow',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 640);
+        tester.view.devicePixelRatio = 1.0;
+
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider<AuthProvider>(
+                create: (_) => AuthProvider(),
+              ),
+              ChangeNotifierProvider<NotificationProvider>(
+                create: (_) => NotificationProvider(),
+              ),
+            ],
+            child: const MaterialApp(home: ContactFleetManagerScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.scrollUntilVisible(
+          find.text('Call Fleet Manager'),
+          50.0,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Call Fleet Manager'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('SELECT EXTERNAL APP'), findsOneWidget);
+        expect(find.text('WhatsApp Messenger'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+
+        await tester.tap(find.byIcon(Icons.close));
+        await tester.pumpAndSettle();
+      },
+    );
+  });
+
+  group('Support & Tickets Filter Bar & Search Tests', () {
+    testWidgets(
+      'Support & Tickets renders filter bar beside search bar and hides chips row',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1.0;
+
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider<AuthProvider>(
+                create: (_) => AuthProvider(),
+              ),
+              ChangeNotifierProvider<NotificationProvider>(
+                create: (_) => NotificationProvider(),
+              ),
+            ],
+            child: const MaterialApp(home: SupportHistoryScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Verify title
+        expect(find.text('Support & Tickets'), findsOneWidget);
+
+        // Verify search bar input is present
+        expect(find.byType(TextField), findsOneWidget);
+        expect(find.text('Search Ticket ID or Issue...'), findsOneWidget);
+
+        // Verify filter bar button is present beside search bar showing default 'All'
+        expect(find.text('All'), findsOneWidget);
+        expect(find.byIcon(Icons.tune_rounded), findsOneWidget);
+
+        // Verify old standalone filter chips row is hidden (no separate ListView for chips)
+        // Tapping the filter bar button should open the popup menu
+        await tester.tap(find.byIcon(Icons.tune_rounded));
+        await tester.pumpAndSettle();
+
+        // Verify popup menu items appear
+        expect(find.text('FILTER BY STATUS'), findsOneWidget);
+        expect(find.text('Open'), findsOneWidget);
+        expect(find.text('In Progress'), findsOneWidget);
+        expect(find.text('Resolved'), findsOneWidget);
+        expect(find.text('Rejected'), findsOneWidget);
+
+        // Select 'Open' filter
+        await tester.tap(find.text('Open'));
+        await tester.pumpAndSettle();
+
+        // Verify the filter bar button now displays 'Open'
+        expect(find.text('Open'), findsOneWidget);
+
+        // Test searching with search controller
+        await tester.enterText(find.byType(TextField), 'Brake');
+        await tester.pumpAndSettle();
+        expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+
+        // Clear search
+        await tester.tap(find.byIcon(Icons.close_rounded));
+        await tester.pumpAndSettle();
+        expect(find.text('Search Ticket ID or Issue...'), findsOneWidget);
+      },
+    );
+  });
+
+  group('Fuel History Filter Bar & Search Tests', () {
+    testWidgets(
+      'Fuel History renders filter bar beside search bar and hides navigation chips',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1.0;
+
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider<AuthProvider>(
+                create: (_) => AuthProvider(),
+              ),
+              ChangeNotifierProvider<NotificationProvider>(
+                create: (_) => NotificationProvider(),
+              ),
+            ],
+            child: const MaterialApp(home: FuelHistoryScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Verify title
+        expect(find.text('Fuel History'), findsOneWidget);
+
+        // Verify search bar input is present
+        expect(find.byType(TextField), findsOneWidget);
+        expect(find.text('Search Station or Vehicle...'), findsOneWidget);
+
+        // Verify filter bar button is present beside search bar showing default 'All'
+        expect(find.text('All'), findsOneWidget);
+        expect(find.byIcon(Icons.tune_rounded), findsOneWidget);
+
+        // Tapping the filter bar button should open the popup menu
+        await tester.tap(find.byIcon(Icons.tune_rounded));
+        await tester.pumpAndSettle();
+
+        // Verify popup menu items appear
+        expect(find.text('FILTER BY STATUS'), findsOneWidget);
+        expect(find.text('Approved'), findsOneWidget);
+        expect(find.text('Pending'), findsOneWidget);
+        expect(find.text('Rejected'), findsOneWidget);
+
+        // Select 'Approved' filter
+        await tester.tap(find.text('Approved'));
+        await tester.pumpAndSettle();
+
+        // Verify the filter bar button now displays 'Approved'
+        expect(find.text('Approved'), findsOneWidget);
+
+        // Test searching with search controller
+        await tester.enterText(find.byType(TextField), 'Shell');
+        await tester.pumpAndSettle();
+        expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+
+        // Clear search
+        await tester.tap(find.byIcon(Icons.close_rounded));
+        await tester.pumpAndSettle();
+        expect(find.text('Search Station or Vehicle...'), findsOneWidget);
+      },
+    );
+  });
+
+  group('Trips Filter Bar & Search Tests', () {
+    testWidgets(
+      'TripsScreen renders inline status filter bar beside search bar without bottom modal',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        ApiService.isTest = true;
+        ApiService.mockResponses['/driver/dashboard'] = {
+          'success': true,
+          'data': {'activeTrips': 1, 'upcomingTrips': 1, 'completedTrips': 1},
+        };
+        ApiService.mockResponses['/driver/trips/current'] = {
+          'success': true,
+          'data': {
+            '_id': 't1',
+            'tripNumber': 'TRP-1001',
+            'startLocation': 'Hyderabad',
+            'endLocation': 'Bengaluru',
+            'status': 'Active',
+          },
+        };
+        ApiService.mockResponses['/driver/trips'] = {
+          'success': true,
+          'data': [
+            {
+              '_id': 't1',
+              'tripNumber': 'TRP-1001',
+              'startLocation': 'Hyderabad',
+              'endLocation': 'Bengaluru',
+              'status': 'Active',
+            },
+            {
+              '_id': 't2',
+              'tripNumber': 'TRP-1002',
+              'startLocation': 'Chennai',
+              'endLocation': 'Kochi',
+              'status': 'Completed',
+            },
+            {
+              '_id': 't3',
+              'tripNumber': 'TRP-1003',
+              'startLocation': 'Pune',
+              'endLocation': 'Mumbai',
+              'status': 'Upcoming',
+            },
+            {
+              '_id': 't4',
+              'tripNumber': 'TRP-1004',
+              'startLocation': 'Delhi',
+              'endLocation': 'Jaipur',
+              'status': 'Rejected',
+            },
+          ],
+        };
+        LocalizationService.setLanguage('English (US)');
+
+        await tester.pumpWidget(const MaterialApp(home: TripsScreen()));
+        await tester.pumpAndSettle();
+
+        // Verify search bar and inline filter bar are present (no bottom modal filter_list icon)
+        expect(find.byType(TextField), findsOneWidget);
+        expect(find.text('Search for trips...'), findsOneWidget);
+        expect(find.byIcon(Icons.filter_list), findsNothing);
+        expect(find.byIcon(Icons.tune_rounded), findsOneWidget);
+        expect(find.text('All'), findsOneWidget);
+
+        // Tap filter bar to open inline popup menu (not bottom sheet modal)
+        await tester.tap(find.byIcon(Icons.tune_rounded));
+        await tester.pumpAndSettle();
+
+        // Verify status-only popup menu items and absence of old bottom modal controls
+        expect(find.text('FILTER BY STATUS'), findsOneWidget);
+        expect(find.text('Completed'), findsOneWidget);
+        expect(find.text('Upcoming'), findsAtLeastNWidgets(1));
+        expect(find.text('Rejected'), findsOneWidget);
+        expect(find.text('Timeframe'), findsNothing);
+        expect(find.text('Apply Filters'), findsNothing);
+
+        // Select 'Completed' filter and verify filtered trip card renders
+        await tester.tap(find.text('Completed'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Completed'), findsAtLeastNWidgets(1));
+        expect(find.text('#TRP-1002'), findsOneWidget);
+        expect(find.text('#TRP-1001'), findsNothing);
+
+        // Test live search filtering and clear button
+        await tester.enterText(find.byType(TextField), 'Chennai');
+        await tester.pumpAndSettle();
+        expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+        expect(find.text('#TRP-1002'), findsOneWidget);
+
+        await tester.tap(find.byIcon(Icons.close_rounded));
+        await tester.pumpAndSettle();
+        expect(find.text('Search for trips...'), findsOneWidget);
+      },
+    );
+  });
+
+  group('Trip Details Premium Card UI & Overflow Tests', () {
+    testWidgets(
+      'TripDetailsScreen renders all premium cards cleanly without overflow on compact viewport',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 640);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final sampleTrip = <String, dynamic>{
+          '_id': 'trip_999',
+          'tripNumber': 'TRP-8842',
+          'status': 'In Progress',
+          'startLocation': 'Hyderabad',
+          'endLocation': 'Vijayawada',
+          'estimatedDistance': 275,
+          'eta': '2026-11-18T14:30:00.000Z',
+          'driverName': 'Meghana',
+          'vehicleName': 'Tata Prima',
+          'vehiclePlate': 'TS09UB1234',
+          'cargoType': 'Electronics',
+          'cargoWeight': 1250,
+          'podStatus': 'Uploaded',
+          'weighbridgeStatus': 'Pending Approval',
+          'invoiceNumber': 'INV-2026-8842',
+          'tripNotes': 'Handle fragile electronics with care.',
+          'manager': {
+            'name': 'G Sai Kiran',
+            'phone': '+91 98765 43210',
+            'email': 'sai@fleet.com',
+          },
+          'fuelEntries': [
+            {
+              'location': 'Suryapet',
+              'fuelStation': 'IndianOil Highway',
+              'liters': 45,
+            },
+          ],
+        };
+
+        ApiService.isTest = true;
+        ApiService.mockResponses['/driver/trips/TRP-8842'] = {
+          'success': true,
+          'data': sampleTrip,
+        };
+        LocalizationService.setLanguage('English (US)');
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: TripDetailsScreen(tripId: 'TRP-8842', tripData: sampleTrip),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('#TRP-8842'), findsOneWidget);
+        expect(find.text('IN PROGRESS'), findsAtLeastNWidgets(1));
+        expect(find.text('275 km'), findsOneWidget);
+        expect(find.text('Meghana'), findsOneWidget);
+        expect(find.text('CARGO & SHIPMENT'), findsOneWidget);
+        expect(find.text('CONTACT & MANAGER'), findsOneWidget);
+        expect(find.text('DOCUMENTS STATUS'), findsOneWidget);
+        expect(find.text('TRIP NOTES'), findsOneWidget);
+        expect(find.text('TRIP MANIFEST'), findsOneWidget);
+        expect(find.text('Record Fuel Purchase'), findsOneWidget);
+        expect(find.text('End Trip'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'CompletedTripDetailsScreen renders color-coded Performance KPI cards and premium sections without overflow',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 640);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final completedTrip = <String, dynamic>{
+          '_id': 'trip_comp_1',
+          'tripNumber': 'TRP-9045',
+          'status': 'Completed',
+          'startLocation': 'Hyderabad',
+          'endLocation': 'Chennai',
+          'actualDistance': 625,
+          'duration': '10h 15m',
+          'fuelConsumed': 82,
+          'averageSpeed': 61,
+          'totalStops': 3,
+          'vehicleName': 'Ashok Leyland',
+          'vehiclePlate': 'AP39XY7890',
+          'driverName': 'Meghana',
+          'manager': {'name': 'G Sai Kiran'},
+          'receiverName': 'Ramesh Kumar',
+          'tripNotes': 'Delivered ahead of schedule.',
+          'completedAt': '2026-11-18T08:00:00.000Z',
+        };
+
+        ApiService.isTest = true;
+        ApiService.mockResponses['/driver/trips/TRP-9045'] = {
+          'success': true,
+          'data': completedTrip,
+        };
+        LocalizationService.setLanguage('English (US)');
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: CompletedTripDetailsScreen(
+              tripId: 'TRP-9045',
+              tripData: completedTrip,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('#TRP-9045'), findsOneWidget);
+        expect(find.text('Performance'), findsOneWidget);
+        expect(find.text('Distance'), findsAtLeastNWidgets(1));
+        expect(find.text('Fuel Consumed'), findsOneWidget);
+        expect(find.text('Avg Speed'), findsOneWidget);
+        expect(find.text('Total Stops'), findsOneWidget);
+        expect(find.text('Trip Timeline'), findsOneWidget);
+        expect(find.text('Documents'), findsOneWidget);
+        expect(find.text('Delivery Confirmation'), findsOneWidget);
+        expect(find.text('Download Trip Report'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'CompletedTripsScreen renders executive hero card, color-coded trip cards, and search without overflow',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 1000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final sampleCompletedTrips = <Map<String, dynamic>>[
+          {
+            '_id': 'trip_c1',
+            'tripNumber': 'TRP-9045',
+            'status': 'Completed',
+            'startLocation': 'Hyderabad',
+            'endLocation': 'Chennai',
+            'actualDistance': 625,
+            'duration': '10h 15m',
+            'fuelConsumed': 82,
+            'vehicleName': 'Ashok Leyland',
+            'vehiclePlate': 'AP39XY7890',
+            'driverName': 'Meghana',
+            'createdAt': '2026-11-18T08:00:00.000Z',
+          },
+          {
+            '_id': 'trip_c2',
+            'tripNumber': 'TRP-8812',
+            'status': 'Completed',
+            'startLocation': 'Bangalore',
+            'endLocation': 'Hyderabad',
+            'actualDistance': 570,
+            'duration': '8h 40m',
+            'fuelConsumed': 74,
+            'vehicleName': 'Tata Prima',
+            'vehiclePlate': 'KA01AB1234',
+            'driverName': 'Meghana',
+            'createdAt': '2026-11-15T09:30:00.000Z',
+          },
+        ];
+
+        CompletedTripsScreen.clearCache();
+        ApiService.isTest = true;
+        ApiService.mockResponses['/driver/trips?status=Completed'] = {
+          'success': true,
+          'data': sampleCompletedTrips,
+        };
+        LocalizationService.setLanguage('English (US)');
+
+        await tester.pumpWidget(
+          const MaterialApp(home: CompletedTripsScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Completed Trips'), findsWidgets);
+        expect(find.text('VERIFIED ARCHIVE'), findsOneWidget);
+        expect(find.text('Trip History'), findsOneWidget);
+        expect(find.text('#TRP-9045'), findsOneWidget);
+        expect(find.text('#TRP-8812'), findsOneWidget);
+        expect(find.text('Hyderabad'), findsWidgets);
+        expect(find.text('Chennai'), findsOneWidget);
+        expect(find.text('Bangalore'), findsOneWidget);
+        expect(find.text('View Trip Summary'), findsNWidgets(2));
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'UpcomingTripsScreen renders executive hero card, color-coded trip card, and actions without overflow',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 1000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final sampleUpcomingTrip = <String, dynamic>{
+          '_id': 'trip_up_1',
+          'tripNumber': 'TRP-7744',
+          'status': 'Accepted',
+          'startLocation': 'Mumbai Central Hub',
+          'endLocation': 'Pune Logistics Center',
+          'departureTime': '2026-11-22T06:00:00.000Z',
+          'estimatedDistance': 155,
+          'vehicleName': 'BharatBenz 2823',
+          'vehiclePlate': 'MH12AB9012',
+          'managerName': 'Rajesh Kumar',
+        };
+
+        UpcomingTripsScreen.clearCache();
+        ApiService.isTest = true;
+        ApiService.mockResponses['/driver/trips/current'] = {
+          'success': true,
+          'data': sampleUpcomingTrip,
+        };
+        LocalizationService.setLanguage('English (US)');
+
+        await tester.pumpWidget(const MaterialApp(home: UpcomingTripsScreen()));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Upcoming Trips'), findsWidgets);
+        expect(find.text('SCHEDULED TRIP'), findsOneWidget);
+        expect(find.text('Upcoming Trip'), findsOneWidget);
+        expect(find.text('#TRP-7744'), findsOneWidget);
+        expect(find.text('Mumbai Central Hub'), findsOneWidget);
+        expect(find.text('Pune Logistics Center'), findsOneWidget);
+        expect(find.text('View Details'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'ActiveTripsScreen renders executive hero card, live map card, and customer location controls without overflow',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 1100);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final sampleActiveTrip = <String, dynamic>{
+          '_id': 'trip_act_1',
+          'tripNumber': 'TRP-5521',
+          'status': 'In Progress',
+          'startLocation': 'Hyderabad Depot',
+          'endLocation': 'Vijayawada Hub',
+          'eta': '2h 15m',
+          'vehicle': 'Volvo FH16 (TS09EA1234)',
+          'customerLocationReached': false,
+        };
+
+        ActiveTripsScreen.clearCache();
+        ApiService.isTest = true;
+        ApiService.mockResponses['/driver/trips/current'] = {
+          'success': true,
+          'data': sampleActiveTrip,
+        };
+        LocalizationService.setLanguage('English (US)');
+
+        await tester.pumpWidget(const MaterialApp(home: ActiveTripsScreen()));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Active Trips'), findsWidgets);
+        expect(find.text('LIVE TRACKING'), findsOneWidget);
+        expect(find.text('Active Trip'), findsOneWidget);
+        expect(find.text('#TRP-5521'), findsOneWidget);
+        expect(find.text('Hyderabad Depot'), findsOneWidget);
+        expect(find.text('Vijayawada Hub'), findsOneWidget);
+        expect(find.text('Customer Location Reached'), findsOneWidget);
+        expect(find.text('View Full Trip Details'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  });
+
+  group('Global App-Wide Multi-Screen Language Switching Tests', () {
+    testWidgets(
+      'MainNavigationScreen updates all tab labels reactively when language changes',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1.0;
+        LocalizationService.setLanguage('English (US)');
+
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider<AuthProvider>(
+                create: (_) => AuthProvider(),
+              ),
+              ChangeNotifierProvider<NotificationProvider>(
+                create: (_) => NotificationProvider(),
+              ),
+            ],
+            child: const MaterialApp(home: MainNavigationScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Check English bottom navigation labels
+        expect(find.text('Vehicle'), findsOneWidget);
+        expect(find.text('Fuel'), findsOneWidget);
+        expect(find.text('Home'), findsOneWidget);
+        expect(find.text('Trips'), findsOneWidget);
+        expect(find.text('Profile'), findsOneWidget);
+
+        // Switch to Hindi
+        LocalizationService.setLanguage('Hindi');
+        await tester.pumpAndSettle();
+
+        // Verify immediate reactive update to Hindi
+        expect(find.text('वाहन'), findsOneWidget);
+        expect(find.text('ईंधन'), findsOneWidget);
+        expect(find.text('होम'), findsOneWidget);
+        expect(find.text('यात्राएं'), findsOneWidget);
+        expect(find.text('प्रोफ़ाइल'), findsOneWidget);
+
+        // Switch to Spanish
+        LocalizationService.setLanguage('Spanish');
+        await tester.pumpAndSettle();
+
+        // Verify immediate reactive update to Spanish
+        expect(find.text('Vehículo'), findsOneWidget);
+        expect(find.text('Combustible'), findsOneWidget);
+        expect(find.text('Inicio'), findsOneWidget);
+        expect(find.text('Viajes'), findsOneWidget);
+        expect(find.text('Perfil'), findsOneWidget);
+
+        // Switch to French
+        LocalizationService.setLanguage('French');
+        await tester.pumpAndSettle();
+
+        expect(find.text('Véhicule'), findsOneWidget);
+        expect(find.text('Carburant'), findsOneWidget);
+        expect(find.text('Accueil'), findsOneWidget);
+        expect(find.text('Trajets'), findsOneWidget);
+        expect(find.text('Profil'), findsOneWidget);
+
+        // Switch to German
+        LocalizationService.setLanguage('German');
+        await tester.pumpAndSettle();
+
+        expect(find.text('Fahrzeug'), findsOneWidget);
+        expect(find.text('Kraftstoff'), findsOneWidget);
+        expect(find.text('Startseite'), findsOneWidget);
+        expect(find.text('Fahrten'), findsOneWidget);
+        expect(find.text('Profil'), findsOneWidget);
+
+        // Reset back to English
+        LocalizationService.setLanguage('English (US)');
+        await tester.pumpAndSettle();
+        expect(find.text('Vehicle'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'VehicleOverviewScreen and FuelOverviewScreen reactively update titles on language change',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1.0;
+        LocalizationService.setLanguage('English (US)');
+
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider<AuthProvider>(
+                create: (_) => AuthProvider(),
+              ),
+              ChangeNotifierProvider<NotificationProvider>(
+                create: (_) => NotificationProvider(),
+              ),
+            ],
+            child: const MaterialApp(home: VehicleOverviewScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // English title
+        expect(find.text('Vehicle Overview'), findsOneWidget);
+
+        // Switch to Hindi
+        LocalizationService.setLanguage('Hindi');
+        await tester.pumpAndSettle();
+        expect(find.text('वाहन अवलोकन'), findsOneWidget);
+
+        // Switch to Spanish
+        LocalizationService.setLanguage('Spanish');
+        await tester.pumpAndSettle();
+        expect(find.text('Resumen del Vehículo'), findsOneWidget);
+
+        // Test FuelOverviewScreen
+        LocalizationService.setLanguage('Hindi');
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider<AuthProvider>(
+                create: (_) => AuthProvider(),
+              ),
+              ChangeNotifierProvider<NotificationProvider>(
+                create: (_) => NotificationProvider(),
+              ),
+            ],
+            child: const MaterialApp(home: FuelOverviewScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('ईंधन अवलोकन'), findsOneWidget);
+
+        // Switch back to English
+        LocalizationService.setLanguage('English (US)');
+        await tester.pumpAndSettle();
+        expect(find.text('Fuel Overview'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'SettingsScreen reactively updates headers and labels on language change',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1.0;
+        LocalizationService.setLanguage('English (US)');
+
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider<AuthProvider>(
+                create: (_) => AuthProvider(),
+              ),
+              ChangeNotifierProvider<NotificationProvider>(
+                create: (_) => NotificationProvider(),
+              ),
+            ],
+            child: const MaterialApp(home: SettingsScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Settings'), findsOneWidget);
+        expect(find.text('APP PREFERENCES'), findsOneWidget);
+
+        // Switch to Hindi
+        LocalizationService.setLanguage('Hindi');
+        await tester.pumpAndSettle();
+        expect(find.text('सेटिंग्स'), findsOneWidget);
+        expect(find.text('ऐप प्राथमिकताएं'.toUpperCase()), findsOneWidget);
+
+        // Switch to Spanish
+        LocalizationService.setLanguage('Spanish');
+        await tester.pumpAndSettle();
+        expect(find.text('Configuración'), findsOneWidget);
+        expect(find.text('PREFERENCIAS DE LA APP'), findsOneWidget);
+
+        // Reset to English
+        LocalizationService.setLanguage('English (US)');
+        await tester.pumpAndSettle();
+        expect(find.text('Settings'), findsOneWidget);
+      },
+    );
+  });
+
+  group('Notifications Premium Card UI & Overflow Tests', () {
+    testWidgets(
+      'NotificationsScreen renders color-coded cards, filters, and mark-all-read without overflow on compact viewport',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 640);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+          NotificationsScreen.notifications = [];
+          NotificationsScreen.unreadCountNotifier.value = 0;
+        });
+
+        final nowIso = DateTime.now().toIso8601String();
+        final yesterdayIso = DateTime.now()
+            .subtract(const Duration(days: 1))
+            .toIso8601String();
+
+        ApiService.mockResponses['/driver/notifications'] = {
+          'success': true,
+          'data': [
+            {
+              '_id': 'n1',
+              'title': 'New Trip Assigned #TRP-402',
+              'message':
+                  'Pickup scheduled from Downtown Distribution Center to Airport Cargo Hub.',
+              'type': 'trip_assigned',
+              'isRead': false,
+              'createdAt': nowIso,
+              'metadata': {'tripId': 'trip-402'},
+            },
+            {
+              '_id': 'n2',
+              'title': 'Schedule Updated',
+              'message':
+                  'Departure window adjusted by 20 minutes due to dock congestion.',
+              'type': 'trip_updated',
+              'isRead': false,
+              'createdAt': nowIso,
+            },
+            {
+              '_id': 'n3',
+              'title': 'Trip Completed Successfully',
+              'message': 'Delivery proof confirmed by warehouse supervisor.',
+              'type': 'trip_status_changed',
+              'isRead': true,
+              'createdAt': yesterdayIso,
+            },
+          ],
+        };
+
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider<AuthProvider>(
+                create: (_) => AuthProvider(),
+              ),
+              ChangeNotifierProvider<NotificationProvider>(
+                create: (_) => NotificationProvider(),
+              ),
+            ],
+            child: const MaterialApp(home: NotificationsScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(find.text('All Caught Up'), findsNothing);
+        expect(find.text('2 Unread Alerts'), findsNothing);
+        expect(find.text('New Trip Assigned #TRP-402'), findsOneWidget);
+        expect(find.text('Schedule Updated'), findsOneWidget);
+        expect(find.text('Trip Completed Successfully'), findsOneWidget);
+        expect(find.text('TRIP ASSIGNED'), findsOneWidget);
+        expect(find.text('SCHEDULE'), findsOneWidget);
+        expect(find.text('STATUS'), findsOneWidget);
+
+        // Switch to Unread filter
+        await tester.tap(find.text('Unread'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.text('New Trip Assigned #TRP-402'), findsOneWidget);
+        expect(find.text('Trip Completed Successfully'), findsNothing);
+
+        // Switch to Read filter
+        await tester.tap(find.text('Read'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.text('Trip Completed Successfully'), findsOneWidget);
+        expect(find.text('New Trip Assigned #TRP-402'), findsNothing);
+
+        // Switch back to All and trigger Mark all as read
+        await tester.tap(find.text('All'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Mark all as read'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.text('All Caught Up'), findsNothing);
+        expect(NotificationsScreen.unreadCountNotifier.value, 0);
+
+        // Verify empty state on Unread tab now
+        await tester.tap(find.text('Unread'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.text('No Unread Notifications'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'NotificationDetailsScreen renders color-coded hero and message cards cleanly on compact viewport',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 640);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        bool openedCalled = false;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: NotificationDetailsScreen(
+              title: 'Maintenance Schedule Reminder',
+              message:
+                  'Your assigned vehicle BT-990 is due for routine brake inspection tomorrow morning at 08:30 AM.',
+              time: '10:45 AM',
+              type: 'Maintenance',
+              icon: Icons.build_circle_outlined,
+              onOpened: () => openedCalled = true,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(openedCalled, isTrue);
+        expect(find.text('Maintenance Schedule Reminder'), findsOneWidget);
+        expect(find.text('MESSAGE DETAILS'), findsOneWidget);
+        expect(find.text('READ'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'DashboardScreen displays Start Trip button on Active Trip card after accepting trip request',
+      (tester) async {
+        tester.view.physicalSize = const Size(412, 915);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        DashboardScreen.clearStaticCache();
+        ApiService.mockResponses['/driver/profile'] = {
+          'success': true,
+          'data': {
+            '_id': 'drv_1',
+            'fullName': 'Test Driver',
+            'employeeId': 'EMP-101',
+            'isDuty': true,
+          },
+        };
+        ApiService.mockResponses['/driver/trips/current'] = {
+          'success': true,
+          'data': {
+            'tripId': 'trip_999',
+            '_id': 'trip_999',
+            'tripNumber': 'TRP-999111',
+            'driver': 'drv_1',
+            'status': 'Pending Driver Acceptance',
+            'pickup': 'Hyderabad Depot',
+            'destination': 'Vijayawada Hub',
+            'vehicleName': 'TATA Prima',
+            'vehiclePlate': 'TS 09 AB 1234',
+          },
+        };
+        ApiService.mockResponses['/driver/dashboard'] = {
+          'success': true,
+          'data': {
+            'activeTrips': 1,
+            'upcomingTrips': 0,
+            'completedTrips': 2,
+            'totalTrips': 3,
+          },
+        };
+        ApiService.mockResponses['/driver/trips'] = {
+          'success': true,
+          'data': [],
+        };
+        ApiService.mockResponses['/driver/notifications'] = {
+          'success': true,
+          'data': [],
+        };
+        ApiService.mockResponses['/driver/trips/trip_999/accept'] = {
+          'success': true,
+          'message': 'Trip accepted',
+        };
+        ApiService.mockResponses['/driver/trips/trip_999/status'] = {
+          'success': true,
+          'message': 'Trip started',
+        };
+
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider(create: (_) => AuthProvider()),
+              ChangeNotifierProvider(create: (_) => NotificationProvider()),
+            ],
+            child: const MaterialApp(home: DashboardScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(find.text('Pending Acceptance'), findsOneWidget);
+        expect(find.text('Accept'), findsOneWidget);
+
+        // Update mock so subsequent _loadDashboardData reflects Scheduled status
+        ApiService.mockResponses['/driver/trips/current'] = {
+          'success': true,
+          'data': {
+            'tripId': 'trip_999',
+            '_id': 'trip_999',
+            'tripNumber': 'TRP-999111',
+            'driver': 'drv_1',
+            'status': 'Scheduled',
+            'pickup': 'Hyderabad Depot',
+            'destination': 'Vijayawada Hub',
+            'vehicleName': 'TATA Prima',
+            'vehiclePlate': 'TS 09 AB 1234',
+          },
+        };
+
+        await tester.ensureVisible(find.text('Accept'));
+        await tester.tap(find.text('Accept'));
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(find.text('Active Trip'), findsWidgets);
+        expect(find.text('Start Trip'), findsOneWidget);
+
+        // Now tap Start Trip and verify transition to In Progress
+        ApiService.mockResponses['/driver/trips/current'] = {
+          'success': true,
+          'data': {
+            'tripId': 'trip_999',
+            '_id': 'trip_999',
+            'tripNumber': 'TRP-999111',
+            'driver': 'drv_1',
+            'status': 'In Progress',
+            'pickup': 'Hyderabad Depot',
+            'destination': 'Vijayawada Hub',
+            'vehicleName': 'TATA Prima',
+            'vehiclePlate': 'TS 09 AB 1234',
+          },
+        };
+
+        await tester.ensureVisible(find.text('Start Trip'));
+        await tester.tap(find.text('Start Trip'));
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(find.text('Start Trip'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'LoginScreen pre-fills email into ForgotPasswordScreen and hides Already have OTP Reset Now link',
+      (tester) async {
+        tester.view.physicalSize = const Size(412, 915);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider(create: (_) => AuthProvider()),
+              ChangeNotifierProvider(create: (_) => NotificationProvider()),
+            ],
+            child: const MaterialApp(home: LoginScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.enterText(
+          find.byType(TextFormField).first,
+          'verification@gmail.com',
+        );
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(find.text('Forgot Password?'));
+        await tester.tap(find.text('Forgot Password?'));
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(find.byType(ForgotPasswordScreen), findsOneWidget);
+        expect(find.text('verification@gmail.com'), findsOneWidget);
+        expect(find.text('Already have OTP? Reset Now'), findsNothing);
+      },
+    );
+  });
+}

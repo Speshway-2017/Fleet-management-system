@@ -7,10 +7,16 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Dependencies & Build
+node_modules/
+dist/
+dist-ssr/
 *.local
+
+# Environment files
+.env
+.env.local
+.env.*
 
 # Editor directories and files
 .vscode/*
@@ -22,3 +28,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Workspace
+CHANGELOG.md
+**/CHANGELOG.md
+driver_mobile/CHANGELOG.md

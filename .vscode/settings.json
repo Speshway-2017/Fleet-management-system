@@ -1,0 +1,14 @@
+{
+  "css.lint.unknownAtRules": "ignore",
+  "java.configuration.updateBuildConfiguration": "interactive",
+  "dart.projectSearchPaths": [
+    "driver_mobile"
+  ],
+  "java.import.exclusions": [
+    "**/driver_mobile/android/**",
+    "**/build/**"
+  ],
+  "files.exclude": {
+    "driver_mobile/build": true
+  }
+}
