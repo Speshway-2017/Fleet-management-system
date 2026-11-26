@@ -30,6 +30,11 @@ import { syncDriverLocationFromLatestTrip, updateDriverAndVehicleOnCompletion } 
 import { calculateTripFinance } from '../utils/earningsCalculator.js';
 import { invalidateManagerDashboardCache } from './manager.controller.js';
 import { parseDateTimeIST } from '../utils/dateHelper.js';
+import {
+  checkLoginLockout,
+  recordLoginFailure,
+  clearLoginFailures,
+} from '../services/securityMonitor.service.js';
 
 // Helper to resolve trip by ObjectId or Trip Number
 export async function resolveTripHelper(idOrNumber) {
@@ -109,6 +114,16 @@ export const loginDriver = async (req, res, next) => {
     }
 
     const cleanLoginId = String(loginId).trim();
+    const lockout = await checkLoginLockout(req, cleanLoginId);
+    if (lockout.locked) {
+      res.setHeader('Retry-After', String(lockout.retryAfterSeconds));
+      return sendError(
+        res,
+        429,
+        `Too many failed login attempts. Try again in ${Math.ceil(lockout.retryAfterSeconds / 60)} minute(s).`
+      );
+    }
+
     const tenDigits = normalizeTenDigitMobile(cleanLoginId);
     const lookupConditions = [
       { email: cleanLoginId.toLowerCase() },
@@ -130,7 +145,7 @@ export const loginDriver = async (req, res, next) => {
         if (otp) {
           driver = demoCandidate;
         } else if (password && demoCandidate.password) {
-          const demoPassOk = password === demoCandidate.password || await comparePassword(password, demoCandidate.password);
+          const demoPassOk = await comparePassword(password, demoCandidate.password);
           if (demoPassOk) {
             driver = demoCandidate;
           }
@@ -145,19 +160,25 @@ export const loginDriver = async (req, res, next) => {
     }
 
     if (!driver) {
+      const failState = await recordLoginFailure(req, cleanLoginId, 'Driver account not found');
+      if (failState.locked) {
+        res.setHeader('Retry-After', String(failState.retryAfterSeconds));
+        return sendError(res, 429, 'Too many failed login attempts. Account temporarily locked.');
+      }
       return sendError(res, 404, 'No account found with this email or mobile number');
     }
 
     let isMatch = false;
     if (password) {
       if (driver.password) {
-        if (password === driver.password) {
-          isMatch = true;
-        } else {
-          isMatch = await comparePassword(password, driver.password);
-        }
+        isMatch = await comparePassword(password, driver.password);
       }
       if (!isMatch) {
+        const failState = await recordLoginFailure(req, cleanLoginId, 'Incorrect driver password');
+        if (failState.locked) {
+          res.setHeader('Retry-After', String(failState.retryAfterSeconds));
+          return sendError(res, 429, 'Too many failed login attempts. Account temporarily locked.');
+        }
         return sendError(res, 401, 'Incorrect password');
       }
     } else if (otp) {
@@ -170,6 +191,7 @@ export const loginDriver = async (req, res, next) => {
         isMatch = true;
       } else {
         if (!driver.resetPasswordOtp || !driver.resetPasswordExpires) {
+          await recordLoginFailure(req, cleanLoginId, 'OTP verify attempted without active request');
           return sendError(res, 401, 'No active OTP request found. Please request an OTP first.');
         }
         if (new Date(driver.resetPasswordExpires).getTime() < Date.now()) {
@@ -177,6 +199,7 @@ export const loginDriver = async (req, res, next) => {
           driver.resetPasswordExpires = undefined;
           driver.resetPasswordAttempts = 0;
           await driver.save();
+          await recordLoginFailure(req, cleanLoginId, 'Expired OTP submitted');
           return sendError(res, 401, 'OTP has expired. Please request a new OTP.');
         }
         if ((driver.resetPasswordAttempts || 0) >= 5) {
@@ -184,6 +207,7 @@ export const loginDriver = async (req, res, next) => {
           driver.resetPasswordExpires = undefined;
           driver.resetPasswordAttempts = 0;
           await driver.save();
+          await recordLoginFailure(req, cleanLoginId, 'OTP max verification attempts exceeded');
           return sendError(res, 401, 'Maximum verification attempts exceeded. Please request a new OTP.');
         }
 
@@ -191,6 +215,11 @@ export const loginDriver = async (req, res, next) => {
         if (!otpValid) {
           driver.resetPasswordAttempts = (driver.resetPasswordAttempts || 0) + 1;
           await driver.save();
+          const failState = await recordLoginFailure(req, cleanLoginId, 'Invalid driver OTP');
+          if (failState.locked) {
+            res.setHeader('Retry-After', String(failState.retryAfterSeconds));
+            return sendError(res, 429, 'Too many failed OTP attempts. Account temporarily locked.');
+          }
           return sendError(res, 401, 'Invalid OTP');
         }
 
@@ -201,6 +230,8 @@ export const loginDriver = async (req, res, next) => {
         isMatch = true;
       }
     }
+
+    await clearLoginFailures(req, cleanLoginId);
 
     if (
       driver.accountStatus === 'Inactive' ||

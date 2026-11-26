@@ -19,6 +19,21 @@ import subscriptionRoutes from './routes/subscription.routes.js';
 import publicRoutes from './routes/public.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import { notFoundHandler, errorHandler } from './middleware/error.middleware.js';
+import { getTrustedOrigins } from './config/csp.config.js';
+import {
+  createSecurityMiddleware,
+  uploadsFrameSecurityMiddleware,
+  cspReportBodyParser,
+  cspReportHandler,
+} from './middleware/security.middleware.js';
+import {
+  preventNoSqlInjection,
+  inspectAndSanitizeInputs,
+  csrfOriginGuard,
+  securityActivityMonitor,
+} from './middleware/threatDefense.middleware.js';
+import { apiRateLimiter } from './middleware/rateLimit.middleware.js';
+import { recordSecurityEvent } from './services/securityMonitor.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,29 +43,50 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 const app = express();
 
 app.use(compression());
+app.use(createSecurityMiddleware(process.env));
+
+const isCorsOriginAllowed = (origin) => {
+  // Non-browser clients (Flutter mobile app, curl, same-origin server calls) omit Origin
+  if (!origin) return true;
+  const { isProduction, frontendHttpOrigins, apiHttpOrigins } = getTrustedOrigins(process.env);
+  const trusted = new Set([...frontendHttpOrigins, ...apiHttpOrigins]);
+  if (trusted.has(origin)) return true;
+  if (
+    !isProduction &&
+    /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+)(:\d+)?$/i.test(origin)
+  ) {
+    return true;
+  }
+  return false;
+};
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, Postman)
-      if (!origin) return callback(null, true);
-      // Allow localhost, 127.0.0.1, local network IPs, and configured CLIENT_URL
-      if (
-        origin === process.env.CLIENT_URL ||
-        origin.startsWith('http://localhost') ||
-        origin.startsWith('http://127.0.0.1') ||
-        origin.startsWith('http://10.') ||
-        origin.startsWith('http://192.168.')
-      ) {
+      if (isCorsOriginAllowed(origin)) {
         return callback(null, true);
       }
-      return callback(null, true);
+      recordSecurityEvent({
+        category: 'CORS_VIOLATION',
+        severity: 'Medium',
+        status: 'Blocked',
+        reason: `Blocked unauthorized CORS origin: ${origin}`,
+        details: { origin },
+      });
+      const err = new Error('Not allowed by CORS');
+      err.statusCode = 403;
+      return callback(err);
     },
     credentials: true,
   })
 );
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(securityActivityMonitor);
+app.use(preventNoSqlInjection);
+app.use(inspectAndSanitizeInputs);
+app.use(csrfOriginGuard);
+app.use('/api', apiRateLimiter);
 
 const uploadsFallback = (req, res, next) => {
   const filePath = path.join(__dirname, 'uploads', req.path);
@@ -113,10 +149,12 @@ const uploadsFallback = (req, res, next) => {
   next();
 };
 
-app.use('/uploads', uploadsFallback);
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use('/api/uploads', uploadsFallback);
-app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', uploadsFrameSecurityMiddleware, uploadsFallback);
+app.use('/uploads', uploadsFrameSecurityMiddleware, express.static(path.join(__dirname, 'uploads')));
+app.use('/api/uploads', uploadsFrameSecurityMiddleware, uploadsFallback);
+app.use('/api/uploads', uploadsFrameSecurityMiddleware, express.static(path.join(__dirname, 'uploads')));
+
+app.post('/api/security/csp-report', cspReportBodyParser, cspReportHandler);
 
 app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok', service: 'fleet-management-backend', customFlag: 'verified-antigravity' });
@@ -143,6 +181,19 @@ app.get('/api/public/reviews', async (req, res, next) => {
     next(err);
   }
 });
+
+// Serve built React SPA when frontend/dist exists (ensures Express applies Helmet CSP to HTML)
+const frontendDistPath = path.resolve(__dirname, '../frontend/dist');
+const frontendIndexPath = path.join(frontendDistPath, 'index.html');
+if (process.env.SERVE_FRONTEND !== 'false' && fs.existsSync(frontendIndexPath)) {
+  app.use(express.static(frontendDistPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path === '/health') {
+      return next();
+    }
+    return res.sendFile(frontendIndexPath);
+  });
+}
 
 app.use(notFoundHandler);
 app.use(errorHandler);

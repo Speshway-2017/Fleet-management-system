@@ -88,10 +88,23 @@ const startServer = async () => {
   // 4. Create HTTP server
   const server = http.createServer(app);
 
-  // 5. Set up Socket.IO
+  // 5. Set up Socket.IO with trusted-origin CORS restriction
+  const { getTrustedOrigins } = await import('./config/csp.config.js');
   const io = new Server(server, {
     cors: {
-      origin: (origin, callback) => callback(null, true),
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        const { isProduction, frontendHttpOrigins, apiHttpOrigins } = getTrustedOrigins(process.env);
+        const trusted = new Set([...frontendHttpOrigins, ...apiHttpOrigins]);
+        if (
+          trusted.has(origin) ||
+          (!isProduction &&
+            /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+)(:\d+)?$/i.test(origin))
+        ) {
+          return callback(null, true);
+        }
+        return callback(new Error('Socket.IO origin not allowed'));
+      },
       credentials: true,
     }
   });

@@ -55,3 +55,4 @@ export const isValidDemoOtp = (identifier, account, otp) => {
   if (!isDemoDriverAccount(account)) return false;
   return String(otp || '').trim() === DEMO_DRIVER_CREDENTIALS.otp;
 };
+

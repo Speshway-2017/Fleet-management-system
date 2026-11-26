@@ -5,7 +5,15 @@ export const notFoundHandler = (_req, res, next) => {
 };
 
 export const errorHandler = (err, _req, res, _next) => {
-  const statusCode = err.statusCode || 500;
+  let statusCode = err.statusCode || 500;
+  if (
+    statusCode === 500 &&
+    (err.name === 'MulterError' ||
+      String(err.message || '').includes('allowed') ||
+      String(err.message || '').includes('signature'))
+  ) {
+    statusCode = 400;
+  }
 
   res.status(statusCode).json({
     success: false,

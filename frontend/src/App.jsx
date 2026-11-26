@@ -49,6 +49,7 @@ const Analytics = lazy(() => import("@/roles/admin/pages/Analytics"));
 const ContactRequests = lazy(() => import("@/roles/admin/pages/ContactRequests"));
 const SystemHealth = lazy(() => import("@/roles/admin/pages/SystemHealth"));
 const AuditLogs = lazy(() => import("@/roles/admin/pages/AuditLogs"));
+const SecurityDashboard = lazy(() => import("@/roles/admin/pages/SecurityDashboard"));
 const Settings = lazy(() => import("@/roles/admin/pages/Settings"));
 const SecuritySettings = lazy(() => import("@/roles/admin/pages/SecuritySettings"));
 const NotificationSettings = lazy(() => import("@/roles/admin/pages/NotificationSettings"));
@@ -175,6 +176,7 @@ export default function App() {
                     <Route path="/privacy" element={<Navigate to="/privacy-policy" replace />} />
                     <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
                     <Route path="/terms-of-service" element={<Navigate to="/terms-and-conditions" replace />} />
+                    <Route path="/terms" element={<Navigate to="/terms-and-conditions" replace />} />
                   </Route>
 
                   {/* Auth Routes */}
@@ -201,6 +203,7 @@ export default function App() {
                       <Route path="/admin/contact-requests" element={<ContactRequests />} />
                       <Route path="/admin/system-health" element={<SystemHealth />} />
                       <Route path="/admin/audit-logs" element={<AuditLogs />} />
+                      <Route path="/admin/security" element={<SecurityDashboard />} />
                       <Route path="/admin/settings" element={<Settings />} />
                       <Route path="/admin/settings/security" element={<SecuritySettings />} />
                       <Route path="/admin/settings/notifications" element={<NotificationSettings />} />

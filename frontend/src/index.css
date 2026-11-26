@@ -971,5 +971,33 @@ body {
   box-shadow: none !important;
 }
 
+@keyframes slideRoad {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-24px);
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #print-area,
+  #print-area * {
+    visibility: visible;
+  }
+  #print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  .no-scrollbar {
+    overflow: visible !important;
+  }
+}
+
 
 

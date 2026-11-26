@@ -98,6 +98,12 @@ export const adminApi = {
   getAuditLogs: async (params) => {
     return axiosClient.get('/admin/audit-logs', { params });
   },
+  getSecurityEvents: async (params) => {
+    return axiosClient.get('/admin/security/events', { params });
+  },
+  clearSecurityLockout: async (id) => {
+    return axiosClient.delete(`/admin/security/lockouts/${id}`);
+  },
 
 
   // Platform Issues
